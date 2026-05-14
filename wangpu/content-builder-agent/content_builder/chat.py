@@ -7,6 +7,7 @@ chat_once 得到最终文本，或者启动本地控制台多轮对话。
 from __future__ import annotations
 
 import sys
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Iterator
 
@@ -52,11 +53,14 @@ def stream_chat(
     *,
     thread_id: str = DEFAULT_THREAD_ID,
     config_path: str | Path | None = None,
+    images: Iterable[str | Path] | None = None,
 ) -> Iterator[StreamEvent]:
     """对外暴露的结构化流式输入端口。
 
     参数：
         message: 用户输入。
+        images: 可选图片 URL、data URL 或本地图片路径。传入后会和文本组成同一条
+            多模态 user message，直接交给 Deep Agents 使用的多模态模型。
         thread_id: 会话 ID；相同 ID 在同一进程内共享上下文。
         config_path: 可选配置文件路径。
 
@@ -72,6 +76,7 @@ def stream_chat(
         message,
         thread_id=resolved_thread_id,
         max_turns=runtime_config.conversation.max_turns,
+        images=images,
     )
 
 
@@ -80,6 +85,7 @@ def chat_once(
     *,
     thread_id: str = DEFAULT_THREAD_ID,
     config_path: str | Path | None = None,
+    images: Iterable[str | Path] | None = None,
 ) -> str:
     """运行一次对话并返回最终文本。
 
@@ -87,7 +93,7 @@ def chat_once(
     """
 
     final_text = ""
-    for event in stream_chat(message, thread_id=thread_id, config_path=config_path):
+    for event in stream_chat(message, thread_id=thread_id, config_path=config_path, images=images):
         if event.type == "final":
             final_text = event.text
     return final_text
@@ -109,6 +115,13 @@ def interactive_chat(
 
     print("Content Builder Agent 已启动。输入 exit 或 quit 退出。")
     print(f"当前 thread_id: {resolved_thread_id}")
+    print("图片输入：先输入 /image 图片路径 或 /image 图片URL，下一条普通消息会自动带上图片。")
+    print("图片管理：/images 查看待发送图片，/clear-images 清空待发送图片。")
+
+    # 交互式命令行无法像 GUI 一样上传附件，所以这里采用“待发送图片队列”：
+    # 用户先用 /image 添加一个或多个本地路径/URL，随后输入普通文本时，streaming 层会把
+    # 图片和文本组装成同一条多模态 user message。发送成功后清空队列，避免下一轮误带旧图。
+    pending_images: list[str] = []
 
     while True:
         try:
@@ -123,13 +136,50 @@ def interactive_chat(
             print("已退出。")
             return
 
-        for event in stream_agent_events(
-            agent,
-            message,
-            thread_id=resolved_thread_id,
-            max_turns=runtime_config.conversation.max_turns,
-        ):
-            print_stream_event(event)
+        command = message.lower()
+        if command.startswith("/image "):
+            # 取 /image 后面的整段文本作为一个图片引用。这样 Windows 路径中即使包含空格，
+            # 也不需要额外解析成多个参数；如果要传多张图，重复输入多次 /image 即可。
+            image = message[len("/image ") :].strip().strip('"').strip("'")
+            if not image:
+                print("用法：/image 图片路径 或 /image 图片URL")
+                continue
+            pending_images.append(image)
+            print(f"已添加图片，将随下一条消息发送：{image}")
+            continue
+
+        if command == "/images":
+            if not pending_images:
+                print("当前没有待发送图片。")
+                continue
+            print("待发送图片：")
+            for index, image in enumerate(pending_images, start=1):
+                print(f"  {index}. {image}")
+            continue
+
+        if command == "/clear-images":
+            pending_images.clear()
+            print("已清空待发送图片。")
+            continue
+
+        images_for_turn = list(pending_images)
+        try:
+            for event in stream_agent_events(
+                agent,
+                message,
+                thread_id=resolved_thread_id,
+                max_turns=runtime_config.conversation.max_turns,
+                images=images_for_turn,
+            ):
+                print_stream_event(event)
+        except (FileNotFoundError, ValueError) as exc:
+            # 路径不存在或文件类型不对时，保留待发送图片，方便用户 /clear-images 后重输；
+            # 不把这类本地输入错误吞成模型错误，交互体验会清楚很多。
+            print(f"\n图片输入错误：{exc}")
+            continue
+
+        if images_for_turn:
+            pending_images.clear()
         print()
 
 

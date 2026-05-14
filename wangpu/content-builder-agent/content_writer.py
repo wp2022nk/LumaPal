@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import argparse
 import sys
 
 from content_builder import interactive_chat
@@ -15,12 +16,19 @@ from content_builder.config import DEFAULT_THREAD_ID, PROJECT_DIR, load_main_con
 from content_builder.streaming import print_stream_event, stream_agent_events
 
 
-def run_once(task: str, *, thread_id: str = DEFAULT_THREAD_ID) -> None:
+def run_once(
+    task: str,
+    *,
+    thread_id: str = DEFAULT_THREAD_ID,
+    images: list[str] | None = None,
+) -> None:
     """运行一次任务并把流式过程打印到控制台。
 
     参数：
         task: 用户任务文本。
         thread_id: 会话 ID；同一进程内相同 ID 会共享 LangGraph checkpointer 状态。
+        images: 可选图片引用列表。每个元素可以是 http(s) URL、data URL 或本地图片路径；
+            它们会和 task 一起作为多模态 user message 交给 Deep Agents。
     """
 
     runtime_config = load_main_config()
@@ -30,6 +38,7 @@ def run_once(task: str, *, thread_id: str = DEFAULT_THREAD_ID) -> None:
         task,
         thread_id=thread_id,
         max_turns=runtime_config.conversation.max_turns,
+        images=images,
     ):
         print_stream_event(event)
 
@@ -46,7 +55,18 @@ def main() -> None:
     """
 
     if len(sys.argv) > 1:
-        run_once(" ".join(sys.argv[1:]))
+        parser = argparse.ArgumentParser(
+            description="运行内容写作 Deep Agent。可用 --image 多次传入图片。",
+        )
+        parser.add_argument(
+            "--image",
+            action="append",
+            default=[],
+            help="图片 URL、data URL 或本地图片路径；可重复传入多张图片。",
+        )
+        parser.add_argument("task", nargs="*", help="要交给 Agent 的任务文本。")
+        args = parser.parse_args()
+        run_once(" ".join(args.task), images=args.image)
         return
 
     interactive_chat()

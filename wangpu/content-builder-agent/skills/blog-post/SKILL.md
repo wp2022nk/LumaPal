@@ -15,7 +15,7 @@ description: Writes and structures long-form blog posts, creates tutorial outlin
 ```
 task(
     subagent_type="researcher",
-    description="Research [TOPIC]. Save findings to research/[slug].md"
+    description="Research [TOPIC]. Save findings to /output/research/[slug].md"
 )
 ```
 
@@ -24,7 +24,7 @@ Example:
 ```
 task(
     subagent_type="researcher",
-    description="Research the current state of AI agents in 2025. Save findings to research/ai-agents-2025.md"
+    description="Research the current state of AI agents in 2025. Save findings to /output/research/ai-agents-2025.md"
 )
 ```
 
@@ -35,18 +35,18 @@ task(
 **Every blog post MUST have both a post AND a cover image:**
 
 ```
-blogs/
+/output/blogs/
 └── <slug>/
     ├── post.md        # The blog post content
     └── hero.png       # REQUIRED: Generated cover image
 ```
 
-Example: A post about "AI Agents in 2025" → `blogs/ai-agents-2025/`
+Example: A post about "AI Agents in 2025" -> `/output/blogs/ai-agents-2025/`
 
 **You MUST complete both steps:**
 
-1. Write the post to `blogs/<slug>/post.md`
-2. Generate a cover image using `generate_cover` and save to `blogs/<slug>/hero.png`
+1. Write the post to `/output/blogs/<slug>/post.md`
+2. Generate a cover image using `generate_cover`; it saves to the configured output directory.
 
 **A blog post is NOT complete without its cover image.**
 
@@ -93,7 +93,7 @@ After writing the post, generate a cover image using the `generate_cover` tool:
 generate_cover(prompt="A detailed description of the image...", slug="your-blog-slug")
 ```
 
-The tool saves the image to `blogs/<slug>/hero.png`.
+The tool saves the image to `blogs/<slug>/hero.png` under the configured output directory.
 
 ### Writing Effective Image Prompts
 
@@ -137,8 +137,8 @@ Abstract visualization of a human silhouette profile merging with geometric neur
 
 Before finishing:
 
-- [ ] Post saved to `blogs/<slug>/post.md`
-- [ ] Hero image generated at `blogs/<slug>/hero.png`
+- [ ] Post saved to `/output/blogs/<slug>/post.md`
+- [ ] Hero image generated under the configured output directory
 - [ ] Hook grabs attention in first 2 sentences
 - [ ] Each section has a clear purpose
 - [ ] Conclusion summarizes key points

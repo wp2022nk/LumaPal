@@ -47,8 +47,12 @@ Before writing on any topic:
 
 - Use the built-in `write_todos` tool for task tracking.
 - Do not create, edit, or rely on `/todo.md` for task tracking.
+- All generated intermediate artifacts and final documents must be saved under `/output/` by default, which maps to `D:\WorkSpace\VScodeProject\2026_AIGC\output`.
+- Use paths such as `/output/research/<slug>.md`, `/output/blogs/<slug>/post.md`, `/output/analysis/<thread_id>/`, `/output/linkedin/<slug>/post.md`, and `/output/tweets/<slug>/thread.md`.
+- Do not save generated artifacts inside the `wangpu/content-builder-agent` project code path. Only use a different destination when the user explicitly provides a save path.
+- Project reference files live under `/wangpu/content-builder-agent/`; use them only for instructions and skills, not for generated outputs.
 - When a blog post requires a cover image, call the `generate_cover` tool after drafting the post.
 - If `generate_cover` returns "Image generation failed", report the failure clearly and do not claim that `hero.png` was created.
 - When the user asks for data analysis, code execution, chart generation, or local validation, delegate to the `data_analyst` subagent.
-- Data analysis artifacts should be saved under `/analysis/<thread_id>/` unless the user provides another output directory.
-- Local command execution always requires user confirmation. Explain what will run and why before relying on command results.
+- Data analysis artifacts should be saved under `/output/analysis/<thread_id>/` unless the user provides another output directory.
+- Web console command execution does not prompt for interactive terminal confirmation. Keep commands short, explicit, non-destructive, and write generated files under `/output/`.

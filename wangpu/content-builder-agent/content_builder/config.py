@@ -35,6 +35,9 @@ warnings.simplefilter("ignore", LangChainPendingDeprecationWarning)
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
+WORKSPACE_DIR = PROJECT_DIR.parents[1]
+DEFAULT_BACKEND_DIR = WORKSPACE_DIR
+DEFAULT_OUTPUT_DIR = WORKSPACE_DIR / "output"
 DEFAULT_MAIN_CONFIG = PROJECT_DIR / "main_agent.yaml"
 
 # 保留原 demo 的本地默认值，但仍然优先使用用户在终端设置的环境变量。
@@ -44,6 +47,7 @@ DEFAULT_TAVILY_API_KEY = "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"
 DEFAULT_QWEN_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 DEFAULT_QWEN_TEXT_MODEL = "qwen3.6-plus"
 DEFAULT_THREAD_ID = "content-builder-console"
+DEFAULT_SANDBOX_PYTHON = Path(r"D:\Robort_Learn\envs\deepagents\python.exe")
 
 
 @dataclass(frozen=True)
@@ -124,6 +128,7 @@ class MainAgentConfig:
     tools: list[str]
     subagents_config: Path
     backend: BackendConfig
+    output_root: Path
     thread_id: str
     conversation: ConversationConfig
 
@@ -150,6 +155,32 @@ def resolve_project_path(value: str | Path, *, base_dir: Path = PROJECT_DIR) -> 
 
     path = Path(value)
     return path if path.is_absolute() else base_dir / path
+
+
+def resolve_output_root(configured_root: str | Path | None = None) -> Path:
+    """Resolve the writable workspace root used for generated artifacts."""
+
+    env_root = os.environ.get("CONTENT_BUILDER_OUTPUT_DIR")
+    raw_root = env_root or configured_root or DEFAULT_OUTPUT_DIR
+    base_dir = WORKSPACE_DIR if env_root else PROJECT_DIR
+    path = Path(raw_root)
+    return (path if path.is_absolute() else base_dir / path).resolve()
+
+
+def resolve_backend_root(configured_root: str | Path | None = None) -> Path:
+    """Resolve the standard Deep Agents filesystem backend root."""
+
+    env_root = os.environ.get("CONTENT_BUILDER_BACKEND_DIR")
+    raw_root = env_root or configured_root or DEFAULT_BACKEND_DIR
+    path = Path(raw_root)
+    return (path if path.is_absolute() else PROJECT_DIR / path).resolve()
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def load_main_config(config_path: str | Path | None = None) -> MainAgentConfig:
@@ -192,12 +223,17 @@ def load_main_config(config_path: str | Path | None = None) -> MainAgentConfig:
             f"(got {backend_type!r})"
         )
 
-    root_dir = resolve_project_path(backend_raw.get("root_dir", "."))
+    root_dir = resolve_backend_root(backend_raw.get("root_dir", DEFAULT_BACKEND_DIR))
+    root_dir.mkdir(parents=True, exist_ok=True)
+    output_root = resolve_output_root(raw.get("output_root", DEFAULT_OUTPUT_DIR))
+    output_root.mkdir(parents=True, exist_ok=True)
     subagents_config = resolve_project_path(raw.get("subagents_config", "subagents.yaml"))
     local_shell_raw = backend_raw.get("local_shell") or {}
     remote_raw = backend_raw.get("remote") or {}
 
-    python_path_raw = local_shell_raw.get("python")
+    python_path_raw = os.environ.get("CONTENT_BUILDER_SANDBOX_PYTHON") or local_shell_raw.get("python")
+    if not python_path_raw and DEFAULT_SANDBOX_PYTHON.exists():
+        python_path_raw = DEFAULT_SANDBOX_PYTHON
     python_path = resolve_project_path(python_path_raw) if python_path_raw else None
     allowed_commands = list(
         local_shell_raw.get(
@@ -207,6 +243,11 @@ def load_main_config(config_path: str | Path | None = None) -> MainAgentConfig:
     )
 
     setup_script_raw = remote_raw.get("setup_script")
+
+    require_confirmation = _env_bool(
+        "CONTENT_BUILDER_REQUIRE_EXECUTE_CONFIRMATION",
+        bool(local_shell_raw.get("require_confirmation", True)),
+    )
 
     return MainAgentConfig(
         config_path=resolved_config_path,
@@ -224,7 +265,7 @@ def load_main_config(config_path: str | Path | None = None) -> MainAgentConfig:
             local_shell=LocalShellConfig(
                 python=python_path,
                 allowed_commands=[str(command) for command in allowed_commands],
-                require_confirmation=bool(local_shell_raw.get("require_confirmation", True)),
+                require_confirmation=require_confirmation,
             ),
             remote=RemoteSandboxConfig(
                 provider=remote_raw.get("provider"),
@@ -232,6 +273,7 @@ def load_main_config(config_path: str | Path | None = None) -> MainAgentConfig:
                 setup_script=resolve_project_path(setup_script_raw) if setup_script_raw else None,
             ),
         ),
+        output_root=output_root,
         thread_id=str(raw.get("thread_id", DEFAULT_THREAD_ID)),
         conversation=ConversationConfig(
             max_turns=conversation_raw.get("max_turns"),

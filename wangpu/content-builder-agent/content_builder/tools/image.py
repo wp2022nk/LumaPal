@@ -11,11 +11,17 @@ from pathlib import Path
 
 from langchain.tools import tool
 
-from content_builder.config import PROJECT_DIR
+from content_builder.config import load_main_config
 from qwen_image_tool import DEFAULT_QWEN_IMAGE_MODEL, generate_qwen_image
 
 
 QWEN_IMAGE_MODEL = os.environ.get("QWEN_IMAGE_MODEL", DEFAULT_QWEN_IMAGE_MODEL)
+
+
+def output_root() -> Path:
+    root = load_main_config().output_root
+    root.mkdir(parents=True, exist_ok=True)
+    return root
 
 
 def safe_path_segment(value: str, default: str = "image") -> str:
@@ -78,12 +84,13 @@ def generate_cover(prompt: str, slug: str) -> str:
 
     参数：
         prompt: 图片生成提示词，应描述风格、主题、构图、色彩等。
-        slug: 博客文章 slug，图片会保存到 blogs/<slug>/hero.png。
+        slug: 博客文章 slug，图片会保存到输出工作区下的 blogs/<slug>/hero.png。
     """
 
     safe_slug = safe_path_segment(slug, "blog")
-    output_path = PROJECT_DIR / "blogs" / safe_slug / "hero.png"
-    error_path = PROJECT_DIR / "blogs" / safe_slug / "hero-error.txt"
+    root = output_root()
+    output_path = root / "blogs" / safe_slug / "hero.png"
+    error_path = root / "blogs" / safe_slug / "hero-error.txt"
     return save_qwen_image_for_tool(
         tool_name="generate_cover",
         prompt=prompt,
@@ -99,13 +106,14 @@ def generate_social_image(prompt: str, platform: str, slug: str) -> str:
     参数：
         prompt: 图片生成提示词，应描述目标平台需要的视觉效果。
         platform: 社交平台目录名，例如 linkedin 或 tweets。
-        slug: 帖子 slug，图片会保存到 <platform>/<slug>/image.png。
+        slug: 帖子 slug，图片会保存到输出工作区下的 <platform>/<slug>/image.png。
     """
 
     safe_platform = safe_path_segment(platform, "social")
     safe_slug = safe_path_segment(slug, "post")
-    output_path = PROJECT_DIR / safe_platform / safe_slug / "image.png"
-    error_path = PROJECT_DIR / safe_platform / safe_slug / "image-error.txt"
+    root = output_root()
+    output_path = root / safe_platform / safe_slug / "image.png"
+    error_path = root / safe_platform / safe_slug / "image-error.txt"
     return save_qwen_image_for_tool(
         tool_name="generate_social_image",
         prompt=prompt,

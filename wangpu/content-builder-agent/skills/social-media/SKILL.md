@@ -15,7 +15,7 @@ description: Drafts engaging social media posts, writes hooks, suggests hashtags
 ```
 task(
     subagent_type="researcher",
-    description="Research [TOPIC]. Save findings to research/[slug].md"
+    description="Research [TOPIC]. Save findings to /output/research/[slug].md"
 )
 ```
 
@@ -24,7 +24,7 @@ Example:
 ```
 task(
     subagent_type="researcher",
-    description="Research renewable energy trends in 2025. Save findings to research/renewable-energy.md"
+    description="Research renewable energy trends in 2025. Save findings to /output/research/renewable-energy.md"
 )
 ```
 
@@ -37,7 +37,7 @@ task(
 **LinkedIn posts:**
 
 ```
-linkedin/
+/output/linkedin/
 └── <slug>/
     ├── post.md        # The post content
     └── image.png      # REQUIRED: Generated visual
@@ -46,17 +46,17 @@ linkedin/
 **Twitter/X threads:**
 
 ```
-tweets/
+/output/tweets/
 └── <slug>/
     ├── thread.md      # The thread content
     └── image.png      # REQUIRED: Generated visual
 ```
 
-Example: A LinkedIn post about "prompt engineering" → `linkedin/prompt-engineering/`
+Example: A LinkedIn post about "prompt engineering" -> `/output/linkedin/prompt-engineering/`
 
 **You MUST complete both steps:**
 
-1. Write the content to the appropriate path
+1. Write the content to `/output/linkedin/<slug>/post.md` or `/output/tweets/<slug>/thread.md`
 2. Generate an image using `generate_social_image` and save alongside the post
 
 **A social media post is NOT complete without its image.**
@@ -129,7 +129,7 @@ Every social media post needs an eye-catching image. Use the `generate_social_im
 generate_social_image(prompt="A detailed description...", platform="linkedin", slug="your-post-slug")
 ```
 
-The tool saves the image to `<platform>/<slug>/image.png`.
+The tool saves the image to `<platform>/<slug>/image.png` under the configured output directory.
 
 ### Social Image Best Practices
 
@@ -193,7 +193,7 @@ Two overlapping translucent circles, one blue one orange, creating a glowing int
 
 Before finishing:
 
-- [ ] Post saved to `linkedin/<slug>/post.md` or `tweets/<slug>/thread.md`
+- [ ] Post saved to `/output/linkedin/<slug>/post.md` or `/output/tweets/<slug>/thread.md`
 - [ ] Image generated alongside the post
 - [ ] First line hooks attention
 - [ ] Content fits platform limits

@@ -12,10 +12,10 @@ model:
 
 system_prompt_file: AGENTS.md
 memory:
-  - /AGENTS.md
+  - /wangpu/content-builder-agent/AGENTS.md
 
 skills:
-  - /skills/
+  - /wangpu/content-builder-agent/skills/
 
 tools:
   - generate_cover
@@ -25,10 +25,11 @@ subagents_config: subagents.yaml
 
 backend:
   type: local_shell
-  root_dir: .
+  # Standard Deep Agents backend root. Generated artifacts still default to /output.
+  root_dir: ../..
   virtual_mode: true
   local_shell:
-    python: .venv/Scripts/python.exe
+    python: D:\Robort_Learn\envs\deepagents\python.exe
     allowed_commands:
       - python
       - pytest
@@ -37,11 +38,13 @@ backend:
       - powershell
       - pwsh
       - mkdir
-    require_confirmation: true
+    require_confirmation: false
   remote:
     provider: null
     sandbox_id: null
     setup_script: null
+
+output_root: ../../output
 
 thread_id: content-builder-console
 

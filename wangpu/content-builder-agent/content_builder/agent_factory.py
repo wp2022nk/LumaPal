@@ -23,6 +23,7 @@ from langgraph.checkpoint.memory import MemorySaver
 
 from .config import (
     DEFAULT_MAIN_CONFIG,
+    LocalShellConfig,
     MainAgentConfig,
     create_qwen_model,
     load_main_config,
@@ -42,7 +43,7 @@ def _read_system_prompt(config: MainAgentConfig) -> str | None:
 
     if not config.system_prompt_file:
         return None
-    prompt_path = config.backend.root_dir / config.system_prompt_file.lstrip("/")
+    prompt_path = resolve_project_path(config.system_prompt_file)
     if not prompt_path.exists():
         raise FileNotFoundError(f"System prompt file not found: {prompt_path}")
     return prompt_path.read_text(encoding="utf-8")
@@ -85,7 +86,7 @@ def _build_subagents(config: MainAgentConfig, main_model: Any) -> list[dict[str,
     return subagents
 
 
-def _build_backend(config: MainAgentConfig) -> Any:
+def _build_backend(config: MainAgentConfig, *, require_confirmation: bool | None = None) -> Any:
     """根据配置构建 Deep Agents backend。"""
 
     if config.backend.type == "filesystem":
@@ -99,6 +100,12 @@ def _build_backend(config: MainAgentConfig) -> Any:
             raise ValueError("backend.local_shell config is required when backend.type=local_shell")
 
         local_shell = config.backend.local_shell
+        if require_confirmation is not None:
+            local_shell = LocalShellConfig(
+                python=local_shell.python,
+                allowed_commands=local_shell.allowed_commands,
+                require_confirmation=require_confirmation,
+            )
         if local_shell.python and not local_shell.python.exists():
             print(
                 "[local_shell] configured Python interpreter was not found: "
@@ -119,8 +126,8 @@ def _build_backend(config: MainAgentConfig) -> Any:
     raise ValueError(f"Unsupported backend.type: {config.backend.type}")
 
 
-@lru_cache(maxsize=8)
-def _create_content_writer_cached(config_path_key: str):
+@lru_cache(maxsize=16)
+def _create_content_writer_cached(config_path_key: str, runtime_mode: str):
     """按配置文件缓存 Agent 实例。
 
     MemorySaver 是挂在 Agent 实例上的。若每次 API 调用都重新创建 Agent，即使
@@ -132,13 +139,15 @@ def _create_content_writer_cached(config_path_key: str):
     model = create_qwen_model(config.model)
     system_prompt = _read_system_prompt(config)
 
-    # MemorySaver 是单进程 checkpointer：同一个 thread_id 内的多轮调用能共享上下文，
-    # 但进程重启后不会恢复。这正好匹配当前第一版“控制台会话记忆”的范围。
-    checkpointer = MemorySaver()
+    web_mode = runtime_mode == "web"
+    backend = _build_backend(config, require_confirmation=False if web_mode else None)
+    interrupt_on = None
+    if web_mode:
+        interrupt_on = {
+            "execute": {"allowed_decisions": ["approve", "edit", "reject"]},
+        }
 
-    backend = _build_backend(config)
-
-    return create_deep_agent(
+    agent_kwargs = dict(
         name=config.name,
         model=model,
         system_prompt=system_prompt,
@@ -147,11 +156,18 @@ def _create_content_writer_cached(config_path_key: str):
         tools=get_tools(config.tools),
         subagents=_build_subagents(config, model),
         backend=backend,
-        checkpointer=checkpointer,
+        interrupt_on=interrupt_on,
     )
 
+    # LangGraph Agent Server owns persistence/checkpointing. The CLI keeps a
+    # process-local MemorySaver so stream_chat sessions still share context.
+    if not web_mode:
+        agent_kwargs["checkpointer"] = MemorySaver()
 
-def create_content_writer(config_path: str | Path | None = None):
+    return create_deep_agent(**agent_kwargs)
+
+
+def create_content_writer(config_path: str | Path | None = None, *, runtime_mode: str = "cli"):
     """创建内容写作主智能体。
 
     参数：
@@ -161,5 +177,8 @@ def create_content_writer(config_path: str | Path | None = None):
         已编译的 Deep Agents/LangGraph runnable，可被 invoke 或 stream 调用。
     """
 
+    if runtime_mode not in {"cli", "web"}:
+        raise ValueError("runtime_mode must be 'cli' or 'web'")
+
     resolved_config = resolve_project_path(config_path or DEFAULT_MAIN_CONFIG).resolve()
-    return _create_content_writer_cached(str(resolved_config))
+    return _create_content_writer_cached(str(resolved_config), runtime_mode)

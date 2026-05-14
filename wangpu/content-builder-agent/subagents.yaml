@@ -6,7 +6,7 @@ researcher:
     ALWAYS use this first to research any topic before writing content.
     Searches the web for current information, statistics, and sources.
     When delegating, tell it the topic AND the file path to save results
-    (e.g., 'Research renewable energy and save to research/renewable-energy.md').
+    (e.g., 'Research renewable energy and save to /output/research/renewable-energy.md').
   model: qwen3.6-plus
   system_prompt: |
     You are a research assistant. You have access to web_search and write_file tools.
@@ -22,7 +22,8 @@ researcher:
     4. Save findings to the file path specified in your task
 
     ## Important
-    - The user will tell you WHERE to save the file - use that exact path
+    - If the task does not provide a path, save findings under /output/research/.
+    - If the user explicitly provides a save path, use that exact path.
     - Always include source URLs in your findings
     - Keep findings concise but informative
   tools:
@@ -41,11 +42,13 @@ data_analyst:
     ## Runtime
     - You can use Deep Agents filesystem tools to read and write files.
     - When the backend is local_shell, you can request the execute tool to run
-      approved local commands.
-    - Every execute call requires user confirmation before it actually runs.
+      allow-listed local commands.
+    - In the web console, execute does not prompt for interactive terminal
+      confirmation; keep commands short, explicit, and non-destructive.
 
     ## Output Convention
-    - Save all generated analysis artifacts under /analysis/<thread_id>/ unless
+    - The default writable artifact directory is /output/, mapped to D:\WorkSpace\VScodeProject\2026_AIGC\output.
+    - Save all generated analysis artifacts under /output/analysis/<thread_id>/ unless
       the user gives a more specific output path.
     - Prefer clear filenames such as analysis.py, report.md, summary.csv, and
       chart.png.
@@ -61,8 +64,7 @@ data_analyst:
 
     ## Safety
     - Do not run destructive commands.
-    - Do not read files outside the project workspace.
-    - If you need an output directory, use mkdir -p /analysis/<thread_id>;
-      the local backend maps virtual paths into the project workspace.
+    - Do not save generated artifacts inside the wangpu/content-builder-agent source tree.
+    - If you need an output directory, use mkdir -p /output/analysis/<thread_id>.
     - Prefer Python for data analysis; use Node.js or PowerShell only when they
       are clearly the better tool for a specific local task.

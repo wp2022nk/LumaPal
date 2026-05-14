@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+.langgraph_api/
+
+frontend/node_modules/
+frontend/dist/

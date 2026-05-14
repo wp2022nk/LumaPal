@@ -3,6 +3,7 @@ from typing import Literal
 from tavily import TavilyClient
 from deepagents import create_deep_agent
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_qwq import ChatQwen
 
 # ========== 基础配置 ==========
 #
@@ -20,6 +21,12 @@ tavily_client = TavilyClient(api_key="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")
 gemini_model = ChatGoogleGenerativeAI(
     model="gemini-3.1-flash-lite",
     api_key=GEMINI_API_KEY,
+)
+
+qwen_model = ChatQwen(
+    model="qwen3.6-plus",
+    api_key="sk-24ebca554a394d7e8bc54602e854fdfe",
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
 )
 
 
@@ -73,7 +80,7 @@ Use this to run an internet search for a given query. You can specify the max nu
 # 注意：只用 agent.invoke(...) 时，通常只能看到最终结果；
 # 要看到规划、工具调用、子 Agent 过程，需要使用下面的 agent.stream(...)。
 agent = create_deep_agent(
-    model=gemini_model,
+    model=qwen_model,
     tools=[internet_search],
     system_prompt=research_instructions,
 )

@@ -43,7 +43,7 @@ DEFAULT_MAIN_CONFIG = PROJECT_DIR / "main_agent.yaml"
 # 保留原 demo 的本地默认值，但仍然优先使用用户在终端设置的环境变量。
 # 生产环境建议把这些默认值移出代码，统一交给密钥管理或 .env 注入。
 DEFAULT_QWEN_API_KEY = "sk-4022a3931c75477f95b921f7dfacea8d"
-DEFAULT_TAVILY_API_KEY = "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"
+DEFAULT_TAVILY_API_KEY = "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"
 DEFAULT_QWEN_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 DEFAULT_QWEN_TEXT_MODEL = "qwen3.6-plus"
 DEFAULT_THREAD_ID = "content-builder-console"

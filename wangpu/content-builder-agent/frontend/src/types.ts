@@ -85,3 +85,60 @@ export interface SessionRecord {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface TodoItem {
+  content?: string;
+  title?: string;
+  status?: "pending" | "in_progress" | "completed" | string;
+}
+
+export interface AgentState {
+  messages?: unknown[];
+  todos?: TodoItem[];
+  [key: string]: unknown;
+}
+
+export interface ToolCallView {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+}
+
+export interface ToolEventView {
+  id: string;
+  call: ToolCallView;
+  result?: {
+    content: string;
+    status?: string;
+  };
+  tool?: ToolManifest;
+  messageId?: string;
+  running?: boolean;
+}
+
+export interface InterruptAction {
+  action: string;
+  args: Record<string, unknown>;
+  description?: string;
+}
+
+export interface InterruptReview {
+  allowedDecisions: string[];
+}
+
+export interface InterruptRequest {
+  raw: unknown;
+  action: InterruptAction;
+  review: InterruptReview;
+}
+
+export interface SchemaField {
+  name: string;
+  type: string;
+  required: boolean;
+  description: string;
+}
+
+export type ActiveInspector = "plan" | "flow" | "artifacts" | "sandbox";
+export type ApprovalMode = "review" | "edit" | "reject" | "respond";
+export type ApprovalDecision = "approve" | "reject" | "edit" | "respond";

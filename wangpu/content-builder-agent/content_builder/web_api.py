@@ -10,6 +10,7 @@ from typing import Any
 from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from content_builder.config import load_main_config
@@ -17,6 +18,20 @@ from content_builder.manifest import ARTIFACT_ROOTS, artifact_kind, build_manife
 
 
 app = FastAPI(title="Content Builder Agent API")
+
+LOCAL_DEV_ORIGINS = [
+    f"http://localhost:{port}" for port in range(5173, 5181)
+] + [
+    f"http://127.0.0.1:{port}" for port in range(5173, 5181)
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=LOCAL_DEV_ORIGINS,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    allow_credentials=True,
+)
 
 IGNORED_DIRS = {
     ".git",

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Bot, ChevronDown, ChevronRight, Wrench } from "lucide-vue-next";
-import type { ToolEventView } from "../types";
+import type { ArtifactDraftView, ToolEventView } from "../types";
+import ArtifactDraftCard from "./ArtifactDraftCard.vue";
 import SubagentCard from "./SubagentCard.vue";
 import ToolCallCard from "./ToolCallCard.vue";
 
@@ -8,6 +9,7 @@ defineProps<{
   collapsed: boolean;
   toolEvents: ToolEventView[];
   subagents: any[];
+  artifactDrafts: ArtifactDraftView[];
   subagentDescriptions: Map<string, string>;
 }>();
 
@@ -44,7 +46,14 @@ const emit = defineEmits<{
         timeline
       />
 
-      <p v-if="toolEvents.length === 0 && subagents.length === 0" class="muted">
+      <ArtifactDraftCard
+        v-for="draft in artifactDrafts"
+        :key="draft.id"
+        :draft="draft"
+        timeline
+      />
+
+      <p v-if="toolEvents.length === 0 && subagents.length === 0 && artifactDrafts.length === 0" class="muted">
         工具调用和子智能体执行会随 stream 自动补进来。
       </p>
     </div>

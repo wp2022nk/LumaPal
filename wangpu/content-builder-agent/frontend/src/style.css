@@ -157,9 +157,7 @@ button:disabled {
 .primary-action,
 .ghost-button,
 .send-button,
-.icon-button,
-.approval-tabs button,
-.approval-editor button {
+.icon-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -571,14 +569,15 @@ pre {
 }
 
 .tool-card-list,
-.subagent-card-list {
+.subagent-card-list,
+.artifact-draft-list {
   margin-top: 12px;
 }
 
 .tool-card,
 .subagent-card,
-.timeline-item,
-.approval-card {
+.artifact-draft-card,
+.timeline-item {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
@@ -586,6 +585,7 @@ pre {
 
 .tool-card summary,
 .subagent-card summary,
+.artifact-draft-card summary,
 .timeline-item summary {
   min-height: 38px;
   padding: 10px 12px;
@@ -595,6 +595,7 @@ pre {
 
 .tool-title,
 .subagent-card summary span:first-child,
+.artifact-draft-card summary span:first-child,
 .timeline-item summary span {
   display: inline-flex;
   min-width: 0;
@@ -610,6 +611,7 @@ pre {
 
 .tool-card p,
 .subagent-card p,
+.artifact-draft-card p,
 .timeline-item p {
   margin: 0;
   padding: 0 12px 10px;
@@ -620,11 +622,49 @@ pre {
 
 .tool-card pre,
 .subagent-card pre,
+.artifact-draft-card pre,
 .timeline-item pre {
   margin: 0 12px 12px;
   max-height: 280px;
   overscroll-behavior: contain;
   white-space: pre-wrap;
+}
+
+.subagent-steps {
+  display: grid;
+  gap: 6px;
+  margin: 0 12px 12px;
+}
+
+.subagent-step {
+  border-left: 2px solid #bbb8ff;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.subagent-step > span,
+.subagent-step > small {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.subagent-step > span {
+  font-weight: 800;
+  color: var(--text);
+}
+
+.subagent-step > small {
+  float: right;
+  color: var(--muted);
+}
+
+.subagent-step p {
+  clear: both;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
 }
 
 .tool-description {
@@ -669,70 +709,6 @@ pre {
   to {
     transform: rotate(360deg);
   }
-}
-
-.approval-card {
-  max-width: 880px;
-  margin: 0 auto 18px;
-  padding: 14px;
-  border-color: #f3bf71;
-  background: var(--amber-soft);
-}
-
-.approval-card header {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  color: var(--amber);
-}
-
-.approval-card h3,
-.approval-card p {
-  margin: 0;
-}
-
-.approval-card header p {
-  margin-top: 4px;
-  color: #7c4a03;
-}
-
-.approval-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.approval-tabs button,
-.approval-editor button {
-  min-height: 34px;
-  padding: 0 12px;
-  border: 1px solid var(--line-strong);
-  background: #fff;
-  color: var(--ink);
-}
-
-.approval-tabs .approve,
-.approval-editor button {
-  border-color: #83ca98;
-  background: var(--green);
-  color: #fff;
-}
-
-.approval-editor {
-  display: grid;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.approval-editor textarea {
-  min-height: 130px;
-  resize: vertical;
-  border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  padding: 10px;
-  background: #fff;
-  color: var(--ink);
 }
 
 .composer {

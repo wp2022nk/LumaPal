@@ -4,13 +4,13 @@ import type {
   ActiveInspector,
   AgentManifest,
   AgentState,
-  ApprovalDecision,
-  ApprovalMode,
+  ArtifactDraftView,
   ArtifactItem,
   FilePayload,
-  InterruptRequest,
   PendingImage,
   SessionRecord,
+  SubagentRunView,
+  SubagentStepView,
   TodoItem,
   ToolEventView,
   ToolManifest,
@@ -27,6 +27,32 @@ import {
   roleOf,
   simpleLineDiff,
 } from "../utils";
+import {
+  collectInterruptsFromThreadState,
+  collectMessagesFromValue,
+  collectStatePatch,
+  explicitMessageId,
+  isLiveSubagent,
+  latestAssistantText,
+  mergeMessages,
+  normalizeInterrupts,
+  normalizeStreamingChunk,
+  shouldFinishFromValues,
+  toolCallIdFromMessage,
+} from "../streaming/messageState";
+import {
+  isPlainObject,
+  isSubagentNamespace,
+  iterateSseEvents,
+  namespaceSource,
+  normalizeStreamPayloads,
+  splitStreamEventName,
+} from "../streaming/sse";
+import {
+  draftFromToolCall,
+  parseToolCallChunks,
+  updateDraftFromArgsText,
+} from "../streaming/toolCallStream";
 
 const ASSISTANT_ID = "content_writer";
 const STORAGE_SESSIONS = "content-builder:sessions";
@@ -35,187 +61,6 @@ const STORAGE_RUN = "content-builder:active-run";
 const STORAGE_INSPECTOR_WIDTH = "content-builder:inspector-width";
 const DEFAULT_SESSION_TITLE = "新对话";
 
-function explicitMessageId(message: any): string | null {
-  const id =
-    message?.message_id ??
-    message?.uuid ??
-    message?.lc_kwargs?.id ??
-    message?.kwargs?.id ??
-    (Array.isArray(message?.id) ? null : message?.id);
-
-  return id == null || id === "" ? null : String(id);
-}
-
-function fallbackMessageKey(message: any): string {
-  const toolCalls = parseToolCalls(message)
-    .map((call) => `${call.id}:${call.name}`)
-    .join("|");
-  return [
-    roleOf(message),
-    messageText(message),
-    messageImages(message).join("|"),
-    toolCalls,
-  ].join("::");
-}
-
-function messageKeyForMerge(message: any): string {
-  return explicitMessageId(message) ?? fallbackMessageKey(message);
-}
-
-function messageKeysForMerge(message: any): string[] {
-  return Array.from(
-    new Set(
-      [explicitMessageId(message), fallbackMessageKey(message)].filter(
-        (key): key is string => Boolean(key),
-      ),
-    ),
-  );
-}
-
-function mergeMessages(current: unknown[] | undefined, incoming: unknown[]): unknown[] {
-  const next = Array.isArray(current) ? [...current] : [];
-  const indexByKey = new Map<string, number>();
-
-  next.forEach((message, index) => {
-    for (const key of messageKeysForMerge(message)) {
-      indexByKey.set(key, index);
-    }
-  });
-
-  for (const message of incoming) {
-    const keys = messageKeysForMerge(message);
-    const existingIndex = keys
-      .map((key) => indexByKey.get(key))
-      .find((index) => index != null);
-    if (existingIndex == null) {
-      for (const key of keys) indexByKey.set(key, next.length);
-      next.push(message);
-    } else {
-      next[existingIndex] = message;
-      for (const key of keys) indexByKey.set(key, existingIndex);
-    }
-  }
-
-  return next;
-}
-
-function collectStatePatch(value: unknown, patch: AgentState = {}): AgentState {
-  if (Array.isArray(value)) {
-    for (const item of value) collectStatePatch(item, patch);
-    return patch;
-  }
-
-  if (!value || typeof value !== "object") return patch;
-
-  const objectValue = value as Record<string, unknown>;
-  if (Array.isArray(objectValue.messages)) {
-    patch.messages = mergeMessages(patch.messages, objectValue.messages);
-  }
-  if (Array.isArray(objectValue.todos)) {
-    patch.todos = objectValue.todos as TodoItem[];
-  }
-
-  for (const [key, childValue] of Object.entries(objectValue)) {
-    if (key === "messages" || key === "todos") continue;
-    collectStatePatch(childValue, patch);
-  }
-
-  return patch;
-}
-
-type RunStreamEvent = {
-  event: string;
-  data: unknown;
-};
-
-function parseSseEvent(frame: string): RunStreamEvent | null {
-  const lines = frame.split(/\r?\n/);
-  const event = lines
-    .find((line) => line.startsWith("event:"))
-    ?.slice("event:".length)
-    .trim();
-  const dataText = lines
-    .filter((line) => line.startsWith("data:"))
-    .map((line) => line.slice("data:".length).trimStart())
-    .join("\n");
-
-  if (!event && !dataText) return null;
-
-  let data: unknown = dataText;
-  if (dataText) {
-    try {
-      data = JSON.parse(dataText);
-    } catch {
-      data = dataText;
-    }
-  }
-
-  return { event: event ?? "message", data };
-}
-
-async function* iterateSseEvents(
-  response: Response,
-): AsyncGenerator<RunStreamEvent> {
-  const reader = response.body?.getReader();
-  if (!reader) return;
-
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-
-      while (true) {
-        const crlfIndex = buffer.indexOf("\r\n\r\n");
-        const lfIndex = buffer.indexOf("\n\n");
-        let frameEnd = -1;
-        let separatorLength = 2;
-
-        if (crlfIndex >= 0 && (lfIndex < 0 || crlfIndex < lfIndex)) {
-          frameEnd = crlfIndex;
-          separatorLength = 4;
-        } else if (lfIndex >= 0) {
-          frameEnd = lfIndex;
-        } else {
-          break;
-        }
-
-        const frame = buffer.slice(0, frameEnd);
-        buffer = buffer.slice(frameEnd + separatorLength);
-
-        const parsed = parseSseEvent(frame);
-        if (parsed) yield parsed;
-      }
-    }
-  } finally {
-    try {
-      await reader.cancel();
-    } catch {}
-  }
-}
-
-function normalizeStreamingChunk(message: any): any {
-  const role = roleOf(message);
-  if (role === "AIMessageChunk") {
-    return { ...message, type: "ai", role: "ai" };
-  }
-  return message;
-}
-
-function shouldFinishFromValues(values: AgentState): boolean {
-  const messages = Array.isArray(values.messages) ? values.messages : [];
-  const lastMessage = messages.at(-1) as any;
-  const role = roleOf(lastMessage);
-
-  if (role !== "ai" && role !== "assistant") return false;
-  if (parseToolCalls(lastMessage).length > 0) return false;
-
-  return Boolean(messageText(lastMessage).trim());
-}
 
 function loadSessions(): SessionRecord[] {
   try {
@@ -262,11 +107,6 @@ export function useContentBuilderConsole() {
     sandbox: false,
   });
 
-  const approvalMode = ref<ApprovalMode>("review");
-  const approvalArgsText = ref("{}");
-  const rejectionReason = ref("");
-  const responseMessage = ref("");
-
   const sessions = ref<SessionRecord[]>(loadSessions());
 
   function saveSessions() {
@@ -301,7 +141,20 @@ export function useContentBuilderConsole() {
   const streamSdkError = ref<unknown>(null);
   const streamSubagents = ref(new Map<string, any>());
   const streamSubgraphs = ref(new Map<string, any>());
+  const streamArtifactDrafts = ref(new Map<string, ArtifactDraftView>());
   const streamingContentById = new Map<string, string>();
+  const artifactRevealTimers = new Map<string, number>();
+  const streamingToolCallsById = new Map<
+    string,
+    {
+      id: string;
+      index: number;
+      name: string;
+      argsText: string;
+      messageId?: string;
+      subagentId?: string;
+    }
+  >();
   let activeRunAbortController: AbortController | null = null;
 
   function resetLiveStreamState(values: AgentState = {}) {
@@ -312,7 +165,351 @@ export function useContentBuilderConsole() {
     streamToolCalls.value = [];
     streamInterrupts.value = [];
     streamSdkError.value = null;
+    streamSubagents.value = new Map();
+    streamSubgraphs.value = new Map();
+    streamArtifactDrafts.value = new Map();
     streamingContentById.clear();
+    for (const timer of artifactRevealTimers.values()) window.clearInterval(timer);
+    artifactRevealTimers.clear();
+    streamingToolCallsById.clear();
+  }
+
+  function upsertArtifactDraft(draft: ArtifactDraftView) {
+    const current = streamArtifactDrafts.value.get(draft.id);
+    const currentContent = current?.content ?? "";
+    const shouldReveal =
+      draft.content.length > currentContent.length + 40 &&
+      draft.status !== "streaming";
+
+    if (!shouldReveal) {
+      streamArtifactDrafts.value = new Map(streamArtifactDrafts.value).set(draft.id, draft);
+      return;
+    }
+
+    const visibleDraft = {
+      ...draft,
+      status: "streaming" as const,
+      content: currentContent,
+    };
+    streamArtifactDrafts.value = new Map(streamArtifactDrafts.value).set(draft.id, visibleDraft);
+
+    const existingTimer = artifactRevealTimers.get(draft.id);
+    if (existingTimer) window.clearInterval(existingTimer);
+
+    let cursor = currentContent.length;
+    const timer = window.setInterval(() => {
+      cursor = Math.min(draft.content.length, cursor + 8);
+      const next = {
+        ...draft,
+        status: cursor >= draft.content.length ? draft.status : ("streaming" as const),
+        content: draft.content.slice(0, cursor),
+        updatedAt: new Date().toISOString(),
+      };
+      streamArtifactDrafts.value = new Map(streamArtifactDrafts.value).set(draft.id, next);
+      if (cursor >= draft.content.length) {
+        window.clearInterval(timer);
+        artifactRevealTimers.delete(draft.id);
+      }
+    }, 24);
+    artifactRevealTimers.set(draft.id, timer);
+  }
+
+  function upsertSubagent(patch: Partial<SubagentRunView>) {
+    const id =
+      patch.id ??
+      (patch.source ? `subgraph:${patch.source}` : `subagent:${Date.now()}`);
+    const current = streamSubagents.value.get(id) ?? { id, status: "pending" };
+    streamSubagents.value = new Map(streamSubagents.value).set(id, {
+      ...current,
+      ...patch,
+      id,
+      updatedAt: new Date().toISOString(),
+    });
+    return id;
+  }
+
+  function upsertSubagentStep(subagentId: string, step: SubagentStepView) {
+    const current = streamSubagents.value.get(subagentId) ?? {
+      id: subagentId,
+      status: "running",
+    };
+    const steps = Array.isArray(current.steps) ? [...current.steps] : [];
+    const index = steps.findIndex((item: SubagentStepView) => item.id === step.id);
+    if (index >= 0) {
+      steps[index] = { ...steps[index], ...step };
+    } else {
+      steps.push(step);
+    }
+    upsertSubagent({ id: subagentId, steps, status: current.status ?? "running" });
+  }
+
+  function activeSubagentIdForName(name: string | null): string | null {
+    if (!name) return null;
+    for (const [id, subagent] of streamSubagents.value.entries()) {
+      const sameName =
+        subagent.name === name ||
+        subagent.toolCall?.args?.subagent_type === name ||
+        subagent.toolCall?.args?.subagent_name === name;
+      if (sameName && isLiveSubagent(subagent)) {
+        return id;
+      }
+    }
+    return null;
+  }
+
+  function activeTaskSubagent(): [string, any] | null {
+    for (const entry of streamSubagents.value.entries()) {
+      const [, subagent] = entry;
+      if (subagent.toolCall?.name === "task" && isLiveSubagent(subagent)) return entry;
+    }
+    return null;
+  }
+
+  function resolveSubagentTarget(namespace: string[], metadata?: Record<string, unknown>) {
+    const source = namespaceSource(namespace) ?? "subagent";
+    const taskSubagent = activeTaskSubagent();
+    if (taskSubagent) {
+      const [id, subagent] = taskSubagent;
+      return {
+        id,
+        name: String(subagent.name ?? subagent.toolCall?.args?.subagent_type ?? source),
+        source,
+      };
+    }
+
+    const knownSubagent = manifest.value?.subagents.some((subagent) => subagent.name === source);
+    const activeId = activeSubagentIdForName(source);
+    if (!knownSubagent && !activeId) return null;
+
+    const id =
+      activeId ??
+      String(metadata?.langgraph_checkpoint_ns ?? metadata?.run_id ?? `subgraph:${namespace.join("/") || source}`);
+    const existing = streamSubagents.value.get(id);
+    return {
+      id,
+      name: String(existing?.name ?? source),
+      source,
+    };
+  }
+
+  function subagentNameFromToolCall(call: { name: string; args: Record<string, unknown> }) {
+    if (call.name !== "task") return null;
+    return String(
+      call.args.subagent_type ??
+        call.args.subagent_name ??
+        call.args.name ??
+        call.args.agent ??
+        "subagent",
+    );
+  }
+
+  function taskInputFromToolCall(call: { args: Record<string, unknown> }) {
+    return String(
+      call.args.description ??
+        call.args.task ??
+        call.args.prompt ??
+        call.args.input ??
+        "",
+    );
+  }
+
+  function trackArtifactDraftsFromMessage(message: any, subagentId?: string) {
+    for (const call of parseToolCalls(message)) {
+      const draft = draftFromToolCall(call);
+      if (!draft) continue;
+      upsertArtifactDraft({
+        ...draft,
+        messageId: messageId(message),
+        subagentId,
+      });
+    }
+  }
+
+  function trackStreamingToolCallChunks(
+    chunk: any,
+    metadata: Record<string, unknown> | undefined,
+    namespace: string[],
+    subagentId?: string,
+  ) {
+    const chunks = parseToolCallChunks(chunk);
+    if (!chunks.length) return;
+
+    const sourceId =
+      explicitMessageId(chunk) ??
+      String(metadata?.run_id ?? namespace.join("/") ?? "stream");
+    for (const toolChunk of chunks) {
+      const key = `${sourceId}:${toolChunk.index ?? 0}`;
+      const existing = streamingToolCallsById.get(key);
+      const name = toolChunk.name ?? existing?.name ?? "";
+      const argsText = `${existing?.argsText ?? ""}${toolChunk.args ?? ""}`;
+      const assembled = {
+        id: String(toolChunk.id ?? existing?.id ?? key),
+        index: toolChunk.index ?? existing?.index ?? 0,
+        name,
+        argsText,
+        messageId: sourceId,
+        subagentId,
+      };
+      streamingToolCallsById.set(key, assembled);
+
+      streamToolCalls.value = Array.from(streamingToolCallsById.values())
+        .filter((call) => call.name)
+        .map((call) => ({
+          callId: call.id,
+          name: call.name,
+          input: call.argsText,
+          messageId: call.messageId,
+        }));
+
+      if (["write_file", "edit_file"].includes(name)) {
+        upsertArtifactDraft(
+          updateDraftFromArgsText(streamArtifactDrafts.value.get(assembled.id), {
+            id: assembled.id,
+            toolName: name,
+            argsText,
+            messageId: sourceId,
+            subagentId,
+            status: "streaming",
+          }),
+        );
+      }
+    }
+  }
+
+  function trackSubagentToolCalls(message: any) {
+    trackArtifactDraftsFromMessage(message);
+    for (const call of parseToolCalls(message)) {
+      const name = subagentNameFromToolCall(call);
+      if (!name) continue;
+      upsertSubagent({
+        id: call.id,
+        name,
+        status: "running",
+        taskInput: taskInputFromToolCall(call),
+        toolCall: call,
+        parentMessageId: messageId(message),
+      });
+    }
+
+    if (roleOf(message) !== "tool") return;
+    const toolCallId = toolCallIdFromMessage(message);
+    if (!toolCallId || !streamSubagents.value.has(toolCallId)) return;
+    upsertSubagent({
+      id: toolCallId,
+      status: (message as any).status === "error" ? "error" : "completed",
+      result: messageText(message),
+    });
+  }
+
+  function trackSubagentSteps(subagentId: string, messages: any[]) {
+    for (const message of messages) {
+      trackArtifactDraftsFromMessage(message, subagentId);
+      for (const call of parseToolCalls(message)) {
+        upsertSubagentStep(subagentId, {
+          id: call.id,
+          name: call.name,
+          status: "running",
+          args: call.args,
+        });
+      }
+
+      if (roleOf(message) !== "tool") continue;
+      const id = toolCallIdFromMessage(message);
+      if (!id) continue;
+      upsertSubagentStep(subagentId, {
+        id,
+        name: String((message as any).name ?? (message as any).kwargs?.name ?? "tool"),
+        status: (message as any).status === "error" ? "error" : "completed",
+        result: messageText(message),
+      });
+    }
+  }
+
+  function subagentIdFromNamespace(namespace: string[], metadata?: Record<string, unknown>) {
+    return resolveSubagentTarget(namespace, metadata)?.id ?? `subgraph:${namespace.join("/") || "subagent"}`;
+  }
+
+  function appendSubagentOutput(
+    namespace: string[],
+    metadata: Record<string, unknown> | undefined,
+    chunk: any,
+  ) {
+    const text = messageText(chunk);
+    const hasToolCalls =
+      parseToolCalls(chunk).length > 0 ||
+      (Array.isArray(chunk?.tool_call_chunks) && chunk.tool_call_chunks.length > 0);
+    if (!text && !hasToolCalls) return;
+
+    const target = resolveSubagentTarget(namespace, metadata);
+    if (!target) return;
+    const { id, name, source } = target;
+    trackStreamingToolCallChunks(chunk, metadata, namespace, id);
+    const streamId = `subagent:${id}:${explicitMessageId(chunk) ?? metadata?.run_id ?? source}`;
+    const previousText = streamingContentById.get(streamId) ?? "";
+    const nextText = text ? `${previousText}${text}` : previousText;
+    streamingContentById.set(streamId, nextText);
+
+    upsertSubagent({
+      id,
+      name,
+      source,
+      status: "running",
+      output: nextText,
+    });
+
+    if (chunk?.chunk_position === "last") {
+      streamingContentById.delete(streamId);
+    }
+  }
+
+  function applySubagentUpdate(namespace: string[], data: unknown) {
+    if (!isSubagentNamespace(namespace)) return;
+
+    const target = resolveSubagentTarget(namespace);
+    if (!target) return;
+    const { id, name, source } = target;
+    const messages = collectMessagesFromValue(data);
+    for (const message of messages) trackSubagentToolCalls(message);
+    trackSubagentSteps(id, messages);
+
+    const output = latestAssistantText(messages);
+    upsertSubagent({
+      id,
+      name,
+      source,
+      status: "running",
+      ...(output ? { output } : {}),
+    });
+
+    streamSubgraphs.value = new Map(streamSubgraphs.value).set(id, {
+      id,
+      source,
+      namespace,
+      data,
+    });
+  }
+
+  function applyTaskEvent(namespace: string[], data: unknown) {
+    if (!isPlainObject(data)) return;
+    const source = namespaceSource(namespace);
+    const taskName = String(data.name ?? source ?? "task");
+    const taskId = String(data.id ?? "");
+    const isSubagentTask = source && source !== "main";
+    if (!isSubagentTask && taskName !== "task") return;
+
+    const target = isSubagentTask ? resolveSubagentTarget(namespace) : null;
+    if (isSubagentTask && !target) return;
+    const name = target?.name ?? source ?? taskName;
+    const id = target?.id ?? activeSubagentIdForName(name) ?? (taskId ? `task:${taskId}` : `task:${name}`);
+    upsertSubagent({
+      id,
+      name,
+      source: source ?? name,
+      status: data.error ? "error" : "running",
+      ...(isPlainObject(data.input) ? { taskInput: JSON.stringify(data.input, null, 2) } : {}),
+      ...(data.result ? { result: data.result } : {}),
+      ...(data.error ? { error: data.error } : {}),
+    });
   }
 
   async function readResponseError(response: Response): Promise<string> {
@@ -320,6 +517,30 @@ export function useContentBuilderConsole() {
       return await response.text();
     } catch {
       return `${response.status} ${response.statusText}`;
+    }
+  }
+
+  async function fetchThreadState(threadId: string): Promise<any> {
+    const response = await fetchAgent(`/threads/${threadId}/state`);
+    if (!response.ok) {
+      throw new Error(`Failed to read thread state: ${response.status} ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  function syncInterruptsFromThreadState(state: unknown) {
+    const interrupts = collectInterruptsFromThreadState(state);
+    if (interrupts.length > 0) {
+      streamInterrupts.value = interrupts;
+    }
+  }
+
+  async function refreshInterruptsFromThreadState(threadId: string) {
+    try {
+      syncInterruptsFromThreadState(await fetchThreadState(threadId));
+    } catch {
+      // Streaming already surfaced the primary run result. A state refresh is only
+      // a fallback for interrupts that were not present in the SSE frames.
     }
   }
 
@@ -367,28 +588,48 @@ export function useContentBuilderConsole() {
     setActiveThread(threadId);
   }
 
+  function prepareMessageForDisplay(message: any): any {
+    return message;
+  }
+
   function applyStatePatch(patch: AgentState) {
     const nextValues: AgentState = { ...streamValues.value, ...patch };
 
     if (Array.isArray(patch.messages)) {
+      const displayMessages = patch.messages.map((message) =>
+        prepareMessageForDisplay(message),
+      );
       streamMessagesState.value = mergeMessages(
         streamMessagesState.value,
-        patch.messages,
+        displayMessages,
       ) as any[];
+      for (const message of patch.messages) trackSubagentToolCalls(message);
       nextValues.messages = streamMessagesState.value;
     }
 
-    if (Array.isArray((patch as any).__interrupt__)) {
-      streamInterrupts.value = (patch as any).__interrupt__;
+    if ("__interrupt__" in patch) {
+      streamInterrupts.value = normalizeInterrupts((patch as any).__interrupt__);
     }
 
     streamValues.value = nextValues;
   }
 
-  function applyStreamingMessageEvent(data: unknown) {
+  function applyStreamingMessageEvent(
+    data: unknown,
+    namespace: string[] = [],
+    metadata?: Record<string, unknown>,
+  ) {
     if (!Array.isArray(data) || !data[0]) return;
 
     const chunk = normalizeStreamingChunk(data[0]);
+    const meta = metadata ?? (isPlainObject(data[1]) ? data[1] : undefined);
+    if (isSubagentNamespace(namespace)) {
+      appendSubagentOutput(namespace, meta, chunk);
+      return;
+    }
+
+    trackStreamingToolCallChunks(chunk, meta, namespace);
+
     const id =
       explicitMessageId(chunk) ??
       String((data[1] as any)?.run_id ?? `stream-${Date.now()}`);
@@ -405,8 +646,8 @@ export function useContentBuilderConsole() {
     const message = {
       ...chunk,
       id,
-      type: roleOf(chunk) === "AIMessageChunk" ? "ai" : roleOf(chunk) || "ai",
-      role: roleOf(chunk) === "AIMessageChunk" ? "ai" : roleOf(chunk) || "ai",
+      type: ["ai", "assistant"].includes(roleOf(chunk)) ? "ai" : roleOf(chunk) || "ai",
+      role: ["ai", "assistant"].includes(roleOf(chunk)) ? "ai" : roleOf(chunk) || "ai",
       content: nextText || messageText(chunk),
     };
 
@@ -415,6 +656,54 @@ export function useContentBuilderConsole() {
     if (chunk?.chunk_position === "last") {
       streamingContentById.delete(id);
     }
+  }
+
+  function applyLowLevelEvent(data: unknown, namespace: string[]) {
+    if (!isPlainObject(data)) return;
+    const eventName = String(data.event ?? "");
+    const eventData = isPlainObject(data.data) ? data.data : {};
+    const metadata = isPlainObject(data.metadata) ? data.metadata : undefined;
+
+    if (eventName === "on_chat_model_stream" && eventData.chunk) {
+      const eventNamespace =
+        namespace.length > 0
+          ? namespace
+          : typeof metadata?.langgraph_checkpoint_ns === "string"
+            ? String(metadata.langgraph_checkpoint_ns).split("|").filter(Boolean)
+            : [];
+      applyStreamingMessageEvent([eventData.chunk, metadata ?? {}], eventNamespace, metadata);
+      return;
+    }
+
+    if (eventName === "on_tool_start" || eventName === "on_tool_end") {
+      const name = String(data.name ?? eventData.name ?? "");
+      if (!["write_file", "edit_file"].includes(name)) return;
+      const input = eventName === "on_tool_start" ? eventData.input : eventData.output;
+      upsertArtifactDraft(
+        updateDraftFromArgsText(streamArtifactDrafts.value.get(String(data.run_id ?? name)), {
+          id: String(data.run_id ?? name),
+          toolName: name,
+          argsText: typeof input === "string" ? input : JSON.stringify(input ?? {}, null, 2),
+          status: eventName === "on_tool_start" ? "streaming" : "finished",
+        }),
+      );
+    }
+  }
+
+  function applyToolStreamEvent(data: unknown) {
+    if (!isPlainObject(data)) return;
+    const name = String(data.name ?? "");
+    if (!["write_file", "edit_file"].includes(name)) return;
+    const id = String(data.toolCallId ?? data.name ?? "tool");
+    const payload = data.input ?? data.data ?? data.result ?? data.output ?? data.error ?? {};
+    upsertArtifactDraft(
+      updateDraftFromArgsText(streamArtifactDrafts.value.get(id), {
+        id,
+        toolName: name,
+        argsText: typeof payload === "string" ? payload : JSON.stringify(payload, null, 2),
+        status: data.event === "on_tool_end" ? "finished" : data.event === "on_tool_error" ? "error" : "streaming",
+      }),
+    );
   }
 
   function finishRun(abortController: AbortController) {
@@ -479,8 +768,10 @@ export function useContentBuilderConsole() {
 
       for await (const event of iterateSseEvents(response)) {
         if (abortController.signal.aborted) break;
+        const { baseEvent, namespace: eventNamespace } = splitStreamEventName(event.event);
+        const payloads = normalizeStreamPayloads(baseEvent, event.data, eventNamespace);
 
-        if (event.event === "metadata" && event.data && typeof event.data === "object") {
+        if (baseEvent === "metadata" && event.data && typeof event.data === "object") {
           const runId = (event.data as any).run_id;
           if (typeof runId === "string") {
             savedRunId.value = runId;
@@ -489,28 +780,79 @@ export function useContentBuilderConsole() {
           continue;
         }
 
-        if (event.event === "messages") {
-          applyStreamingMessageEvent(event.data);
+        if (baseEvent === "messages") {
+          for (const payload of payloads) {
+            applyStreamingMessageEvent(payload.data, payload.namespace, payload.metadata);
+          }
           continue;
         }
 
-        if (event.event === "values") {
-          const patch = collectStatePatch(event.data);
-          applyStatePatch(patch);
-          if (shouldFinishFromValues(patch)) break;
+        if (baseEvent === "messages/partial" || baseEvent === "messages/complete") {
+          for (const payload of payloads) {
+            if (Array.isArray(payload.data)) {
+              if (isSubagentNamespace(payload.namespace)) {
+                applySubagentUpdate(payload.namespace, { messages: payload.data });
+                continue;
+              }
+              applyStatePatch({ messages: payload.data });
+            }
+          }
           continue;
         }
 
-        if (event.event === "updates" || event.event === "tasks") {
-          applyStatePatch(collectStatePatch(event.data));
+        if (baseEvent === "values") {
+          for (const payload of payloads) {
+            if (isSubagentNamespace(payload.namespace)) {
+              applySubagentUpdate(payload.namespace, payload.data);
+              continue;
+            }
+            const patch = collectStatePatch(payload.data);
+            applyStatePatch(patch);
+            if (shouldFinishFromValues(patch)) break;
+          }
           continue;
         }
 
-        if (event.event === "error") {
+        if (baseEvent === "updates") {
+          for (const payload of payloads) {
+            applySubagentUpdate(payload.namespace, payload.data);
+            if (isSubagentNamespace(payload.namespace)) continue;
+            applyStatePatch(collectStatePatch(payload.data));
+          }
+          continue;
+        }
+
+        if (baseEvent === "tasks") {
+          for (const payload of payloads) {
+            applyTaskEvent(payload.namespace, payload.data);
+            if (isSubagentNamespace(payload.namespace)) continue;
+            applyStatePatch(collectStatePatch(payload.data));
+          }
+          continue;
+        }
+
+        if (baseEvent === "events") {
+          for (const payload of payloads) {
+            applyLowLevelEvent(payload.data, payload.namespace);
+          }
+          continue;
+        }
+
+        if (baseEvent === "tools") {
+          for (const payload of payloads) {
+            applyToolStreamEvent(payload.data);
+          }
+          continue;
+        }
+
+        if (baseEvent === "error") {
           throw new Error(readableError(event.data));
         }
 
-        if (event.event === "end") break;
+        if (baseEvent === "end") break;
+      }
+      if (!abortController.signal.aborted && streamInterrupts.value.length === 0) {
+        await refreshInterruptsFromThreadState(threadId);
       }
     } catch (error) {
       if (!abortController.signal.aborted) {
@@ -671,8 +1013,46 @@ export function useContentBuilderConsole() {
   const subagents = computed(() => {
     const raw = (stream as any).subagents;
     const map = raw?.value ?? raw;
-    return map?.values ? Array.from(map.values()) : [];
+    const merged = new Map<string, any>(map?.entries ? Array.from(map.entries()) : []);
+
+    for (const message of messages.value) {
+      for (const call of parseToolCalls(message)) {
+        const name = subagentNameFromToolCall(call);
+        if (!name) continue;
+        const existing = merged.get(call.id);
+        const result = messages.value.find(
+          (candidate) =>
+            roleOf(candidate) === "tool" && toolCallIdFromMessage(candidate) === call.id,
+        );
+        merged.set(call.id, {
+          ...(existing ?? {}),
+          id: call.id,
+          name,
+          status: result
+            ? (result as any).status === "error"
+              ? "error"
+              : "completed"
+            : existing?.status ?? "running",
+          taskInput: taskInputFromToolCall(call),
+          toolCall: call,
+          parentMessageId: messageId(message),
+          ...(result ? { result: messageText(result) } : {}),
+        });
+      }
+    }
+
+    return Array.from(merged.values()).filter(
+      (subagent: any) =>
+        subagent.toolCall?.name === "task" ||
+        manifest.value?.subagents.some((item) => item.name === subagent.name),
+    );
   });
+
+  const artifactDrafts = computed(() =>
+    Array.from(streamArtifactDrafts.value.values()).sort((left, right) =>
+      left.updatedAt.localeCompare(right.updatedAt),
+    ),
+  );
 
   const toolResultById = computed(() => {
     const map = new Map<string, { content: string; status?: string }>();
@@ -737,32 +1117,6 @@ export function useContentBuilderConsole() {
       .join("|"),
   );
 
-  const interruptRequest = computed<InterruptRequest | null>(() => {
-    const raw = stream.interrupt.value as any;
-    const value = raw?.value ?? raw;
-    if (!value) return null;
-    const actions = value.actionRequests ?? value.action_requests ?? [];
-    const reviews = value.reviewConfigs ?? value.review_configs ?? [];
-    const action = Array.isArray(actions) ? actions[0] : actions;
-    const review = Array.isArray(reviews) ? reviews[0] : reviews;
-    if (!action) return null;
-
-    return {
-      raw,
-      action: {
-        action: String(action.action ?? action.name ?? "tool"),
-        args: normalizeObject(action.args),
-        description: action.description,
-      },
-      review: {
-        allowedDecisions:
-          review?.allowedDecisions ??
-          review?.allowed_decisions ??
-          ["approve", "reject", "edit"],
-      },
-    };
-  });
-
   const fileDiff = computed(() => {
     if (!selectedFile.value || selectedFile.value.encoding !== "text") return [];
     const baseline = fileBaselines[selectedFile.value.path] ?? selectedFile.value.content;
@@ -785,6 +1139,22 @@ export function useContentBuilderConsole() {
     }
     const ids = new Set(parseToolCalls(message).map((call) => call.id));
     return subagents.value.filter((subagent: any) => ids.has(String(subagent.id)));
+  }
+
+  function artifactDraftsForMessage(message: any): ArtifactDraftView[] {
+    const messageIds = new Set([
+      messageId(message),
+      ...parseToolCalls(message).map((call) => call.id),
+    ]);
+    const subagentIds = new Set(
+      subagentsForMessage(message).map((subagent: any) => String(subagent.id)),
+    );
+    return artifactDrafts.value.filter(
+      (draft) =>
+        (draft.messageId && messageIds.has(draft.messageId)) ||
+        (draft.id && messageIds.has(draft.id)) ||
+        (draft.subagentId && subagentIds.has(draft.subagentId)),
+    );
   }
 
   function syncCollapsed(key: string, event: Event) {
@@ -1009,42 +1379,9 @@ export function useContentBuilderConsole() {
     target.addEventListener("pointercancel", onUp);
   }
 
-  async function sendApproval(decision: ApprovalDecision) {
-    try {
-      let resume: Record<string, unknown> = { decision };
-      if (decision === "reject") {
-        resume = {
-          decision,
-          reason: rejectionReason.value || "用户拒绝执行该操作",
-        };
-      }
-      if (decision === "respond") {
-        resume = { decision, message: responseMessage.value };
-      }
-      if (decision === "edit") {
-        resume = { decision, args: JSON.parse(approvalArgsText.value || "{}") };
-      }
-      await stream.submit(null, {
-        command: { resume },
-        streamSubgraphs: true,
-      } as any);
-      approvalMode.value = "review";
-      rejectionReason.value = "";
-      responseMessage.value = "";
-    } catch (error) {
-      streamError.value = readableError(error);
-    }
-  }
-
   watch(completedMutatingTools, async (current, previous) => {
     if (!current || current === previous) return;
     await Promise.all([loadArtifacts(), loadWorkspace()]);
-  });
-
-  watch(interruptRequest, (request) => {
-    if (!request) return;
-    approvalMode.value = "review";
-    approvalArgsText.value = JSON.stringify(request.action.args ?? {}, null, 2);
   });
 
   onMounted(async () => {
@@ -1059,14 +1396,12 @@ export function useContentBuilderConsole() {
   async function loadThreadMessages(threadId: string) {
     try {
       streamIsThreadLoading.value = true;
-      const res = await fetchAgent(`/threads/${threadId}/state`);
-      if (!res.ok) throw new Error(`读取会话失败: ${res.status} ${res.statusText}`);
-
-      const data = await res.json();
+      const data = await fetchThreadState(threadId);
       const values = data.values ?? data.checkpoint?.values ?? data.state?.values ?? {};
       const nextMessages = values.messages ?? [];
       historyMessages.value = Array.isArray(nextMessages) ? nextMessages : [];
       resetLiveStreamState(values);
+      syncInterruptsFromThreadState(data);
     } catch (error) {
       streamError.value = readableError(error);
     } finally {
@@ -1094,21 +1429,18 @@ export function useContentBuilderConsole() {
     selectedFile,
     activeInspector,
     collapsed,
-    approvalMode,
-    approvalArgsText,
-    rejectionReason,
-    responseMessage,
     chatMessages,
     todos,
     todoStats,
     subagents,
+    artifactDrafts,
     subagentByName,
     toolEvents,
-    interruptRequest,
     fileDiff,
     selectedArtifactKind,
     callsForMessage,
     subagentsForMessage,
+    artifactDraftsForMessage,
     syncCollapsed,
     refreshSideData,
     loadArtifacts,
@@ -1122,6 +1454,5 @@ export function useContentBuilderConsole() {
     selectSession,
     stopStream,
     startInspectorResize,
-    sendApproval,
   };
 }

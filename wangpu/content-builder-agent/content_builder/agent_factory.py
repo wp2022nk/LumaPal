@@ -141,11 +141,6 @@ def _create_content_writer_cached(config_path_key: str, runtime_mode: str):
 
     web_mode = runtime_mode == "web"
     backend = _build_backend(config, require_confirmation=False if web_mode else None)
-    interrupt_on = None
-    if web_mode:
-        interrupt_on = {
-            "execute": {"allowed_decisions": ["approve", "edit", "reject"]},
-        }
 
     agent_kwargs = dict(
         name=config.name,
@@ -156,7 +151,6 @@ def _create_content_writer_cached(config_path_key: str, runtime_mode: str):
         tools=get_tools(config.tools),
         subagents=_build_subagents(config, model),
         backend=backend,
-        interrupt_on=interrupt_on,
     )
 
     # LangGraph Agent Server owns persistence/checkpointing. The CLI keeps a

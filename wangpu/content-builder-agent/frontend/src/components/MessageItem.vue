@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Bot } from "lucide-vue-next";
-import type { ToolEventView } from "../types";
+import type { ArtifactDraftView, ToolEventView } from "../types";
 import {
   messageId,
   messageImages,
@@ -8,6 +8,7 @@ import {
   renderMarkdown,
   roleOf,
 } from "../utils";
+import ArtifactDraftCard from "./ArtifactDraftCard.vue";
 import SubagentCard from "./SubagentCard.vue";
 import ToolCallCard from "./ToolCallCard.vue";
 
@@ -16,6 +17,7 @@ defineProps<{
   index: number;
   toolEvents: ToolEventView[];
   subagents: any[];
+  artifactDrafts: ArtifactDraftView[];
   subagentDescriptions: Map<string, string>;
 }>();
 </script>
@@ -51,6 +53,14 @@ defineProps<{
 
       <div v-if="toolEvents.length" class="tool-card-list">
         <ToolCallCard v-for="event in toolEvents" :key="event.id" :event="event" />
+      </div>
+
+      <div v-if="artifactDrafts.length" class="artifact-draft-list">
+        <ArtifactDraftCard
+          v-for="draft in artifactDrafts"
+          :key="draft.id"
+          :draft="draft"
+        />
       </div>
 
       <div v-if="subagents.length" class="subagent-card-list">

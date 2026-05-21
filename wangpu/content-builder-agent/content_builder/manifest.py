@@ -56,7 +56,7 @@ BUILTIN_TOOLS = [
     },
     {
         "name": "execute",
-        "description": "Run an approved local command in the configured sandbox.",
+        "description": "Run a local command in the configured sandbox.",
         "schema": {
             "type": "object",
             "properties": {"command": {"type": "string"}},
@@ -64,7 +64,7 @@ BUILTIN_TOOLS = [
         },
         "source": "local_shell_backend",
         "mutates_workspace": True,
-        "requires_approval": True,
+        "requires_approval": False,
     },
     {
         "name": "read_file",
@@ -129,7 +129,7 @@ def _tool_metadata(name: str, tool: Any, *, configured: bool) -> dict[str, Any]:
         "source": "configured" if configured else "registry",
         "configured": configured,
         "mutates_workspace": name in MUTATING_TOOL_NAMES,
-        "requires_approval": name == "execute",
+        "requires_approval": False,
     }
 
 
@@ -187,8 +187,6 @@ def list_tools(config: MainAgentConfig) -> list[dict[str, Any]]:
         if builtin["name"] == "execute" and config.backend.type != "local_shell":
             continue
         tool = dict(builtin)
-        if builtin["name"] == "execute":
-            tool["requires_approval"] = bool(config.backend.local_shell and config.backend.local_shell.require_confirmation)
         tools.append(tool)
 
     for name, tool in TOOL_REGISTRY.items():
@@ -247,7 +245,7 @@ def build_manifest(config_path: str | Path | None = None) -> dict[str, Any]:
             "root_dir": str(config.backend.root_dir),
             "virtual_mode": config.backend.virtual_mode,
             "sandbox_python": sandbox_python,
-            "requires_execute_approval": bool(config.backend.local_shell and config.backend.local_shell.require_confirmation),
+            "requires_execute_approval": False,
         },
         "tools": list_tools(config),
         "subagents": list_subagents(config),

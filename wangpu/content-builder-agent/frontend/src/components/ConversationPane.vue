@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { Bot, Send, ShieldCheck, Upload, X } from "lucide-vue-next";
+import { Bot, Send, Upload, X } from "lucide-vue-next";
 import { nextTick, ref, watch } from "vue";
 import type {
-  ApprovalDecision,
-  ApprovalMode,
-  InterruptRequest,
+  ArtifactDraftView,
   PendingImage,
   ToolEventView,
 } from "../types";
@@ -20,27 +18,18 @@ const props = defineProps<{
   streamError: string | null;
   draft: string;
   pendingImages: PendingImage[];
-  interruptRequest: InterruptRequest | null;
-  approvalMode: ApprovalMode;
-  approvalArgsText: string;
-  rejectionReason: string;
-  responseMessage: string;
   subagentDescriptions: Map<string, string>;
   callsForMessage: (message: any) => ToolEventView[];
   subagentsForMessage: (message: any) => any[];
+  artifactDraftsForMessage: (message: any) => ArtifactDraftView[];
 }>();
 
 const emit = defineEmits<{
   "update:draft": [value: string];
-  "update:approvalMode": [value: ApprovalMode];
-  "update:approvalArgsText": [value: string];
-  "update:rejectionReason": [value: string];
-  "update:responseMessage": [value: string];
   submitMessage: [];
   stopStream: [];
   handleFileInput: [event: Event];
   removePendingImage: [id: string];
-  sendApproval: [decision: ApprovalDecision];
 }>();
 
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -51,14 +40,6 @@ function shouldStickToBottom(): boolean {
   const pane = messagePane.value;
   if (!pane) return true;
   return pane.scrollHeight - pane.scrollTop - pane.clientHeight < 140;
-}
-
-function allowedDecision(decision: string): boolean {
-  return props.interruptRequest?.review.allowedDecisions.includes(decision) ?? false;
-}
-
-function toggleApprovalMode(mode: ApprovalMode) {
-  emit("update:approvalMode", props.approvalMode === mode ? "review" : mode);
 }
 
 watch(
@@ -109,81 +90,10 @@ watch(
         :index="index"
         :tool-events="callsForMessage(message)"
         :subagents="subagentsForMessage(message)"
+        :artifact-drafts="artifactDraftsForMessage(message)"
         :subagent-descriptions="subagentDescriptions"
       />
 
-      <section v-if="interruptRequest" class="approval-card">
-        <header>
-          <ShieldCheck :size="20" />
-          <div>
-            <h3>需要人工审批</h3>
-            <p>
-              {{
-                interruptRequest.action.description ||
-                `智能体请求执行 ${interruptRequest.action.action}`
-              }}
-            </p>
-          </div>
-        </header>
-        <pre>{{ JSON.stringify(interruptRequest.action.args, null, 2) }}</pre>
-        <div class="approval-tabs">
-          <button
-            v-if="allowedDecision('approve')"
-            class="approve"
-            type="button"
-            @click="emit('sendApproval', 'approve')"
-          >
-            批准
-          </button>
-          <button v-if="allowedDecision('edit')" type="button" @click="toggleApprovalMode('edit')">
-            编辑参数
-          </button>
-          <button
-            v-if="allowedDecision('reject')"
-            type="button"
-            @click="toggleApprovalMode('reject')"
-          >
-            拒绝
-          </button>
-          <button
-            v-if="allowedDecision('respond')"
-            type="button"
-            @click="toggleApprovalMode('respond')"
-          >
-            直接回复
-          </button>
-        </div>
-        <div v-if="approvalMode === 'edit'" class="approval-editor">
-          <textarea
-            :value="approvalArgsText"
-            spellcheck="false"
-            @input="emit('update:approvalArgsText', ($event.target as HTMLTextAreaElement).value)"
-          />
-          <button type="button" @click="emit('sendApproval', 'edit')">
-            提交编辑后参数
-          </button>
-        </div>
-        <div v-if="approvalMode === 'reject'" class="approval-editor">
-          <textarea
-            :value="rejectionReason"
-            placeholder="拒绝原因"
-            @input="emit('update:rejectionReason', ($event.target as HTMLTextAreaElement).value)"
-          />
-          <button type="button" @click="emit('sendApproval', 'reject')">
-            提交拒绝
-          </button>
-        </div>
-        <div v-if="approvalMode === 'respond'" class="approval-editor">
-          <textarea
-            :value="responseMessage"
-            placeholder="给工具返回的人工回复"
-            @input="emit('update:responseMessage', ($event.target as HTMLTextAreaElement).value)"
-          />
-          <button type="button" @click="emit('sendApproval', 'respond')">
-            发送回复
-          </button>
-        </div>
-      </section>
       <div ref="messagesEnd" />
     </section>
 

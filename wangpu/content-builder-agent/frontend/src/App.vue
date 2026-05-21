@@ -23,21 +23,18 @@ const {
   selectedFile,
   activeInspector,
   collapsed,
-  approvalMode,
-  approvalArgsText,
-  rejectionReason,
-  responseMessage,
   chatMessages,
   todos,
   todoStats,
   subagents,
+  artifactDrafts,
   subagentByName,
   toolEvents,
-  interruptRequest,
   fileDiff,
   selectedArtifactKind,
   callsForMessage,
   subagentsForMessage,
+  artifactDraftsForMessage,
   syncCollapsed,
   refreshSideData,
   loadArtifacts,
@@ -51,7 +48,6 @@ const {
   selectSession,
   stopStream,
   startInspectorResize,
-  sendApproval,
 } = useContentBuilderConsole();
 </script>
 
@@ -71,10 +67,6 @@ const {
 
     <ConversationPane
       v-model:draft="draft"
-      v-model:approval-mode="approvalMode"
-      v-model:approval-args-text="approvalArgsText"
-      v-model:rejection-reason="rejectionReason"
-      v-model:response-message="responseMessage"
       :agent-name="manifest?.agent.name || 'content_writer'"
       :is-loading="stream.isLoading.value"
       :stream-thread-id="activeThreadId"
@@ -82,15 +74,14 @@ const {
       :chat-messages="chatMessages"
       :stream-error="streamError"
       :pending-images="pendingImages"
-      :interrupt-request="interruptRequest"
       :subagent-descriptions="subagentByName"
       :calls-for-message="callsForMessage"
       :subagents-for-message="subagentsForMessage"
+      :artifact-drafts-for-message="artifactDraftsForMessage"
       @submit-message="submitMessage"
       @stop-stream="stopStream"
       @handle-file-input="handleFileInput"
       @remove-pending-image="removePendingImage"
-      @send-approval="sendApproval"
     />
 
     <InspectorPanel
@@ -100,6 +91,7 @@ const {
       :todo-stats="todoStats"
       :tool-events="toolEvents"
       :subagents="subagents"
+      :artifact-drafts="artifactDrafts"
       :subagent-descriptions="subagentByName"
       :artifacts="artifacts"
       :artifact-error="artifactError"

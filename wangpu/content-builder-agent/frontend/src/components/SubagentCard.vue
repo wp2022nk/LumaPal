@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Bot } from "lucide-vue-next";
-import { statusText } from "../utils";
+import { statusText, summarizeResult } from "../utils";
 
 const props = defineProps<{
   subagent: any;
@@ -38,6 +38,14 @@ function displayPayload(value: unknown): string {
         "子智能体任务"
       }}
     </p>
+    <div v-if="props.subagent.steps?.length" class="subagent-steps">
+      <div v-for="step in props.subagent.steps" :key="step.id" class="subagent-step">
+        <span>{{ step.name }}</span>
+        <small>{{ statusText(step.status) }}</small>
+        <pre v-if="step.args && !timeline">{{ displayPayload(step.args) }}</pre>
+        <p v-if="step.result">{{ summarizeResult(step.result) }}</p>
+      </div>
+    </div>
     <pre v-if="props.subagent.output || props.subagent.result || props.subagent.error">{{
       displayPayload(props.subagent.output || props.subagent.result || props.subagent.error)
     }}</pre>

@@ -2,6 +2,7 @@
 import { Image as ImageIcon, ListChecks, PanelRight, Terminal } from "lucide-vue-next";
 import type {
   ActiveInspector,
+  ArtifactDraftView,
   ArtifactItem,
   FilePayload,
   TodoItem,
@@ -25,6 +26,7 @@ defineProps<{
   };
   toolEvents: ToolEventView[];
   subagents: any[];
+  artifactDrafts: ArtifactDraftView[];
   subagentDescriptions: Map<string, string>;
   artifacts: ArtifactItem[];
   artifactError: string | null;
@@ -106,6 +108,7 @@ const emit = defineEmits<{
       :collapsed="collapsed.flow"
       :tool-events="toolEvents"
       :subagents="subagents"
+      :artifact-drafts="artifactDrafts"
       :subagent-descriptions="subagentDescriptions"
       @toggle="emit('toggleCollapsed', 'flow')"
     />

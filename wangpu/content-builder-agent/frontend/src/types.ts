@@ -116,20 +116,38 @@ export interface ToolEventView {
   running?: boolean;
 }
 
-export interface InterruptAction {
-  action: string;
-  args: Record<string, unknown>;
-  description?: string;
+export interface SubagentStepView {
+  id: string;
+  name: string;
+  status: string;
+  args?: Record<string, unknown>;
+  result?: string;
 }
 
-export interface InterruptReview {
-  allowedDecisions: string[];
+export interface SubagentRunView {
+  id: string;
+  name?: string;
+  status?: string;
+  taskInput?: string;
+  output?: string;
+  result?: unknown;
+  error?: unknown;
+  source?: string;
+  toolCall?: any;
+  parentMessageId?: string;
+  steps?: SubagentStepView[];
 }
 
-export interface InterruptRequest {
-  raw: unknown;
-  action: InterruptAction;
-  review: InterruptReview;
+export interface ArtifactDraftView {
+  id: string;
+  toolName: string;
+  status: "streaming" | "finished" | "error";
+  path?: string;
+  content: string;
+  argsText: string;
+  messageId?: string;
+  subagentId?: string;
+  updatedAt: string;
 }
 
 export interface SchemaField {
@@ -140,5 +158,3 @@ export interface SchemaField {
 }
 
 export type ActiveInspector = "plan" | "flow" | "artifacts" | "sandbox";
-export type ApprovalMode = "review" | "edit" | "reject" | "respond";
-export type ApprovalDecision = "approve" | "reject" | "edit" | "respond";

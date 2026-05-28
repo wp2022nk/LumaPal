@@ -80,7 +80,7 @@ watch(
       <div v-if="chatMessages.length === 0" class="empty-state">
         <div class="empty-mark"><Bot :size="30" /></div>
         <h3>把任务、素材或草稿丢进来</h3>
-        <p>适合推进博客、故事、研究分析、图像素材和代码执行相关任务。</p>
+        <p>适合推进创作、研究分析、图像素材与可扩展技能任务。</p>
       </div>
 
       <MessageItem

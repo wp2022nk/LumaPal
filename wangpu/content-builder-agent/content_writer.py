@@ -44,8 +44,8 @@ def run_once(
 
     print("\n\n=== 本地文件位置说明 ===")
     print(f"Deep Agents 虚拟路径 / 会映射到: {PROJECT_DIR}")
-    print(f"博客文件通常保存到: {PROJECT_DIR / 'blogs'}")
-    print(f"研究资料通常保存到: {PROJECT_DIR / 'research'}")
+    print(f"生成产物通常保存到: {runtime_config.output_root}")
+    print(f"研究资料通常保存到: {runtime_config.output_root / 'research'}")
 
 
 def main() -> None:

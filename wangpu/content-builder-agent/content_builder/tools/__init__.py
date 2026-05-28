@@ -1,6 +1,6 @@
 """工具注册表。
 
-YAML 里只写工具名称，例如 generate_cover 或 web_search；这里负责把名称
+YAML 里只写工具名称，例如 generate_image 或 web_search；这里负责把名称
 转换成真实的 LangChain tool 对象。这样新增工具时只需要在本包注册一次，
 主智能体和子智能体都能通过配置引用。
 """
@@ -10,13 +10,12 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from .image import generate_cover, generate_social_image
+from .image import generate_image
 from .web import web_search
 
 
 TOOL_REGISTRY: Mapping[str, Any] = {
-    "generate_cover": generate_cover,
-    "generate_social_image": generate_social_image,
+    "generate_image": generate_image,
     "web_search": web_search,
 }
 

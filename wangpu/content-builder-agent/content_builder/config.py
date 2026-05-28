@@ -251,7 +251,7 @@ def load_main_config(config_path: str | Path | None = None) -> MainAgentConfig:
 
     return MainAgentConfig(
         config_path=resolved_config_path,
-        name=str(raw.get("name", "content-writer")),
+        name=str(raw.get("name", "content-builder")),
         model=ModelConfig(model=model_name, api_key=api_key, base_url=base_url),
         system_prompt_file=raw.get("system_prompt_file"),
         memory=list(raw.get("memory", ["/AGENTS.md"])),

@@ -18,21 +18,16 @@ from .tools import TOOL_REGISTRY, get_tools
 
 
 ARTIFACT_ROOTS = [
-    "blogs",
+    "storybooks",
     "research",
-    "story",
     "analysis",
-    "linkedin",
-    "tweets",
-    "social",
 ]
 
 MUTATING_TOOL_NAMES = {
     "write_file",
     "edit_file",
     "execute",
-    "generate_cover",
-    "generate_social_image",
+    "generate_image",
 }
 
 BUILTIN_TOOLS = [

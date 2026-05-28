@@ -67,7 +67,7 @@ const {
 
     <ConversationPane
       v-model:draft="draft"
-      :agent-name="manifest?.agent.name || 'content_writer'"
+      :agent-name="manifest?.agent.name || 'content-builder'"
       :is-loading="stream.isLoading.value"
       :stream-thread-id="activeThreadId"
       :active-thread-id="activeThreadId"

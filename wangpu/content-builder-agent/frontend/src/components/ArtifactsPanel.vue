@@ -52,7 +52,7 @@ function fileIcon(entry: ArtifactItem) {
         </button>
         <p v-if="artifactError" class="error-text">{{ artifactError }}</p>
         <p v-if="artifacts.length === 0" class="muted">
-          agent 生成博客、研究、故事或分析文件后，会自动出现在这里。
+          agent 生成作品、研究或分析文件后，会自动出现在这里。
         </p>
       </div>
       <div class="preview-surface">

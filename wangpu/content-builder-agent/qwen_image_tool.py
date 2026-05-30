@@ -7,12 +7,12 @@ from urllib.parse import urlsplit, urlunsplit
 
 
 DASHSCOPE_API_URL = "https://dashscope.aliyuncs.com/api/v1"
-DEFAULT_QWEN_IMAGE_MODEL = "qwen-image-2.0-pro"
+DEFAULT_QWEN_IMAGE_MODEL = "wan2.7-image"
 DEFAULT_IMAGE_SIZE = "1024*1024"
 
 # Prefer the real environment variable. The fallback keeps the existing local
 # demo script working in the same way it did before.
-LOCAL_DASHSCOPE_API_KEY = "sk-4022a3931c75477f95b921f7dfacea8d"
+LOCAL_DASHSCOPE_API_KEY = "sk-de84e6b5e2d54673b6650b727d36bd9e"
 
 DOWNLOAD_CONNECT_TIMEOUT = 20
 DOWNLOAD_READ_TIMEOUT = 180

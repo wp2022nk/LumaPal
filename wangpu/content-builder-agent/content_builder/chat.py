@@ -19,11 +19,16 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from content_builder.agent_factory import create_content_writer
     from content_builder.config import DEFAULT_THREAD_ID, MainAgentConfig, load_main_config
-    from content_builder.streaming import StreamEvent, print_stream_event, stream_agent_events
+    from content_builder.streaming import (
+        ConsoleStreamPrinter,
+        StreamEvent,
+        configure_console_encoding,
+        stream_agent_events,
+    )
 else:
     from .agent_factory import create_content_writer
     from .config import DEFAULT_THREAD_ID, MainAgentConfig, load_main_config
-    from .streaming import StreamEvent, print_stream_event, stream_agent_events
+    from .streaming import ConsoleStreamPrinter, StreamEvent, configure_console_encoding, stream_agent_events
 
 
 def _load_runtime_config(config_path: str | Path | None) -> MainAgentConfig:
@@ -109,6 +114,7 @@ def interactive_chat(
     追问，模型也能看到前面轮次的上下文。输入 exit 或 quit 退出。
     """
 
+    configure_console_encoding()
     runtime_config = _load_runtime_config(config_path)
     agent = create_content_writer(config_path)
     resolved_thread_id = thread_id or runtime_config.thread_id or DEFAULT_THREAD_ID
@@ -163,6 +169,7 @@ def interactive_chat(
             continue
 
         images_for_turn = list(pending_images)
+        printer = ConsoleStreamPrinter()
         try:
             for event in stream_agent_events(
                 agent,
@@ -171,16 +178,19 @@ def interactive_chat(
                 max_turns=runtime_config.conversation.max_turns,
                 images=images_for_turn,
             ):
-                print_stream_event(event)
+                printer.print(event)
         except (FileNotFoundError, ValueError) as exc:
+            if isinstance(exc, UnicodeError):
+                raise
             # 路径不存在或文件类型不对时，保留待发送图片，方便用户 /clear-images 后重输；
             # 不把这类本地输入错误吞成模型错误，交互体验会清楚很多。
             print(f"\n图片输入错误：{exc}")
             continue
+        finally:
+            printer.finish()
 
         if images_for_turn:
             pending_images.clear()
-        print()
 
 
 if __name__ == "__main__":

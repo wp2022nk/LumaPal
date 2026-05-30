@@ -13,7 +13,7 @@ import sys
 from content_builder import interactive_chat
 from content_builder.agent_factory import create_content_writer
 from content_builder.config import DEFAULT_THREAD_ID, PROJECT_DIR, load_main_config
-from content_builder.streaming import print_stream_event, stream_agent_events
+from content_builder.streaming import ConsoleStreamPrinter, configure_console_encoding, stream_agent_events
 
 
 def run_once(
@@ -31,8 +31,10 @@ def run_once(
             它们会和 task 一起作为多模态 user message 交给 Deep Agents。
     """
 
+    configure_console_encoding()
     runtime_config = load_main_config()
     agent = create_content_writer()
+    printer = ConsoleStreamPrinter()
     for event in stream_agent_events(
         agent,
         task,
@@ -40,7 +42,8 @@ def run_once(
         max_turns=runtime_config.conversation.max_turns,
         images=images,
     ):
-        print_stream_event(event)
+        printer.print(event)
+    printer.finish()
 
     print("\n\n=== 本地文件位置说明 ===")
     print(f"Deep Agents 虚拟路径 / 会映射到: {PROJECT_DIR}")
@@ -53,6 +56,8 @@ def main() -> None:
 
     有命令行参数时执行单次任务；没有参数时进入控制台多轮交互。
     """
+
+    configure_console_encoding()
 
     if len(sys.argv) > 1:
         parser = argparse.ArgumentParser(

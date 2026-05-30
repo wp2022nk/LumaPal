@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 from typing import Literal
 
-from langchain.tools import tool
+from langchain_core.tools import tool
 
 
 @tool

@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from langchain.tools import tool
+from langchain_core.tools import tool
 
 from content_builder.config import load_main_config
 from qwen_image_tool import DEFAULT_QWEN_IMAGE_MODEL, generate_qwen_image

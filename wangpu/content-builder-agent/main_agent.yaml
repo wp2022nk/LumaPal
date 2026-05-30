@@ -9,6 +9,8 @@ model:
   env_api_key: QWEN_API_KEY
   env_base_url: QWEN_BASE_URL
   base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  enable_thinking: true
+  thinking_budget: 4096
 
 system_prompt_file: AGENTS.md
 memory:

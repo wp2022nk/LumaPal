@@ -1,13 +1,17 @@
 """流式事件解析与终端打印。
 
-LangGraph 的 stream 会同时产生多种事件：messages 是模型 token/chunk，
-updates 是节点完成后的状态更新，tasks 是任务开始/结束。这个模块把它们规整成
-统一的 StreamEvent，供 CLI 打印，也供外部 Python API 消费。
+CLI 只使用 LangChain/LangGraph 的 stream_events(version="v3") 协议。
+v3 的 messages、tools、custom、updates、values 和 lifecycle projection 会在这里
+规整成统一的 StreamEvent，供终端打印，也供外部 Python API 消费。
 """
 
 from __future__ import annotations
 
 import json
+import os
+import re
+import sys
+import warnings
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,18 +19,48 @@ from typing import Any, Iterator, Literal
 
 from .multimodal import build_user_content
 
+try:
+    from langchain_core._api import LangChainBetaWarning
+
+    warnings.filterwarnings(
+        "ignore",
+        message=r"The v3 streaming protocol on Pregel is experimental.*",
+        category=LangChainBetaWarning,
+    )
+except Exception:
+    warnings.filterwarnings(
+        "ignore",
+        message=r"The v3 streaming protocol on Pregel is experimental.*",
+    )
 
 MAX_LOG_TEXT = 500
+SHOW_THINKING_ENV = "CONTENT_BUILDER_SHOW_THINKING"
+SHOW_DEBUG_EVENTS_ENV = "CONTENT_BUILDER_SHOW_DEBUG_EVENTS"
+SHOW_SUBAGENT_TOKENS_ENV = "CONTENT_BUILDER_SHOW_SUBAGENT_TOKENS"
 StreamEventType = Literal[
     "token",
+    "thinking",
     "task",
     "tool_call",
     "tool_result",
+    "sandbox_output",
     "approval",
     "node_update",
     "final",
     "error",
 ]
+
+
+def configure_console_encoding() -> None:
+    """Keep Windows console output from crashing on emoji or non-GBK text."""
+
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
 
 
 @dataclass
@@ -68,6 +102,24 @@ def short_text(content: Any, limit: int = 300) -> str:
     return text if len(text) <= limit else f"{text[:limit]}..."
 
 
+def reasoning_from_message(message: Any) -> str:
+    """Extract provider-specific reasoning/thinking text from a message chunk."""
+
+    additional_kwargs = getattr(message, "additional_kwargs", None)
+    if isinstance(additional_kwargs, dict):
+        reasoning = additional_kwargs.get("reasoning_content") or additional_kwargs.get("reasoning")
+        if reasoning:
+            return str(reasoning)
+
+    response_metadata = getattr(message, "response_metadata", None)
+    if isinstance(response_metadata, dict):
+        reasoning = response_metadata.get("reasoning_content") or response_metadata.get("reasoning")
+        if reasoning:
+            return str(reasoning)
+
+    return ""
+
+
 def compact_for_log(value: Any, limit: int = MAX_LOG_TEXT) -> Any:
     """递归压缩日志对象。
 
@@ -104,34 +156,6 @@ def source_from_namespace(namespace: Any) -> str:
             node_name, task_id = segment.split(":", 1)
             return f"{node_name}:{task_id[:8]}"
     return "/".join(str(segment) for segment in namespace)
-
-
-def parse_stream_chunk(chunk: Any) -> tuple[str | None, Any, Any]:
-    """把不同版本 LangGraph 的 stream chunk 规整成 type/ns/data。
-
-    新版 v2 事件固定是 dict；旧版在多 stream_mode 或 subgraphs=True 时可能是 tuple。
-    保留兼容逻辑可以让这个 demo 在不同本地依赖版本中更稳。
-    """
-
-    if isinstance(chunk, dict):
-        return chunk.get("type"), chunk.get("ns", ()), chunk.get("data")
-
-    if isinstance(chunk, tuple) and len(chunk) == 3:
-        namespace, mode, payload = chunk
-        return mode, namespace, payload
-
-    if isinstance(chunk, tuple) and len(chunk) == 2:
-        first, payload = chunk
-        known_modes = {"updates", "messages", "tasks", "values", "debug", "custom"}
-        if isinstance(first, str) and first in known_modes:
-            return first, (), payload
-
-        namespace = first
-        if isinstance(payload, dict):
-            return payload.get("type"), namespace, payload.get("data", payload)
-        return None, namespace, payload
-
-    return None, (), chunk
 
 
 def extract_messages(value: Any) -> list[Any]:
@@ -295,6 +319,21 @@ def final_text_from_update(data: Any) -> str:
     return final_text
 
 
+def final_text_from_state(data: Any) -> str:
+    """Extract the latest assistant text from a full state snapshot."""
+
+    final_text = ""
+    for message in extract_messages(data):
+        if getattr(message, "type", "") != "ai":
+            continue
+        if getattr(message, "tool_calls", []) or []:
+            continue
+        text = text_from_content(getattr(message, "content", "")).strip()
+        if text:
+            final_text = text
+    return final_text
+
+
 def _event_from_task(source: str, data: Any) -> StreamEvent:
     """处理 tasks 事件，输出任务开始、结束和错误信息。"""
 
@@ -312,6 +351,144 @@ def _event_from_task(source: str, data: Any) -> StreamEvent:
         text += f"\n  错误: {data['error']}"
         return StreamEvent("error", source, text, data)
     return StreamEvent("task", source, text, data)
+
+
+def _event_from_custom(source: str, data: Any) -> StreamEvent | None:
+    """Convert custom LangGraph events into displayable stream events."""
+
+    if not isinstance(data, dict) or data.get("type") != "sandbox_output":
+        return None
+    chunk = str(data.get("chunk") or "")
+    if not chunk and data.get("event") not in {"start", "end", "error"}:
+        return None
+    command = str(data.get("command") or "execute")
+    if data.get("event") == "start":
+        text = f"[{source}] 沙盒命令开始: {command}"
+    elif chunk:
+        text = chunk
+    else:
+        text = f"[{source}] 沙盒命令结束: {command}"
+    return StreamEvent("sandbox_output", source, text, data)
+
+
+def _split_v3_payload(value: Any) -> tuple[Any, Any]:
+    """Normalize v3 channel payloads.
+
+    Raw v3 protocol events commonly carry message data as ``(payload, metadata)``
+    tuples, while tests and some projections may hand us the payload directly or
+    wrapped in a single-item list.
+    """
+
+    if isinstance(value, list) and value:
+        value = value[0]
+    if isinstance(value, tuple) and len(value) == 2:
+        return value[0], value[1]
+    return value, None
+
+
+def _first_payload(value: Any) -> Any:
+    return _split_v3_payload(value)[0]
+
+
+def _source_from_v3_namespace(namespace: Any) -> str:
+    if not namespace:
+        return "main"
+    return source_from_namespace(namespace)
+
+
+def _events_from_v3_message(source: str, data: Any) -> Iterator[StreamEvent]:
+    payload, metadata = _split_v3_payload(data)
+    if not isinstance(payload, dict):
+        return
+
+    event_name = str(payload.get("event", ""))
+    if event_name == "message-start":
+        node = "model"
+        if isinstance(metadata, dict):
+            node = str(metadata.get("langgraph_node") or metadata.get("lc_agent_name") or node)
+        yield StreamEvent("node_update", source, f"[{source}] 节点更新: {node}", {"payload": payload, "metadata": metadata})
+
+    elif event_name == "content-block-delta":
+        delta = payload.get("delta") or {}
+        delta_type = delta.get("type") if isinstance(delta, dict) else ""
+        if delta_type == "text-delta":
+            text = str(delta.get("text") or "")
+            if text:
+                yield StreamEvent("token", source, text, payload)
+        elif delta_type == "reasoning-delta":
+            reasoning = str(delta.get("reasoning") or delta.get("text") or "")
+            if reasoning:
+                yield StreamEvent("thinking", source, reasoning, payload)
+        elif delta_type in {"tool-call-delta", "tool_call_delta"}:
+            tool_name = str(delta.get("name") or delta.get("tool_name") or "tool")
+            args = delta.get("args") or delta.get("input") or ""
+            preview = short_text(args, limit=180)
+            if preview:
+                yield StreamEvent(
+                    "tool_call",
+                    source,
+                    f"[{source}] 工具参数流: {tool_name}\n{preview}",
+                    payload,
+                )
+
+    elif event_name == "message-finish":
+        message = payload.get("message") or payload.get("output")
+        reasoning = reasoning_from_message(message) if message is not None else ""
+        if reasoning:
+            yield StreamEvent("thinking", source, reasoning, payload)
+
+
+def _events_from_v3_tool(source: str, data: Any) -> Iterator[StreamEvent]:
+    payload = _first_payload(data)
+    if not isinstance(payload, dict):
+        return
+
+    event_name = str(payload.get("event", ""))
+    tool_name = str(payload.get("tool_name") or payload.get("name") or "tool")
+    if event_name == "tool-started":
+        tool_input = payload.get("input", payload.get("args", {}))
+        yield StreamEvent(
+            "tool_call",
+            source,
+            f"[{source}] 调用工具: {tool_name}\n{format_args(tool_input)}",
+            payload,
+        )
+    elif event_name == "tool-output-delta":
+        delta = payload.get("delta", payload.get("chunk", ""))
+        text = text_from_content(delta)
+        if text:
+            yield StreamEvent("sandbox_output", source, text, payload)
+    elif event_name == "tool-finished":
+        output = payload.get("output", payload.get("result", ""))
+        yield StreamEvent(
+            "tool_result",
+            source,
+            f"[{source}] 工具返回: {tool_name}\n{short_text(output)}",
+            payload,
+        )
+    elif event_name == "tool-error":
+        error = payload.get("error", "unknown tool error")
+        yield StreamEvent(
+            "error",
+            source,
+            f"[{source}] 工具错误: {tool_name}\n{error}",
+            payload,
+        )
+
+
+def _event_from_v3_lifecycle(source: str, data: Any) -> StreamEvent | None:
+    payload = _first_payload(data)
+    if not isinstance(payload, dict):
+        return None
+
+    event_name = str(payload.get("event", ""))
+    graph_name = str(payload.get("graph_name") or source)
+    if event_name in {"failed", "interrupted"}:
+        error = payload.get("error") or payload.get("cause") or ""
+        return StreamEvent("error", source, f"[{source}] {graph_name} {event_name}\n{error}", payload)
+    if event_name in {"started", "running", "completed"}:
+        return StreamEvent("task", source, f"[{source}] {graph_name}: {event_name}", payload)
+    return None
 
 
 def _message_role(message: Any) -> str:
@@ -373,10 +550,10 @@ def trim_checkpoint_messages(agent: Any, *, thread_id: str, max_turns: int | Non
         return 0
 
     try:
-        from langchain.messages import RemoveMessage
+        from langchain_core.messages import RemoveMessage
     except Exception:
         try:
-            from langchain_core.messages import RemoveMessage
+            from langchain.messages import RemoveMessage
         except Exception:
             return 0
 
@@ -401,18 +578,14 @@ def stream_agent_events(
 ) -> Iterator[StreamEvent]:
     """运行 Agent 并产出结构化流事件。
 
-    messages 提供 token 级输出；updates/tasks 提供过程状态。三者同时开启后，
+    v3 messages 提供 token 级输出；updates/tasks/lifecycle 提供过程状态。
     CLI 能像 Codex 一样逐段显示模型正文，又能清楚看到工具和子 Agent 的进展。
     images 可选传入图片 URL、data URL 或本地路径；这些图片不会走单独工具，而是
     和文本一起组成 user message 的多模态 content，直接交给 Deep Agents 背后的
     ChatQwen 多模态模型。
     """
 
-    removed_messages = trim_checkpoint_messages(
-        agent,
-        thread_id=thread_id,
-        max_turns=max_turns,
-    )
+    removed_messages = trim_checkpoint_messages(agent, thread_id=thread_id, max_turns=max_turns)
     if removed_messages:
         yield StreamEvent(
             "node_update",
@@ -420,56 +593,252 @@ def stream_agent_events(
             f"[memory] 已按配置保留最近 {max_turns} 轮，清理 {removed_messages} 条旧消息",
         )
 
-    streamed_tokens: list[str] = []
-    final_answer = ""
+    yield from _stream_agent_events_v3(agent, message, thread_id=thread_id, images=images)
+
+
+def _stream_agent_events_v3(
+    agent: Any,
+    message: str,
+    *,
+    thread_id: str,
+    images: Iterable[str | Path] | None = None,
+) -> Iterator[StreamEvent]:
+    """Stream with LangChain/LangGraph event streaming v3."""
+
+    stream_events = getattr(agent, "stream_events", None)
+    if not callable(stream_events):
+        raise RuntimeError(
+            'This agent requires LangChain/LangGraph stream_events(version="v3"). '
+            "Update dependencies with `uv sync` or use the project `uv run` environment."
+        )
+
     user_content = build_user_content(message, images)
+    try:
+        stream = stream_events(
+            {"messages": [{"role": "user", "content": user_content}]},
+            config={"configurable": {"thread_id": thread_id}},
+            version="v3",
+        )
+    except (TypeError, ValueError, NotImplementedError) as exc:
+        raise RuntimeError(
+            'This agent requires LangChain/LangGraph stream_events(version="v3"). '
+            "The installed runnable does not support v3 event streaming."
+        ) from exc
 
-    for chunk in agent.stream(
-        {"messages": [{"role": "user", "content": user_content}]},
-        config={"configurable": {"thread_id": thread_id}},
-        stream_mode=["messages", "updates", "tasks"],
-        subgraphs=True,
-        version="v2",
-    ):
-        chunk_type, namespace, data = parse_stream_chunk(chunk)
-        source = source_from_namespace(namespace)
+    main_tokens: list[str] = []
+    final_answer = ""
 
-        if chunk_type == "messages":
-            if not isinstance(data, tuple) or len(data) != 2:
-                continue
-            message_chunk, metadata = data
-            token = text_from_content(getattr(message_chunk, "content", ""))
-            if token:
-                streamed_tokens.append(token)
-                yield StreamEvent("token", source, token, {"chunk": message_chunk, "metadata": metadata})
+    for raw_event in stream:
+        if not isinstance(raw_event, dict):
+            continue
 
-        elif chunk_type == "updates":
-            update_final = final_text_from_update(data)
-            if update_final:
-                final_answer = update_final
+        method = str(raw_event.get("method", ""))
+        params = raw_event.get("params") or {}
+        if not isinstance(params, dict):
+            continue
+
+        source = _source_from_v3_namespace(params.get("namespace") or ())
+        data = params.get("data")
+
+        if method == "messages":
+            for event in _events_from_v3_message(source, data):
+                if event.type == "token" and source == "main":
+                    main_tokens.append(event.text)
+                yield event
+
+        elif method == "tools":
+            yield from _events_from_v3_tool(source, data)
+
+        elif method == "custom":
+            event = _event_from_custom(source, data)
+            if event:
+                yield event
+
+        elif method.startswith("custom:"):
+            yield StreamEvent("sandbox_output", source, text_from_content(data), data)
+
+        elif method == "values":
+            text = final_text_from_state(data)
+            if source == "main" and text:
+                final_answer = text
+
+        elif method == "updates":
+            text = final_text_from_update(data)
+            if source == "main" and text:
+                final_answer = text
             yield from _events_from_update(source, data)
 
-        elif chunk_type == "tasks":
-            yield _event_from_task(source, data)
+        elif method == "lifecycle":
+            event = _event_from_v3_lifecycle(source, data)
+            if event:
+                yield event
 
-    final_text = final_answer or "".join(streamed_tokens).strip()
+        elif method == "tasks":
+            yield _event_from_task(source, _first_payload(data))
+
+    final_text = final_answer or "".join(main_tokens).strip()
     if final_text:
         yield StreamEvent("final", "main", final_text)
+
+def _env_flag(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _supports_color() -> bool:
+    return bool(getattr(sys.stdout, "isatty", lambda: False)()) and not os.environ.get("NO_COLOR")
+
+
+def _strip_source_prefix(text: str, source: str) -> str:
+    prefix = f"[{source}] "
+    if text.startswith(prefix):
+        return text[len(prefix) :]
+    return text
+
+
+def _summarize_event_text(text: str, *, source: str) -> str:
+    text = _strip_source_prefix(text.strip(), source)
+    return re.sub(r"\n{3,}", "\n\n", text)
+
+
+class ConsoleStreamPrinter:
+    """Pretty terminal renderer for StreamEvent objects.
+
+    The stream parser intentionally exposes every LangGraph/Deep Agents event.
+    The terminal, however, should privilege the assistant answer and show process
+    details only when they are useful. This renderer keeps that display policy in
+    one stateful place so token text, thinking text, and tool progress do not run
+    into each other.
+    """
+
+    def __init__(
+        self,
+        *,
+        show_thinking: bool | None = None,
+        show_debug_events: bool | None = None,
+        show_subagent_tokens: bool | None = None,
+        use_color: bool | None = None,
+    ) -> None:
+        configure_console_encoding()
+        self.show_thinking = (
+            _env_flag(SHOW_THINKING_ENV, default=True) if show_thinking is None else show_thinking
+        )
+        self.show_debug_events = (
+            _env_flag(SHOW_DEBUG_EVENTS_ENV, default=True) if show_debug_events is None else show_debug_events
+        )
+        self.show_subagent_tokens = (
+            _env_flag(SHOW_SUBAGENT_TOKENS_ENV) if show_subagent_tokens is None else show_subagent_tokens
+        )
+        self.use_color = _supports_color() if use_color is None else use_color
+        self._answer_started = False
+        self._answer_open = False
+        self._thinking_started = False
+        self._sandbox_started = False
+
+    def print(self, event: StreamEvent) -> None:
+        if event.type == "token":
+            self._print_token(event)
+            return
+
+        if event.type == "thinking":
+            self._print_thinking(event)
+            return
+
+        if event.type == "final":
+            if not self._answer_started and event.text:
+                self._print_token(StreamEvent("token", "main", event.text, event.raw))
+            self.finish()
+            return
+
+        if event.type == "sandbox_output":
+            self._print_sandbox(event)
+            return
+
+        if event.type in {"task", "node_update"} and not self.show_debug_events:
+            return
+
+        self._print_event_panel(event)
+
+    def finish(self) -> None:
+        if self._answer_open:
+            print(flush=True)
+            self._answer_open = False
+
+    def _style(self, text: str, code: str) -> str:
+        if not self.use_color:
+            return text
+        return f"\033[{code}m{text}\033[0m"
+
+    def _print_token(self, event: StreamEvent) -> None:
+        if event.source != "main" and not self.show_subagent_tokens:
+            return
+
+        if not self._answer_started:
+            label = "助手> " if event.source == "main" else f"{event.source}> "
+            print(f"\n{self._style(label, '1;32')}", end="", flush=True)
+            self._answer_started = True
+        elif not self._answer_open:
+            print(self._style("继续> ", "1;32"), end="", flush=True)
+
+        print(event.text, end="", flush=True)
+        self._answer_open = True
+
+    def _print_thinking(self, event: StreamEvent) -> None:
+        if not self.show_thinking:
+            return
+
+        self._close_answer_line()
+        if not self._thinking_started:
+            print(f"\n{self._style('思考>', '2;36')} ", end="", flush=True)
+            self._thinking_started = True
+        print(self._style(event.text, "2"), end="", flush=True)
+
+    def _print_sandbox(self, event: StreamEvent) -> None:
+        self._close_answer_line()
+        if not self._sandbox_started:
+            print(f"\n{self._style('命令输出>', '1;35')}", flush=True)
+            self._sandbox_started = True
+        print(event.text, end="", flush=True)
+
+    def _print_event_panel(self, event: StreamEvent) -> None:
+        self._close_answer_line()
+
+        body = _summarize_event_text(event.text, source=event.source)
+        if not body:
+            return
+
+        title_by_type = {
+            "approval": "等待确认",
+            "error": "运行错误",
+            "node_update": "节点",
+            "task": "任务",
+            "tool_call": "工具调用",
+            "tool_result": "工具结果",
+        }
+        title = title_by_type.get(event.type, event.type)
+        if event.source != "main":
+            title = f"{title} ({event.source})"
+
+        print(f"\n{self._style('> ' + title, '1;34')}", flush=True)
+        for line in body.splitlines():
+            print(f"  {line}", flush=True)
+
+    def _close_answer_line(self) -> None:
+        if self._answer_open:
+            print(flush=True)
+            self._answer_open = False
+
+
+_DEFAULT_CONSOLE_PRINTER = ConsoleStreamPrinter()
 
 
 def print_stream_event(event: StreamEvent) -> None:
     """把结构化流事件打印到控制台。
 
-    token 用 end="" 连续输出；其他事件前后留空行，避免和正文粘在一起。
-    final 事件主要给 chat_once/API 使用；CLI 已经实时打印过 token，因此不再重复输出。
+    这个函数保留给旧调用方使用。新的 CLI 路径会为每一轮对话创建
+    ConsoleStreamPrinter 实例，从而得到更稳定的换行和分区效果。
     """
 
-    if event.type == "token":
-        print(event.text, end="", flush=True)
-        return
-
-    if event.type == "final":
-        return
-
-    if event.text:
-        print(f"\n{event.text}", flush=True)
+    _DEFAULT_CONSOLE_PRINTER.print(event)

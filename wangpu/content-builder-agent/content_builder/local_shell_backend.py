@@ -9,9 +9,14 @@ normalization, and an interactive approval prompt for local CLI usage.
 from __future__ import annotations
 
 import os
+import queue
 import re
 import shlex
+import subprocess
 import sys
+import threading
+import time
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -188,6 +193,20 @@ def _build_env(config: LocalShellConfig) -> dict[str, str]:
     return env
 
 
+def _dispatch_sandbox_output(data: dict[str, Any]) -> None:
+    """Emit a best-effort LangGraph custom event for live shell output."""
+
+    try:
+        from langchain_core.callbacks.manager import dispatch_custom_event
+
+        dispatch_custom_event("content_builder.sandbox_output", data)
+    except RuntimeError:
+        # CLI and tests may call execute outside a runnable callback context.
+        return
+    except Exception:
+        return
+
+
 def create_confirmed_local_shell_backend(root_dir: Path, config: LocalShellConfig) -> Any:
     """Create a guarded LocalShellBackend instance.
 
@@ -210,6 +229,148 @@ def create_confirmed_local_shell_backend(root_dir: Path, config: LocalShellConfi
     }
 
     class ConfirmedLocalShellBackend(LocalShellBackend):  # type: ignore[misc, valid-type]
+        def _execute_streaming(self, command: str, *, timeout: int | None = None) -> LocalExecuteResult:
+            if not command or not isinstance(command, str):
+                return LocalExecuteResult(
+                    output="Error: Command must be a non-empty string.",
+                    exit_code=1,
+                    truncated=False,
+                )
+
+            effective_timeout = timeout if timeout is not None else self._default_timeout
+            if effective_timeout <= 0:
+                raise ValueError(f"timeout must be positive, got {effective_timeout}")
+
+            execution_id = f"execute-{uuid.uuid4().hex[:10]}"
+            _dispatch_sandbox_output(
+                {
+                    "type": "sandbox_output",
+                    "event": "start",
+                    "run_id": execution_id,
+                    "command": command,
+                    "chunk": "",
+                }
+            )
+
+            try:
+                process = subprocess.Popen(  # noqa: S602
+                    command,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    stdin=subprocess.DEVNULL,
+                    text=True,
+                    bufsize=0,
+                    env=self._env,
+                    cwd=str(self.cwd),
+                )
+            except Exception as exc:
+                message = f"Error executing command ({type(exc).__name__}): {exc}"
+                _dispatch_sandbox_output(
+                    {
+                        "type": "sandbox_output",
+                        "event": "error",
+                        "run_id": execution_id,
+                        "command": command,
+                        "chunk": message,
+                        "exit_code": 1,
+                    }
+                )
+                return LocalExecuteResult(output=message, exit_code=1, truncated=False)
+
+            output_queue: queue.Queue[tuple[str, str | None]] = queue.Queue()
+
+            def pump(pipe: Any, stream_name: str) -> None:
+                try:
+                    while True:
+                        chunk = pipe.read(1)
+                        if chunk == "":
+                            break
+                        output_queue.put((stream_name, chunk))
+                finally:
+                    output_queue.put((stream_name, None))
+                    try:
+                        pipe.close()
+                    except Exception:
+                        pass
+
+            streams_open = 0
+            for stream_name, pipe in (("stdout", process.stdout), ("stderr", process.stderr)):
+                if pipe is None:
+                    continue
+                streams_open += 1
+                threading.Thread(target=pump, args=(pipe, stream_name), daemon=True).start()
+
+            started_at = time.monotonic()
+            output_parts: list[str] = []
+            output_size = 0
+            truncated = False
+            timed_out = False
+
+            while streams_open > 0:
+                if time.monotonic() - started_at > effective_timeout:
+                    timed_out = True
+                    process.kill()
+                    break
+
+                try:
+                    stream_name, chunk = output_queue.get(timeout=0.05)
+                except queue.Empty:
+                    continue
+
+                if chunk is None:
+                    streams_open -= 1
+                    continue
+
+                if output_size < self._max_output_bytes:
+                    remaining = self._max_output_bytes - output_size
+                    visible_chunk = chunk[:remaining]
+                    output_parts.append(visible_chunk)
+                    output_size += len(visible_chunk)
+                    if visible_chunk:
+                        _dispatch_sandbox_output(
+                            {
+                                "type": "sandbox_output",
+                                "event": "chunk",
+                                "run_id": execution_id,
+                                "command": command,
+                                "stream": stream_name,
+                                "chunk": visible_chunk,
+                            }
+                        )
+                    if len(chunk) > remaining:
+                        truncated = True
+                else:
+                    truncated = True
+
+            return_code = process.wait()
+            if timed_out:
+                output = (
+                    f"Error: Command timed out after {effective_timeout} seconds. "
+                    "For long-running commands, re-run using the timeout parameter."
+                )
+                exit_code = 124
+            else:
+                output = "".join(output_parts) or "<no output>"
+                exit_code = return_code
+                if truncated:
+                    output += f"\n\n... Output truncated at {self._max_output_bytes} bytes."
+                if exit_code != 0:
+                    output = f"{output.rstrip()}\n\nExit code: {exit_code}"
+
+            _dispatch_sandbox_output(
+                {
+                    "type": "sandbox_output",
+                    "event": "end" if exit_code == 0 else "error",
+                    "run_id": execution_id,
+                    "command": command,
+                    "chunk": "" if exit_code == 0 else f"\nExit code: {exit_code}",
+                    "exit_code": exit_code,
+                    "truncated": truncated,
+                }
+            )
+            return LocalExecuteResult(output=output, exit_code=exit_code, truncated=truncated)
+
         def execute(self, command: str, *args: Any, **kwargs: Any) -> Any:
             command_name = _command_name(command)
             if command_name not in allowed_commands:
@@ -243,7 +404,7 @@ def create_confirmed_local_shell_backend(root_dir: Path, config: LocalShellConfi
             if mkdir_result is not None:
                 return mkdir_result
 
-            return super().execute(rewritten, *args, **kwargs)
+            return self._execute_streaming(rewritten, timeout=kwargs.get("timeout"))
 
     env = _build_env(config)
     try:

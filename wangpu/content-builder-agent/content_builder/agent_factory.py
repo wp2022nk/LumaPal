@@ -139,8 +139,8 @@ def _create_content_writer_cached(config_path_key: str, runtime_mode: str):
     model = create_qwen_model(config.model)
     system_prompt = _read_system_prompt(config)
 
-    web_mode = runtime_mode == "web"
-    backend = _build_backend(config, require_confirmation=False if web_mode else None)
+    server_mode = runtime_mode in {"server", "web"}
+    backend = _build_backend(config, require_confirmation=False if server_mode else None)
 
     agent_kwargs = dict(
         name=config.name,
@@ -155,7 +155,7 @@ def _create_content_writer_cached(config_path_key: str, runtime_mode: str):
 
     # LangGraph Agent Server owns persistence/checkpointing. The CLI keeps a
     # process-local MemorySaver so stream_chat sessions still share context.
-    if not web_mode:
+    if not server_mode:
         agent_kwargs["checkpointer"] = MemorySaver()
 
     return create_deep_agent(**agent_kwargs)
@@ -171,8 +171,8 @@ def create_content_writer(config_path: str | Path | None = None, *, runtime_mode
         已编译的 Deep Agents/LangGraph runnable，可被 invoke 或 stream 调用。
     """
 
-    if runtime_mode not in {"cli", "web"}:
-        raise ValueError("runtime_mode must be 'cli' or 'web'")
+    if runtime_mode not in {"cli", "server", "web"}:
+        raise ValueError("runtime_mode must be 'cli', 'server', or 'web'")
 
     resolved_config = resolve_project_path(config_path or DEFAULT_MAIN_CONFIG).resolve()
     return _create_content_writer_cached(str(resolved_config), runtime_mode)

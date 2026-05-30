@@ -42,7 +42,7 @@ DEFAULT_MAIN_CONFIG = PROJECT_DIR / "main_agent.yaml"
 
 # 保留原 demo 的本地默认值，但仍然优先使用用户在终端设置的环境变量。
 # 生产环境建议把这些默认值移出代码，统一交给密钥管理或 .env 注入。
-DEFAULT_QWEN_API_KEY = "sk-4022a3931c75477f95b921f7dfacea8d"
+DEFAULT_QWEN_API_KEY = "sk-24ebca554a394d7e8bc54602e854fdfe"
 DEFAULT_TAVILY_API_KEY = "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"
 DEFAULT_QWEN_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 DEFAULT_QWEN_TEXT_MODEL = "qwen3.6-plus"
@@ -61,6 +61,8 @@ class ModelConfig:
     model: str
     api_key: str
     base_url: str
+    enable_thinking: bool | None = None
+    thinking_budget: int | None = None
 
 
 @dataclass(frozen=True)
@@ -211,6 +213,14 @@ def load_main_config(config_path: str | Path | None = None) -> MainAgentConfig:
         str(model_raw.get("env_base_url", "QWEN_BASE_URL")),
         str(model_raw.get("base_url", DEFAULT_QWEN_BASE_URL)),
     )
+    enable_thinking_raw = model_raw.get("enable_thinking", True)
+    enable_thinking = (
+        enable_thinking_raw
+        if isinstance(enable_thinking_raw, bool)
+        else str(enable_thinking_raw).strip().lower() in {"1", "true", "yes", "on"}
+    )
+    thinking_budget_raw = model_raw.get("thinking_budget")
+    thinking_budget = int(thinking_budget_raw) if thinking_budget_raw not in {None, ""} else None
 
     # 老脚本依赖这些环境变量存在。这里用 setdefault 保持兼容，同时不覆盖用户显式配置。
     os.environ.setdefault("QWEN_API_KEY", api_key)
@@ -252,7 +262,13 @@ def load_main_config(config_path: str | Path | None = None) -> MainAgentConfig:
     return MainAgentConfig(
         config_path=resolved_config_path,
         name=str(raw.get("name", "content-builder")),
-        model=ModelConfig(model=model_name, api_key=api_key, base_url=base_url),
+        model=ModelConfig(
+            model=model_name,
+            api_key=api_key,
+            base_url=base_url,
+            enable_thinking=enable_thinking,
+            thinking_budget=thinking_budget,
+        ),
         system_prompt_file=raw.get("system_prompt_file"),
         memory=list(raw.get("memory", ["/AGENTS.md"])),
         skills=list(raw.get("skills", ["/skills/"])),
@@ -301,4 +317,7 @@ def create_qwen_model(config: ModelConfig) -> ChatQwen:
         model=config.model,
         api_key=config.api_key,
         base_url=config.base_url,
+        streaming=True,
+        enable_thinking=config.enable_thinking,
+        thinking_budget=config.thinking_budget,
     )

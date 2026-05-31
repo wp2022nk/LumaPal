@@ -40,29 +40,85 @@ DEFAULT_BACKEND_DIR = WORKSPACE_DIR
 DEFAULT_OUTPUT_DIR = WORKSPACE_DIR / "output"
 DEFAULT_MAIN_CONFIG = PROJECT_DIR / "main_agent.yaml"
 
-# 保留原 demo 的本地默认值，但仍然优先使用用户在终端设置的环境变量。
-# 生产环境建议把这些默认值移出代码，统一交给密钥管理或 .env 注入。
-DEFAULT_QWEN_API_KEY = "sk-24ebca554a394d7e8bc54602e854fdfe"
-DEFAULT_TAVILY_API_KEY = "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"
 DEFAULT_QWEN_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 DEFAULT_QWEN_TEXT_MODEL = "qwen3.6-plus"
 DEFAULT_THREAD_ID = "content-builder-console"
 DEFAULT_SANDBOX_PYTHON = Path(r"D:\Robort_Learn\envs\deepagents\python.exe")
+DEFAULT_SECRETS_FILE = PROJECT_DIR / "secrets.local.yaml"
 
 
 @dataclass(frozen=True)
 class ModelConfig:
     """主模型配置。
 
-    YAML 中只保存模型名和环境变量名；真正的 key/base_url 在这里统一解析。
-    这样工具、子智能体和主智能体复用同一个模型对象时，不需要重复读环境变量。
+    YAML 中只保存非敏感模型参数；真正的 key 统一从 secrets.local.yaml 读取。
+    这样工具、子智能体和主智能体复用同一个模型对象时，不需要重复维护密钥来源。
     """
 
     model: str
-    api_key: str
+    api_key: str | None
     base_url: str
     enable_thinking: bool | None = None
     thinking_budget: int | None = None
+
+
+@dataclass(frozen=True)
+class SecretsConfig:
+    """本地密钥配置。
+
+    真实 API key 不再写死在代码里，而是集中放在 secrets.local.yaml。
+    这个文件会被 git 忽略；配置对象只负责把 key 传给需要的运行时组件。
+    """
+
+    path: Path
+    qwen_api_key: str | None = None
+    dashscope_api_key: str | None = None
+    tavily_api_key: str | None = None
+
+
+@dataclass(frozen=True)
+class VoiceASRConfig:
+    """语音输入 ASR 配置，目前只启用本地 FunASR。"""
+
+    provider: str
+    model_dir: Path
+    vad_model_dir: Path
+    device: str = "cpu"
+    max_single_segment_time: int = 30000
+    save_audio: bool = False
+
+
+@dataclass(frozen=True)
+class VoiceTTSConfig:
+    """语音输出 TTS 配置，目前只启用 Qwen TTS。"""
+
+    provider: str
+    model: str
+    voice: str
+    language_type: str
+    format: str
+    stream: bool
+    sample_rate: int
+    channels: int
+    sample_width: int
+    timeout: int
+
+
+@dataclass(frozen=True)
+class VoicePlaybackConfig:
+    """控制台本地播放配置。"""
+
+    enabled: bool
+
+
+@dataclass(frozen=True)
+class VoiceConfig:
+    """ASR-LLM-TTS 控制台链路的统一配置。"""
+
+    enabled: bool
+    asr: VoiceASRConfig
+    tts: VoiceTTSConfig
+    playback: VoicePlaybackConfig
 
 
 @dataclass(frozen=True)
@@ -123,7 +179,9 @@ class MainAgentConfig:
 
     config_path: Path
     name: str
+    secrets: SecretsConfig
     model: ModelConfig
+    voice: VoiceConfig
     system_prompt_file: str | None
     memory: list[str]
     skills: list[str]
@@ -146,6 +204,18 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError(f"YAML config must be a mapping: {path}")
     return data
+
+
+def _read_yaml_if_exists(path: Path) -> dict[str, Any]:
+    """读取可选 YAML 文件；文件不存在时返回空字典。
+
+    secrets.local.yaml 是本地私密配置，首次运行前可能还不存在。这里不在
+    配置加载阶段报错，而是在真正需要 key 的入口给出更清晰的中文提示。
+    """
+
+    if not path.exists():
+        return {}
+    return _read_yaml(path)
 
 
 def resolve_project_path(value: str | Path, *, base_dir: Path = PROJECT_DIR) -> Path:
@@ -185,6 +255,89 @@ def _env_bool(name: str, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _secret_value(raw: dict[str, Any], section: str, key: str = "api_key") -> str | None:
+    """从 secrets.local.yaml 的分区中读取非空字符串。"""
+
+    value = (raw.get(section) or {}).get(key) if isinstance(raw.get(section), dict) else None
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text or text.startswith("填入"):
+        return None
+    return text
+
+
+def _load_secrets(raw_config: dict[str, Any], config_path: Path) -> SecretsConfig:
+    """加载本地密钥文件。
+
+    密钥文件路径默认相对项目根目录解析，也允许在 main_agent.yaml 中通过
+    secrets_file 覆盖。为了满足“统一配置文件管理 key”，这里不再提供代码内
+    key 默认值，只把读取到的 key 注入环境变量兼容旧工具。
+    """
+
+    secrets_file = raw_config.get("secrets_file", DEFAULT_SECRETS_FILE)
+    secrets_path = resolve_project_path(secrets_file).resolve()
+    secrets_raw = _read_yaml_if_exists(secrets_path)
+    qwen_api_key = _secret_value(secrets_raw, "qwen")
+    dashscope_api_key = _secret_value(secrets_raw, "dashscope")
+    tavily_api_key = _secret_value(secrets_raw, "tavily")
+
+    if qwen_api_key:
+        os.environ["QWEN_API_KEY"] = qwen_api_key
+    if dashscope_api_key or qwen_api_key:
+        os.environ["DASHSCOPE_API_KEY"] = dashscope_api_key or qwen_api_key or ""
+    if tavily_api_key:
+        os.environ["TAVILY_API_KEY"] = tavily_api_key
+
+    return SecretsConfig(
+        path=secrets_path,
+        qwen_api_key=qwen_api_key,
+        dashscope_api_key=dashscope_api_key,
+        tavily_api_key=tavily_api_key,
+    )
+
+
+def _load_voice_config(raw_config: dict[str, Any]) -> VoiceConfig:
+    """从 main_agent.yaml 读取语音链路配置。"""
+
+    voice_raw = raw_config.get("voice") or {}
+    asr_raw = voice_raw.get("asr") or {}
+    tts_raw = voice_raw.get("tts") or {}
+    playback_raw = voice_raw.get("playback") or {}
+
+    return VoiceConfig(
+        enabled=bool(voice_raw.get("enabled", True)),
+        asr=VoiceASRConfig(
+            provider=str(asr_raw.get("provider", "funasr")),
+            model_dir=resolve_project_path(asr_raw.get("model_dir", "../../model/SenseVoiceSmall")).resolve(),
+            vad_model_dir=resolve_project_path(
+                asr_raw.get(
+                    "vad_model_dir",
+                    "../../model/fsmn-vad/damo/speech_fsmn_vad_zh-cn-16k-common-pytorch",
+                )
+            ).resolve(),
+            device=str(asr_raw.get("device", "cpu")),
+            max_single_segment_time=int(asr_raw.get("max_single_segment_time", 30000)),
+            save_audio=bool(asr_raw.get("save_audio", False)),
+        ),
+        tts=VoiceTTSConfig(
+            provider=str(tts_raw.get("provider", "qwen")),
+            model=str(tts_raw.get("model", "qwen3-tts-flash")),
+            voice=str(tts_raw.get("voice", "Cherry")),
+            language_type=str(tts_raw.get("language_type", "Chinese")),
+            format=str(tts_raw.get("format", "wav")),
+            stream=bool(tts_raw.get("stream", True)),
+            sample_rate=int(tts_raw.get("sample_rate", 24000)),
+            channels=int(tts_raw.get("channels", 1)),
+            sample_width=int(tts_raw.get("sample_width", 2)),
+            timeout=int(tts_raw.get("timeout", 30)),
+        ),
+        playback=VoicePlaybackConfig(
+            enabled=bool(playback_raw.get("enabled", True)),
+        ),
+    )
+
+
 def load_main_config(config_path: str | Path | None = None) -> MainAgentConfig:
     """加载主智能体配置。
 
@@ -197,6 +350,8 @@ def load_main_config(config_path: str | Path | None = None) -> MainAgentConfig:
 
     resolved_config_path = resolve_project_path(config_path or DEFAULT_MAIN_CONFIG)
     raw = _read_yaml(resolved_config_path)
+    secrets = _load_secrets(raw, resolved_config_path)
+    voice = _load_voice_config(raw)
     model_raw = raw.get("model") or {}
     backend_raw = raw.get("backend") or {}
     conversation_raw = raw.get("conversation") or {}
@@ -205,10 +360,7 @@ def load_main_config(config_path: str | Path | None = None) -> MainAgentConfig:
         str(model_raw.get("env_model", "QWEN_TEXT_MODEL")),
         str(model_raw.get("name", DEFAULT_QWEN_TEXT_MODEL)),
     )
-    api_key = os.environ.get(
-        str(model_raw.get("env_api_key", "QWEN_API_KEY")),
-        str(model_raw.get("api_key", DEFAULT_QWEN_API_KEY)),
-    )
+    api_key = secrets.qwen_api_key
     base_url = os.environ.get(
         str(model_raw.get("env_base_url", "QWEN_BASE_URL")),
         str(model_raw.get("base_url", DEFAULT_QWEN_BASE_URL)),
@@ -222,9 +374,10 @@ def load_main_config(config_path: str | Path | None = None) -> MainAgentConfig:
     thinking_budget_raw = model_raw.get("thinking_budget")
     thinking_budget = int(thinking_budget_raw) if thinking_budget_raw not in {None, ""} else None
 
-    # 老脚本依赖这些环境变量存在。这里用 setdefault 保持兼容，同时不覆盖用户显式配置。
-    os.environ.setdefault("QWEN_API_KEY", api_key)
-    os.environ.setdefault("TAVILY_API_KEY", os.environ.get("TAVILY_API_KEY", DEFAULT_TAVILY_API_KEY))
+    # 老脚本依赖这些环境变量存在。这里仅在 secrets.local.yaml 提供 key 时注入，
+    # 不再用代码内硬编码默认值兜底。
+    if api_key:
+        os.environ["QWEN_API_KEY"] = api_key
 
     backend_type = str(backend_raw.get("type", "filesystem")).strip().lower()
     if backend_type not in {"filesystem", "local_shell", "remote"}:
@@ -262,6 +415,7 @@ def load_main_config(config_path: str | Path | None = None) -> MainAgentConfig:
     return MainAgentConfig(
         config_path=resolved_config_path,
         name=str(raw.get("name", "content-builder")),
+        secrets=secrets,
         model=ModelConfig(
             model=model_name,
             api_key=api_key,
@@ -269,6 +423,7 @@ def load_main_config(config_path: str | Path | None = None) -> MainAgentConfig:
             enable_thinking=enable_thinking,
             thinking_budget=thinking_budget,
         ),
+        voice=voice,
         system_prompt_file=raw.get("system_prompt_file"),
         memory=list(raw.get("memory", ["/AGENTS.md"])),
         skills=list(raw.get("skills", ["/skills/"])),
@@ -312,6 +467,12 @@ def create_qwen_model(config: ModelConfig) -> ChatQwen:
     主智能体和配置中声明同名模型的子智能体会复用这个对象，避免每个模块各自
     维护一份模型初始化参数。
     """
+
+    if not config.api_key:
+        raise RuntimeError(
+            "缺少 Qwen 主模型 API key。请复制 secrets.example.yaml 为 "
+            "secrets.local.yaml，并填写 qwen.api_key。"
+        )
 
     return ChatQwen(
         model=config.model,

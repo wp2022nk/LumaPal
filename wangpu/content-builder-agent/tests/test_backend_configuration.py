@@ -33,6 +33,17 @@ class BackendConfigurationTests(unittest.TestCase):
         self.assertIn("python -m http.server <port> --bind 127.0.0.1", prompt)
         self.assertIn("/games/", root_gitignore.splitlines())
 
+    def test_voice_config_and_local_secrets_are_declared(self) -> None:
+        config = load_main_config()
+        root_gitignore = (WORKSPACE_DIR / ".gitignore").read_text(encoding="utf-8")
+
+        self.assertEqual(config.voice.asr.provider, "funasr")
+        self.assertEqual(config.voice.tts.provider, "qwen")
+        self.assertEqual(config.voice.tts.model, "qwen3-tts-flash")
+        self.assertEqual(config.voice.asr.model_dir.name, "SenseVoiceSmall")
+        self.assertTrue(config.secrets.path.name, "secrets.local.yaml")
+        self.assertIn("/wangpu/content-builder-agent/secrets.local.yaml", root_gitignore.splitlines())
+
 
 if __name__ == "__main__":
     unittest.main()

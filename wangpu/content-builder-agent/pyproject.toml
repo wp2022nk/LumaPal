@@ -14,7 +14,18 @@ dependencies = [
   "pyyaml==6.0.3",
   "tavily-python==0.7.25",
   "dashscope==1.25.19",
+  "funasr==1.2.7",
+  "sounddevice==0.5.1",
 ]
 
 [tool.setuptools]
-packages = ["content_builder", "content_builder.tools"]
+packages = [
+  "content_builder",
+  "content_builder.tools",
+  "content_builder.voice",
+  "content_builder.voice.asr",
+  "content_builder.voice.asr.providers",
+  "content_builder.voice.tts",
+  "content_builder.voice.tts.providers",
+  "content_builder.voice.emotion",
+]

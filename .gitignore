@@ -6,8 +6,16 @@
 
 /wangpu\content-builder-agent\story
 
+/wangpu/content-builder-agent/secrets.local.yaml
+/wangpu/content-builder-agent/*.local.yaml
+
 /output
 
 /games/
 
 /.vscode
+
+
+/model
+
+/wangpu/src

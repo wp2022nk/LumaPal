@@ -12,10 +12,11 @@ import os
 import re
 import sys
 import warnings
+import inspect
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterator, Literal
+from typing import Any, AsyncIterator, Iterator, Literal
 
 from .multimodal import build_user_content
 
@@ -596,6 +597,33 @@ def stream_agent_events(
     yield from _stream_agent_events_v3(agent, message, thread_id=thread_id, images=images)
 
 
+async def astream_agent_events(
+    agent: Any,
+    message: str,
+    *,
+    thread_id: str,
+    max_turns: int | None = None,
+    images: Iterable[str | Path] | None = None,
+) -> AsyncIterator[StreamEvent]:
+    """异步运行 Agent 并产出结构化流式事件。
+
+    语音控制台必须边收到主智能体 token 边做 TTS 切段，不能等最终回答返回后
+    再合成。因此这里优先使用 LangGraph/Deep Agents 的 astream_events。
+    同步 CLI 仍保留 stream_agent_events，两条路径共享相同的 v3 事件解析规则。
+    """
+
+    removed_messages = trim_checkpoint_messages(agent, thread_id=thread_id, max_turns=max_turns)
+    if removed_messages:
+        yield StreamEvent(
+            "node_update",
+            "main",
+            f"[memory] 已按配置保留最近 {max_turns} 轮，清理 {removed_messages} 条旧消息",
+        )
+
+    async for event in _astream_agent_events_v3(agent, message, thread_id=thread_id, images=images):
+        yield event
+
+
 def _stream_agent_events_v3(
     agent: Any,
     message: str,
@@ -667,6 +695,100 @@ def _stream_agent_events_v3(
             if source == "main" and text:
                 final_answer = text
             yield from _events_from_update(source, data)
+
+        elif method == "lifecycle":
+            event = _event_from_v3_lifecycle(source, data)
+            if event:
+                yield event
+
+        elif method == "tasks":
+            yield _event_from_task(source, _first_payload(data))
+
+    final_text = final_answer or "".join(main_tokens).strip()
+    if final_text:
+        yield StreamEvent("final", "main", final_text)
+
+
+async def _astream_agent_events_v3(
+    agent: Any,
+    message: str,
+    *,
+    thread_id: str,
+    images: Iterable[str | Path] | None = None,
+) -> AsyncIterator[StreamEvent]:
+    """使用 LangChain/LangGraph v3 协议异步消费事件流。"""
+
+    astream_events = getattr(agent, "astream_events", None)
+    if not callable(astream_events):
+        raise RuntimeError(
+            'This agent requires LangChain/LangGraph astream_events(version="v3"). '
+            "Update dependencies with `uv sync` or use the project `uv run` environment."
+        )
+
+    user_content = build_user_content(message, images)
+    try:
+        stream = astream_events(
+            {"messages": [{"role": "user", "content": user_content}]},
+            config={"configurable": {"thread_id": thread_id}},
+            version="v3",
+        )
+    except (TypeError, ValueError, NotImplementedError) as exc:
+        raise RuntimeError(
+            'This agent requires LangChain/LangGraph astream_events(version="v3"). '
+            "The installed runnable does not support v3 event streaming."
+        ) from exc
+
+    # 不同 LangGraph/Deep Agents 版本的 astream_events 返回形态略有差异：
+    # 有的版本直接返回 async iterator；当前用户环境中的 Pregel v3 路径会先
+    # 返回 coroutine，await 之后才得到真正的 async iterator。这里同时兼容
+    # 两种形态，避免 “coroutine was never awaited”。
+    if inspect.isawaitable(stream):
+        stream = await stream
+
+    main_tokens: list[str] = []
+    final_answer = ""
+
+    async for raw_event in stream:
+        if not isinstance(raw_event, dict):
+            continue
+
+        method = str(raw_event.get("method", ""))
+        params = raw_event.get("params") or {}
+        if not isinstance(params, dict):
+            continue
+
+        source = _source_from_v3_namespace(params.get("namespace") or ())
+        data = params.get("data")
+
+        if method == "messages":
+            for event in _events_from_v3_message(source, data):
+                if event.type == "token" and source == "main":
+                    main_tokens.append(event.text)
+                yield event
+
+        elif method == "tools":
+            for event in _events_from_v3_tool(source, data):
+                yield event
+
+        elif method == "custom":
+            event = _event_from_custom(source, data)
+            if event:
+                yield event
+
+        elif method.startswith("custom:"):
+            yield StreamEvent("sandbox_output", source, text_from_content(data), data)
+
+        elif method == "values":
+            text = final_text_from_state(data)
+            if source == "main" and text:
+                final_answer = text
+
+        elif method == "updates":
+            text = final_text_from_update(data)
+            if source == "main" and text:
+                final_answer = text
+            for event in _events_from_update(source, data):
+                yield event
 
         elif method == "lifecycle":
             event = _event_from_v3_lifecycle(source, data)

@@ -10,10 +10,6 @@ DASHSCOPE_API_URL = "https://dashscope.aliyuncs.com/api/v1"
 DEFAULT_QWEN_IMAGE_MODEL = "wan2.7-image"
 DEFAULT_IMAGE_SIZE = "1024*1024"
 
-# Prefer the real environment variable. The fallback keeps the existing local
-# demo script working in the same way it did before.
-LOCAL_DASHSCOPE_API_KEY = "sk-de84e6b5e2d54673b6650b727d36bd9e"
-
 DOWNLOAD_CONNECT_TIMEOUT = 20
 DOWNLOAD_READ_TIMEOUT = 180
 DOWNLOAD_RETRIES_PER_URL = 2
@@ -140,9 +136,12 @@ def generate_qwen_image(
     from dashscope import MultiModalConversation
     import dashscope
 
-    api_key = os.environ.get("DASHSCOPE_API_KEY") or LOCAL_DASHSCOPE_API_KEY
+    api_key = os.environ.get("DASHSCOPE_API_KEY")
     if not api_key:
-        raise RuntimeError("DASHSCOPE_API_KEY is not set")
+        raise RuntimeError(
+            "DASHSCOPE_API_KEY is not set. 请在 secrets.local.yaml 中配置 "
+            "dashscope.api_key，或配置 qwen.api_key 供工具复用。"
+        )
 
     dashscope.base_http_api_url = DASHSCOPE_API_URL
     model_name = model or os.environ.get("QWEN_IMAGE_MODEL", DEFAULT_QWEN_IMAGE_MODEL)

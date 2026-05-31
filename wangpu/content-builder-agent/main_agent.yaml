@@ -2,11 +2,11 @@
 # Add domain capabilities through skills and tools rather than embedding them in AGENTS.md.
 
 name: content-builder
+secrets_file: secrets.local.yaml
 
 model:
   name: qwen3.6-plus
   env_model: QWEN_TEXT_MODEL
-  env_api_key: QWEN_API_KEY
   env_base_url: QWEN_BASE_URL
   base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
   enable_thinking: true
@@ -52,3 +52,27 @@ thread_id: content-builder-console
 conversation:
   # Keep enough turns for long creative sessions to be transformed into artifacts.
   max_turns: 50
+
+voice:
+  enabled: true
+  asr:
+    provider: funasr
+    model_dir: ../../model/SenseVoiceSmall
+    vad_model_dir: ../../model/fsmn-vad/damo/speech_fsmn_vad_zh-cn-16k-common-pytorch
+    device: cpu
+    max_single_segment_time: 30000
+    save_audio: false
+  tts:
+    provider: qwen
+    model: qwen3-tts-flash
+    voice: Cherry
+    language_type: Chinese
+    format: wav
+    # 与 src 项目保持一致：Qwen TTS 流式返回 24kHz/16bit/mono PCM chunk。
+    stream: true
+    sample_rate: 24000
+    channels: 1
+    sample_width: 2
+    timeout: 30
+  playback:
+    enabled: true

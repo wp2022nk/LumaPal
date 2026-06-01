@@ -1,0 +1,400 @@
+"""FastAPI routes consumed by the Android LAN companion app."""
+
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import mimetypes
+import os
+import tempfile
+import uuid
+from pathlib import Path
+from typing import Annotated, Any
+from urllib.parse import quote
+
+import yaml
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Header,
+    HTTPException,
+    Query,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+)
+from fastapi import Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel
+
+from content_builder.config import DEFAULT_SECRETS_FILE, load_main_config
+from content_builder.server.security import (
+    extract_request_token,
+    make_preview_token,
+    preview_token_is_valid,
+    token_is_valid,
+)
+from content_builder.thread_storage import resolve_thread_file, thread_paths
+
+
+app = FastAPI(title="Content Builder Android API")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+TEXT_SUFFIXES = {
+    ".css",
+    ".html",
+    ".js",
+    ".json",
+    ".jsx",
+    ".md",
+    ".mjs",
+    ".py",
+    ".svg",
+    ".ts",
+    ".tsx",
+    ".txt",
+    ".yaml",
+    ".yml",
+}
+_asr_manager: Any = None
+
+
+@app.exception_handler(ValueError)
+async def reject_invalid_path(_request: Request, error: ValueError) -> JSONResponse:
+    """Turn invalid thread paths into explicit client errors."""
+
+    return JSONResponse(status_code=400, content={"detail": str(error)})
+
+
+class KeyUpdate(BaseModel):
+    qwen: str | None = None
+    dashscope: str | None = None
+    tavily: str | None = None
+
+
+def _require_pairing_token(
+    authorization: Annotated[str | None, Header()] = None,
+    x_api_key: Annotated[str | None, Header()] = None,
+) -> None:
+    headers = {"authorization": authorization or "", "x-api-key": x_api_key or ""}
+    if not token_is_valid(extract_request_token(headers)):
+        raise HTTPException(status_code=401, detail="Invalid pairing token")
+
+
+def _read_yaml(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {}
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    return data if isinstance(data, dict) else {}
+
+
+def _secret_path() -> Path:
+    return Path(os.environ.get("CONTENT_BUILDER_SECRETS_FILE", DEFAULT_SECRETS_FILE)).resolve()
+
+
+def _key_status() -> dict[str, bool]:
+    data = _read_yaml(_secret_path())
+    return {
+        name: bool(str((data.get(name) or {}).get("api_key") or "").strip())
+        for name in ("qwen", "dashscope", "tavily")
+    }
+
+
+def _write_keys(update: KeyUpdate) -> None:
+    path = _secret_path()
+    data = _read_yaml(path)
+    for name, value in update.model_dump().items():
+        if value is None:
+            continue
+        section = data.setdefault(name, {})
+        if not isinstance(section, dict):
+            section = {}
+            data[name] = section
+        cleaned = value.strip()
+        if cleaned:
+            section["api_key"] = cleaned
+        else:
+            section.pop("api_key", None)
+        env_name = {"qwen": "QWEN_API_KEY", "dashscope": "DASHSCOPE_API_KEY", "tavily": "TAVILY_API_KEY"}[name]
+        if cleaned:
+            os.environ[env_name] = cleaned
+        else:
+            os.environ.pop(env_name, None)
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile("w", delete=False, dir=path.parent, encoding="utf-8") as handle:
+        yaml.safe_dump(data, handle, allow_unicode=True, sort_keys=True)
+        temporary_path = Path(handle.name)
+    temporary_path.replace(path)
+    from content_builder.agent_factory import clear_content_writer_cache
+
+    clear_content_writer_cache()
+
+
+def _artifact_kind(path: Path) -> str:
+    suffix = path.suffix.lower()
+    if suffix in IMAGE_SUFFIXES:
+        return "image"
+    if suffix == ".pdf":
+        return "pdf"
+    if suffix in {".html", ".htm"}:
+        return "html"
+    if suffix in TEXT_SUFFIXES:
+        return "text"
+    return "download"
+
+
+def _entry(thread_id: str, physical_path: Path, virtual_path: str) -> dict[str, Any]:
+    mime_type = mimetypes.guess_type(physical_path.name)[0] or "application/octet-stream"
+    signed_token = make_preview_token(thread_id, virtual_path)
+    encoded_path = quote(virtual_path, safe="/")
+    return {
+        "name": physical_path.name,
+        "path": virtual_path,
+        "size": physical_path.stat().st_size,
+        "modified_at": physical_path.stat().st_mtime,
+        "mime_type": mime_type,
+        "kind": _artifact_kind(physical_path),
+        "preview_url": f"/api/content-builder/preview/{thread_id}/{signed_token}/{encoded_path}",
+    }
+
+
+def _virtual_file(thread_id: str, virtual_path: str) -> Path:
+    return resolve_thread_file(thread_id, virtual_path)
+
+
+def _save_upload(thread_id: str, virtual_path: str, content: bytes) -> Path:
+    target = _virtual_file(thread_id, virtual_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(content)
+    return target
+
+
+def _artifact_entries(thread_id: str) -> list[dict[str, Any]]:
+    paths = thread_paths(thread_id)
+    entries: list[dict[str, Any]] = []
+    for namespace, root in (("artifacts", paths.artifacts), ("games", paths.games)):
+        for item in root.rglob("*"):
+            if item.is_file():
+                entries.append(_entry(thread_id, item, f"{namespace}/{item.relative_to(root).as_posix()}"))
+    entries.sort(key=lambda item: item["modified_at"], reverse=True)
+    return entries
+
+
+def _sandbox_entries(thread_id: str) -> list[dict[str, Any]]:
+    paths = thread_paths(thread_id)
+    entries: list[dict[str, Any]] = []
+    for namespace, root in (
+        ("workspace", paths.workspace),
+        ("artifacts", paths.artifacts),
+        ("games", paths.games),
+        ("uploads", paths.uploads),
+    ):
+        entries.append({"name": namespace, "path": namespace, "type": "directory", "size": 0})
+        for item in root.rglob("*"):
+            if "node_modules" in item.parts:
+                continue
+            entries.append(
+                {
+                    "name": item.name,
+                    "path": f"{namespace}/{item.relative_to(root).as_posix()}",
+                    "type": "directory" if item.is_dir() else "file",
+                    "size": 0 if item.is_dir() else item.stat().st_size,
+                }
+            )
+    return entries
+
+
+def _read_sandbox_text(thread_id: str, virtual_path: str) -> str:
+    target = _virtual_file(thread_id, virtual_path)
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    if target.suffix.lower() not in TEXT_SUFFIXES:
+        raise HTTPException(status_code=415, detail="Use the preview URL for binary files")
+    return target.read_text(encoding="utf-8", errors="replace")
+
+
+def _preview_target(thread_id: str, virtual_path: str) -> Path:
+    target = _virtual_file(thread_id, virtual_path)
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    return target
+
+
+@app.get("/api/content-builder/pairing/status")
+async def get_pairing_status(
+    authorization: Annotated[str | None, Header()] = None,
+    x_api_key: Annotated[str | None, Header()] = None,
+) -> dict[str, bool]:
+    """Check a local pairing token before the protected stream client mounts."""
+
+    headers = {"authorization": authorization or "", "x-api-key": x_api_key or ""}
+    candidate = extract_request_token(headers)
+    return {"paired": await asyncio.to_thread(token_is_valid, candidate)}
+
+
+@app.get("/api/content-builder/settings/keys", dependencies=[Depends(_require_pairing_token)])
+async def get_key_settings() -> dict[str, dict[str, bool]]:
+    return {"configured": await asyncio.to_thread(_key_status)}
+
+
+@app.put("/api/content-builder/settings/keys", dependencies=[Depends(_require_pairing_token)])
+async def put_key_settings(update: KeyUpdate) -> dict[str, dict[str, bool]]:
+    await asyncio.to_thread(_write_keys, update)
+    return {"configured": await asyncio.to_thread(_key_status)}
+
+
+@app.post("/api/content-builder/settings/keys/verify", dependencies=[Depends(_require_pairing_token)])
+async def verify_key_settings() -> dict[str, Any]:
+    configured = await asyncio.to_thread(_key_status)
+    return {
+        "configured": configured,
+        "ready": configured["qwen"],
+        "message": "Qwen key is configured." if configured["qwen"] else "Configure a Qwen API key first.",
+    }
+
+
+@app.post("/api/content-builder/threads/{thread_id}/uploads/images", dependencies=[Depends(_require_pairing_token)])
+async def upload_image(thread_id: str, image: Annotated[UploadFile, File()]) -> dict[str, Any]:
+    suffix = Path(image.filename or "").suffix.lower()
+    if suffix not in IMAGE_SUFFIXES:
+        raise HTTPException(status_code=415, detail="Upload a PNG, JPEG, GIF, or WebP image")
+    content = await image.read(MAX_UPLOAD_BYTES + 1)
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Image exceeds the 20 MB upload limit")
+    relative_path = f"uploads/images/{uuid.uuid4().hex}{suffix}"
+    target = await asyncio.to_thread(_save_upload, thread_id, relative_path, content)
+    return await asyncio.to_thread(_entry, thread_id, target, relative_path)
+
+
+@app.post("/api/content-builder/threads/{thread_id}/voice/asr", dependencies=[Depends(_require_pairing_token)])
+async def transcribe_audio(thread_id: str, audio: Annotated[UploadFile, File()]) -> dict[str, str]:
+    global _asr_manager
+    suffix = Path(audio.filename or "recording.wav").suffix.lower() or ".wav"
+    content = await audio.read(MAX_UPLOAD_BYTES + 1)
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Audio exceeds the 20 MB upload limit")
+    target = await asyncio.to_thread(_save_upload, thread_id, f"uploads/voice/{uuid.uuid4().hex}{suffix}", content)
+    config = await asyncio.to_thread(load_main_config)
+    try:
+        if _asr_manager is None:
+            from content_builder.voice.asr import ASRManager
+
+            _asr_manager = await asyncio.to_thread(ASRManager, config.voice.asr)
+        transcript = await _asr_manager.recognize_file(target, session_id=thread_id)
+    except (FileNotFoundError, RuntimeError, ValueError) as error:
+        raise HTTPException(status_code=503, detail=f"语音识别不可用：{error}") from error
+    return {"transcript": transcript}
+
+
+@app.get("/api/content-builder/threads/{thread_id}/artifacts", dependencies=[Depends(_require_pairing_token)])
+async def list_artifacts(thread_id: str) -> dict[str, Any]:
+    return {"thread_id": thread_id, "entries": await asyncio.to_thread(_artifact_entries, thread_id)}
+
+
+@app.get("/api/content-builder/threads/{thread_id}/sandbox/tree", dependencies=[Depends(_require_pairing_token)])
+async def list_sandbox_tree(thread_id: str) -> dict[str, Any]:
+    return {"thread_id": thread_id, "entries": await asyncio.to_thread(_sandbox_entries, thread_id)}
+
+
+@app.get("/api/content-builder/threads/{thread_id}/sandbox/file", dependencies=[Depends(_require_pairing_token)])
+async def read_sandbox_file(thread_id: str, path: Annotated[str, Query()]) -> dict[str, Any]:
+    return {"path": path, "content": await asyncio.to_thread(_read_sandbox_text, thread_id, path)}
+
+
+@app.get("/api/content-builder/preview/{thread_id}/{token}/{path:path}")
+async def preview_file(thread_id: str, token: str, path: str) -> FileResponse:
+    if not await asyncio.to_thread(preview_token_is_valid, thread_id, path, token):
+        raise HTTPException(status_code=401, detail="Preview link expired or invalid")
+    target = await asyncio.to_thread(_preview_target, thread_id, path)
+    return FileResponse(target, filename=target.name, content_disposition_type="inline")
+
+
+class WebSocketPCMPlayer:
+    """VoiceResponseSpeaker output adapter that forwards PCM to the phone."""
+
+    def __init__(self, websocket: WebSocket, *, sample_rate: int, channels: int, sample_width: int) -> None:
+        self.websocket = websocket
+        self.sample_rate = sample_rate
+        self.channels = channels
+        self.sample_width = sample_width
+
+    async def start(self) -> None:
+        await self.websocket.send_json(
+            {
+                "type": "ready",
+                "sample_rate": self.sample_rate,
+                "channels": self.channels,
+                "sample_width": self.sample_width,
+            }
+        )
+
+    async def enqueue_pcm(self, pcm_data: bytes, *, segment_start: bool = False) -> None:
+        if segment_start:
+            await self.websocket.send_json({"type": "segment_start"})
+        await self.websocket.send_bytes(pcm_data)
+
+    async def mark_segment_end(self) -> None:
+        await self.websocket.send_json({"type": "segment_end"})
+
+    async def send_emotion(self, emotion: dict[str, str | float]) -> None:
+        await self.websocket.send_json({"type": "emotion", **emotion})
+
+    async def drain(self) -> None:
+        return None
+
+    async def close(self) -> None:
+        return None
+
+
+@app.websocket("/api/content-builder/threads/{thread_id}/voice/tts")
+async def stream_tts(websocket: WebSocket, thread_id: str, token: str = Query("")) -> None:
+    await websocket.accept()
+    if not await asyncio.to_thread(token_is_valid, token):
+        await websocket.close(code=4401, reason="Invalid pairing token")
+        return
+
+    speaker: Any = None
+    try:
+        from content_builder.voice.console import ensure_voice_ready
+        from content_builder.voice.tts import VoiceResponseSpeaker
+
+        config = await asyncio.to_thread(load_main_config)
+        await asyncio.to_thread(ensure_voice_ready, config)
+        player = WebSocketPCMPlayer(
+            websocket,
+            sample_rate=config.voice.tts.sample_rate,
+            channels=config.voice.tts.channels,
+            sample_width=config.voice.tts.sample_width,
+        )
+        speaker = VoiceResponseSpeaker(config.voice, config.secrets, pcm_player=player)
+        await speaker.start()
+        while True:
+            message = await websocket.receive_json()
+            message_type = message.get("type")
+            if message_type == "text":
+                await speaker.feed_token(str(message.get("text") or ""))
+            elif message_type == "flush":
+                await speaker.flush()
+                await websocket.send_json({"type": "complete"})
+                return
+            elif message_type == "cancel":
+                await websocket.send_json({"type": "cancelled"})
+                return
+    except WebSocketDisconnect:
+        return
+    except Exception as exc:
+        await websocket.send_json({"type": "error", "message": str(exc)})
+    finally:
+        if speaker is not None:
+            await speaker.close()
+        with contextlib.suppress(Exception):
+            await websocket.close()

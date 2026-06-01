@@ -169,8 +169,12 @@ class VoiceResponseSpeaker:
             if not text:
                 continue
             emotion = self.emotion_extractor.extract(text)
+            emotion_event = {"text": text, **emotion}
             self.spoken_segments.append(text)
-            self.emotion_events.append({"text": text, **emotion})
+            self.emotion_events.append(emotion_event)
+            send_emotion = getattr(self.pcm_player, "send_emotion", None)
+            if callable(send_emotion):
+                await send_emotion(emotion_event)
             print(
                 "\n[voice] 情绪: "
                 f"{emotion.get('emotion_cn')} ({emotion.get('emotion_en')}) "

@@ -98,6 +98,7 @@ class VoiceStreamingTests(unittest.IsolatedAsyncioTestCase):
                 self.started = False
                 self.closed = False
                 self.chunks: list[bytes] = []
+                self.emotions: list[dict[str, str | float]] = []
 
             async def start(self) -> None:
                 self.started = True
@@ -107,6 +108,9 @@ class VoiceStreamingTests(unittest.IsolatedAsyncioTestCase):
 
             async def mark_segment_end(self) -> None:
                 return None
+
+            async def send_emotion(self, emotion: dict[str, str | float]) -> None:
+                self.emotions.append(emotion)
 
             async def drain(self) -> None:
                 return None
@@ -140,6 +144,7 @@ class VoiceStreamingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(fake_pcm_player.chunks, [b"\x00\x00\x01\x00"])
         self.assertEqual(len(speaker.emotion_events), 1)
         self.assertEqual(speaker.emotion_events[0]["text"], "好的，资料整理完成了。")
+        self.assertEqual(fake_pcm_player.emotions, speaker.emotion_events)
         printed = stdout.getvalue()
         self.assertIn("[voice] 情绪:", printed)
         self.assertIn("文本: 好的，资料整理完成了。", printed)

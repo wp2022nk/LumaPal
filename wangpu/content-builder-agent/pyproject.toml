@@ -15,7 +15,13 @@ dependencies = [
   "tavily-python==0.7.25",
   "dashscope==1.25.19",
   "funasr==1.2.7",
+  "torch==2.7.0",
+  "torchaudio==2.7.0",
   "sounddevice==0.5.1",
+  "python-multipart==0.0.20",
+  "fastapi==0.136.3",
+  "httpx==0.28.1",
+  "uvicorn==0.48.0",
 ]
 
 [tool.setuptools]
@@ -28,4 +34,5 @@ packages = [
   "content_builder.voice.tts",
   "content_builder.voice.tts.providers",
   "content_builder.voice.emotion",
+  "content_builder.server",
 ]

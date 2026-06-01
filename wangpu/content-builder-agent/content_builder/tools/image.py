@@ -9,9 +9,11 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from langchain.tools import ToolRuntime
 from langchain_core.tools import tool
 
 from content_builder.config import load_main_config
+from content_builder.thread_storage import runtime_thread_id, thread_paths
 from qwen_image_tool import DEFAULT_QWEN_IMAGE_MODEL, generate_qwen_image
 
 
@@ -26,20 +28,25 @@ ALLOWED_IMAGE_SIZES = {
 }
 
 
-def output_root() -> Path:
-    root = load_main_config().output_root.resolve()
+def output_root(runtime: ToolRuntime | None = None) -> Path:
+    config = load_main_config()
+    root = (
+        thread_paths(runtime_thread_id(runtime), output_root=config.output_root).artifacts
+        if runtime is not None
+        else config.output_root.resolve()
+    )
     root.mkdir(parents=True, exist_ok=True)
     return root
 
 
-def resolve_image_output_path(output_path: str) -> Path:
+def resolve_image_output_path(output_path: str, *, root: Path | None = None) -> Path:
     """Resolve an image target while restricting it to the output workspace."""
 
     raw_path = str(output_path).strip().strip("\"'")
     if not raw_path:
         raise ValueError("output_path must not be empty")
 
-    root = output_root()
+    root = (root or output_root()).resolve()
     normalized = raw_path.replace("\\", "/")
     if normalized == "/output" or normalized.startswith("/output/"):
         relative = normalized.removeprefix("/output").lstrip("/")
@@ -62,7 +69,12 @@ def _error_path_for(output_path: Path) -> Path:
 
 
 @tool
-def generate_image(prompt: str, output_path: str, size: str = "1024*1024") -> str:
+def generate_image(
+    prompt: str,
+    output_path: str,
+    runtime: ToolRuntime,
+    size: str = "1024*1024",
+) -> str:
     """Generate a PNG image for a user artifact with Qwen Image.
 
     Parameters:
@@ -78,7 +90,7 @@ def generate_image(prompt: str, output_path: str, size: str = "1024*1024") -> st
         return f"Image generation failed; unsupported size {size!r}. Allowed sizes: {allowed}"
 
     try:
-        resolved_output_path = resolve_image_output_path(output_path)
+        resolved_output_path = resolve_image_output_path(output_path, root=output_root(runtime))
     except ValueError as exc:
         return f"Image generation failed; local image was not saved. Reason: {exc}"
 

@@ -136,10 +136,10 @@ def generate_qwen_image(
     from dashscope import MultiModalConversation
     import dashscope
 
-    api_key = os.environ.get("DASHSCOPE_API_KEY")
+    api_key = os.environ.get("QWEN_API_KEY")
     if not api_key:
         raise RuntimeError(
-            "DASHSCOPE_API_KEY is not set. 请在 secrets.local.yaml 中配置 "
+            "QWEN_API_KEY is not set. 请在 secrets.local.yaml 中配置 "
             "dashscope.api_key，或配置 qwen.api_key 供工具复用。"
         )
 

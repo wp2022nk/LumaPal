@@ -1,0 +1,44 @@
+{
+  "name": "content-builder-android-app",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "android:add": "cap add android",
+    "android:sync": "cap sync android",
+    "android:open": "cap open android",
+    "android:debug": "powershell -ExecutionPolicy Bypass -File ./scripts/android-debug.ps1",
+    "android:prepare-sdk": "powershell -ExecutionPolicy Bypass -File ./scripts/prepare-android-sdk.ps1"
+  },
+  "dependencies": {
+    "@capacitor/android": "7.4.3",
+    "@capacitor/camera": "7.0.2",
+    "@capacitor/core": "7.4.3",
+    "@langchain/core": "1.1.48",
+    "@langchain/langgraph-sdk": "1.9.10",
+    "@langchain/react": "1.0.10",
+    "lucide-react": "0.468.0",
+    "pdfjs-dist": "4.10.38",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-markdown": "9.0.3",
+    "remark-gfm": "4.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "7.4.3",
+    "@testing-library/jest-dom": "6.6.3",
+    "@testing-library/react": "16.1.0",
+    "@types/react": "19.0.3",
+    "@types/react-dom": "19.0.2",
+    "@vitejs/plugin-react": "4.3.4",
+    "jsdom": "25.0.1",
+    "typescript": "5.7.3",
+    "vite": "6.0.7",
+    "vitest": "2.1.8"
+  }
+}

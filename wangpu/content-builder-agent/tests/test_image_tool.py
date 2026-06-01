@@ -36,6 +36,7 @@ class GenerateImageToolTests(unittest.TestCase):
                 result = generate_image.func(
                     prompt="scene",
                     output_path="/output/storybooks/moon/images/page-01.png",
+                    runtime=object(),
                 )
             error_path = root / "storybooks" / "moon" / "images" / "page-01-error.txt"
             self.assertIn("Image generation failed", result)

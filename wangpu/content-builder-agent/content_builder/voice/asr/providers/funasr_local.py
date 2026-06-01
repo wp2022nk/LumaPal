@@ -16,12 +16,15 @@ try:
     from funasr.utils.postprocess_utils import rich_transcription_postprocess
 
     FUNASR_AVAILABLE = True
-except ImportError:
+except Exception as error:
     AutoModel = None
     FUNASR_AVAILABLE = False
+    FUNASR_IMPORT_ERROR = f"{type(error).__name__}: {error}"
 
     def rich_transcription_postprocess(text: str) -> str:
         return text
+else:
+    FUNASR_IMPORT_ERROR = ""
 
 
 class FunASRProvider(ASRProviderBase):
@@ -29,7 +32,10 @@ class FunASRProvider(ASRProviderBase):
 
     def __init__(self, config: VoiceASRConfig) -> None:
         if not FUNASR_AVAILABLE:
-            raise RuntimeError("缺少 funasr 依赖，请先在项目环境中安装 funasr。")
+            raise RuntimeError(
+                "FunASR 无法加载。请运行 `uv sync` 安装本地 ASR 依赖；"
+                f"底层错误：{FUNASR_IMPORT_ERROR}"
+            )
 
         self.config = config
         self.model_dir = Path(config.model_dir)

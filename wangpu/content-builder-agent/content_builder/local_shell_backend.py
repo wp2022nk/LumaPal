@@ -82,12 +82,27 @@ def _quote_path(path: Path) -> str:
     return f'"{path}"'
 
 
-def _resolve_virtual_path(root_dir: Path, raw_path: str) -> Path:
+def _resolve_virtual_path(
+    root_dir: Path,
+    raw_path: str,
+    path_aliases: dict[str, Path] | None = None,
+) -> Path:
     """Resolve Deep Agents-style paths into the configured root directory."""
 
     cleaned = raw_path.strip("\"'")
     if not cleaned:
         raise ValueError("empty path")
+
+    normalized = cleaned.replace("\\", "/")
+    for virtual_path, physical_path in sorted((path_aliases or {}).items(), reverse=True):
+        virtual_root = virtual_path.rstrip("/")
+        if normalized == virtual_root or normalized.startswith(f"{virtual_root}/"):
+            relative = normalized.removeprefix(virtual_root).lstrip("/")
+            alias_root = physical_path.resolve()
+            resolved = (alias_root / relative).resolve()
+            if resolved != alias_root and alias_root not in resolved.parents:
+                raise ValueError(f"path escapes aliased root: {raw_path}")
+            return resolved
 
     path = Path(cleaned)
     if cleaned.startswith(("/", "\\")) or path.is_absolute():
@@ -102,7 +117,11 @@ def _resolve_virtual_path(root_dir: Path, raw_path: str) -> Path:
     return resolved
 
 
-def _handle_mkdir(command: str, root_dir: Path) -> LocalExecuteResult | None:
+def _handle_mkdir(
+    command: str,
+    root_dir: Path,
+    path_aliases: dict[str, Path] | None = None,
+) -> LocalExecuteResult | None:
     """Safely handle mkdir without delegating to the host shell."""
 
     parts = _split_command(command)
@@ -120,7 +139,7 @@ def _handle_mkdir(command: str, root_dir: Path) -> LocalExecuteResult | None:
     created: list[str] = []
     try:
         for target in targets:
-            resolved = _resolve_virtual_path(root_dir, target)
+            resolved = _resolve_virtual_path(root_dir, target, path_aliases)
             resolved.mkdir(parents=True, exist_ok=True)
             created.append(str(resolved))
     except Exception as exc:
@@ -153,6 +172,19 @@ def _rewrite_command(command: str, config: LocalShellConfig) -> str:
     return command
 
 
+def _rewrite_path_aliases(command: str, path_aliases: dict[str, Path] | None) -> str:
+    """Translate virtual artifact paths before delegating to the host shell."""
+
+    rewritten = command
+    for virtual_path, physical_path in sorted((path_aliases or {}).items(), reverse=True):
+        virtual_root = virtual_path.rstrip("/")
+        physical_root = physical_path.resolve().as_posix()
+        rewritten = rewritten.replace(f"{virtual_root}/", f"{physical_root}/")
+        if rewritten.endswith(virtual_root):
+            rewritten = f"{rewritten[:-len(virtual_root)]}{physical_root}"
+    return rewritten
+
+
 def _is_dangerous(command: str) -> str | None:
     normalized = command.lower()
     for pattern in DANGEROUS_PATTERNS:
@@ -180,7 +212,7 @@ def _approval_prompt(command: str, rewritten: str, root_dir: Path, command_name:
     return approved
 
 
-def _build_env(config: LocalShellConfig) -> dict[str, str]:
+def _build_env(config: LocalShellConfig, extra_env: dict[str, str] | None = None) -> dict[str, str]:
     env = {
         "PATH": os.environ.get("PATH", ""),
         "PYTHONIOENCODING": "utf-8",
@@ -190,6 +222,7 @@ def _build_env(config: LocalShellConfig) -> dict[str, str]:
         scripts_dir = str(config.python.parent)
         env["PATH"] = scripts_dir + os.pathsep + env["PATH"]
         env["VIRTUAL_ENV"] = str(config.python.parent.parent)
+    env.update(extra_env or {})
     return env
 
 
@@ -207,7 +240,13 @@ def _dispatch_sandbox_output(data: dict[str, Any]) -> None:
         return
 
 
-def create_confirmed_local_shell_backend(root_dir: Path, config: LocalShellConfig) -> Any:
+def create_confirmed_local_shell_backend(
+    root_dir: Path,
+    config: LocalShellConfig,
+    *,
+    path_aliases: dict[str, Path] | None = None,
+    extra_env: dict[str, str] | None = None,
+) -> Any:
     """Create a guarded LocalShellBackend instance.
 
     ``deepagents`` is imported lazily so the package can still be inspected in
@@ -391,7 +430,11 @@ def create_confirmed_local_shell_backend(root_dir: Path, config: LocalShellConfi
                     )
                 )
 
-            rewritten = _rewrite_command(command, config)
+            mkdir_result = _handle_mkdir(command, root_dir, path_aliases)
+            if mkdir_result is not None:
+                return mkdir_result
+
+            rewritten = _rewrite_command(_rewrite_path_aliases(command, path_aliases), config)
             if config.require_confirmation and not _approval_prompt(
                 command,
                 rewritten,
@@ -400,13 +443,9 @@ def create_confirmed_local_shell_backend(root_dir: Path, config: LocalShellConfi
             ):
                 return LocalExecuteResult(output="Command not executed: user denied execution.")
 
-            mkdir_result = _handle_mkdir(rewritten, root_dir)
-            if mkdir_result is not None:
-                return mkdir_result
-
             return self._execute_streaming(rewritten, timeout=kwargs.get("timeout"))
 
-    env = _build_env(config)
+    env = _build_env(config, extra_env)
     try:
         return ConfirmedLocalShellBackend(
             root_dir=root_dir,

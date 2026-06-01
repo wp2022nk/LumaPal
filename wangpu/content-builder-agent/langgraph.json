@@ -1,7 +1,19 @@
 {
   "dependencies": ["."],
   "graphs": {
-    "content_writer": "./content_builder/langgraph_app.py:agent"
+    "content_writer": "./content_builder/langgraph_app.py:make_agent"
+  },
+  "auth": {
+    "path": "./content_builder/server/auth.py:auth"
+  },
+  "http": {
+    "app": "./content_builder/server/api.py:app",
+    "cors": {
+      "allow_origins": ["*"],
+      "allow_methods": ["*"],
+      "allow_headers": ["*"]
+    },
+    "enable_custom_route_auth": false
   },
   "python_version": "3.11",
   "pip_installer": "pip",

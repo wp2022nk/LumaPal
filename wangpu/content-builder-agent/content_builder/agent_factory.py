@@ -17,12 +17,13 @@ warnings.filterwarnings(
     message=r"The default value of `allowed_objects` will change.*",
 )
 
-from deepagents import create_deep_agent
-from deepagents.backends import FilesystemBackend
+from deepagents import FilesystemPermission, create_deep_agent
+from deepagents.backends import CompositeBackend, FilesystemBackend
 from langgraph.checkpoint.memory import MemorySaver
 
 from .config import (
     DEFAULT_MAIN_CONFIG,
+    PROJECT_DIR,
     LocalShellConfig,
     MainAgentConfig,
     create_qwen_model,
@@ -31,6 +32,7 @@ from .config import (
     resolve_project_path,
 )
 from .local_shell_backend import create_confirmed_local_shell_backend
+from .thread_storage import runtime_thread_id, thread_paths
 from .tools import get_tools
 
 
@@ -126,6 +128,55 @@ def _build_backend(config: MainAgentConfig, *, require_confirmation: bool | None
     raise ValueError(f"Unsupported backend.type: {config.backend.type}")
 
 
+def _build_server_backend(config: MainAgentConfig) -> Any:
+    """Build a thread-scoped backend factory for Agent Server requests."""
+
+    if config.backend.type != "local_shell" or not config.backend.local_shell:
+        return _build_backend(config, require_confirmation=False)
+
+    local_shell = replace(config.backend.local_shell, require_confirmation=False)
+    if local_shell.python and not local_shell.python.exists():
+        local_shell = replace(local_shell, python=None)
+
+    def backend_factory(runtime: Any) -> Any:
+        paths = thread_paths(runtime_thread_id(runtime), output_root=config.output_root)
+        path_aliases = {
+            "/output": paths.artifacts,
+            "/games": paths.games,
+            "/project": PROJECT_DIR,
+        }
+        shell_backend = create_confirmed_local_shell_backend(
+            paths.workspace,
+            local_shell,
+            path_aliases=path_aliases,
+            extra_env={
+                "CONTENT_BUILDER_OUTPUT_DIR": str(paths.artifacts),
+                "CONTENT_BUILDER_GAMES_DIR": str(paths.games),
+                "CONTENT_BUILDER_PROJECT_DIR": str(PROJECT_DIR),
+            },
+        )
+        return CompositeBackend(
+            default=shell_backend,
+            routes={
+                "/output/": FilesystemBackend(root_dir=paths.artifacts, virtual_mode=True),
+                "/games/": FilesystemBackend(root_dir=paths.games, virtual_mode=True),
+                "/project/": FilesystemBackend(root_dir=PROJECT_DIR, virtual_mode=True),
+            },
+        )
+
+    return backend_factory
+
+
+SERVER_PERMISSIONS = [
+    FilesystemPermission(
+        operations=["read"],
+        paths=["/project/secrets.local.yaml", "/project/*.local.yaml"],
+        mode="deny",
+    ),
+    FilesystemPermission(operations=["write"], paths=["/project/**"], mode="deny"),
+]
+
+
 @lru_cache(maxsize=16)
 def _create_content_writer_cached(config_path_key: str, runtime_mode: str):
     """按配置文件缓存 Agent 实例。
@@ -140,18 +191,20 @@ def _create_content_writer_cached(config_path_key: str, runtime_mode: str):
     system_prompt = _read_system_prompt(config)
 
     server_mode = runtime_mode in {"server", "web"}
-    backend = _build_backend(config, require_confirmation=False if server_mode else None)
+    backend = _build_server_backend(config) if server_mode else _build_backend(config)
 
     agent_kwargs = dict(
         name=config.name,
         model=model,
         system_prompt=system_prompt,
-        memory=config.memory,
-        skills=config.skills,
+        memory=["/project/AGENTS.md"] if server_mode else config.memory,
+        skills=["/project/skills/"] if server_mode else config.skills,
         tools=get_tools(config.tools),
         subagents=_build_subagents(config, model),
         backend=backend,
     )
+    if server_mode:
+        agent_kwargs["permissions"] = SERVER_PERMISSIONS
 
     # LangGraph Agent Server owns persistence/checkpointing. The CLI keeps a
     # process-local MemorySaver so stream_chat sessions still share context.
@@ -176,3 +229,9 @@ def create_content_writer(config_path: str | Path | None = None, *, runtime_mode
 
     resolved_config = resolve_project_path(config_path or DEFAULT_MAIN_CONFIG).resolve()
     return _create_content_writer_cached(str(resolved_config), runtime_mode)
+
+
+def clear_content_writer_cache() -> None:
+    """Drop cached agents after local settings change."""
+
+    _create_content_writer_cached.cache_clear()

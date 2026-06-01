@@ -1,0 +1,30 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Content Builder App: dev preview",
+      "type": "shell",
+      "command": "npm run dev -- --host",
+      "problemMatcher": [],
+      "isBackground": true
+    },
+    {
+      "label": "Content Builder App: build",
+      "type": "shell",
+      "command": "npm run build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Content Builder App: sync Android",
+      "type": "shell",
+      "command": "npx cap sync android",
+      "problemMatcher": []
+    },
+    {
+      "label": "Content Builder App: assemble debug APK",
+      "type": "shell",
+      "command": "npm run android:debug",
+      "problemMatcher": []
+    }
+  ]
+}

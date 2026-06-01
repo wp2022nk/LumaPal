@@ -17,7 +17,7 @@ from typing import Any
 
 PROJECT_DIR = Path(__file__).resolve().parents[3]
 WORKSPACE_ROOT = PROJECT_DIR.parents[1]
-OUTPUT_ROOT = WORKSPACE_ROOT / "output"
+OUTPUT_ROOT = Path(os.environ.get("CONTENT_BUILDER_OUTPUT_DIR", WORKSPACE_ROOT / "output")).resolve()
 ALLOWED_LAYOUTS = {
     "full-bleed-title",
     "image-top-text-bottom",

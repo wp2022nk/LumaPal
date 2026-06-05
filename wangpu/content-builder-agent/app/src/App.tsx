@@ -190,6 +190,7 @@ function AuthenticatedAgentWorkspace({
   const ttsSeenText = useRef("");
   const speakResponse = useRef(false);
   const previousLoading = useRef(false);
+  const lastHistorySnapshot = useRef("");
   const fileInput = useRef<HTMLInputElement>(null);
 
   const stream = useStream<AgentState>({
@@ -212,6 +213,24 @@ function AuthenticatedAgentWorkspace({
   const messages = stream.messages as unknown as AppMessage[];
   const todos = stream.values.todos || [];
   const allSubagents = [...stream.subagents.values()] as SubagentStreamInterface[];
+
+  useEffect(() => {
+    if (!threadId || stream.isLoading || messages.length === 0) {
+      return;
+    }
+    const lastMessage = messages[messages.length - 1];
+    const snapshotKey = `${threadId}:${messages.length}:${lastMessage?.id || messageText(lastMessage)}`;
+    if (snapshotKey === lastHistorySnapshot.current) {
+      return;
+    }
+    lastHistorySnapshot.current = snapshotKey;
+    void runtime.saveHistorySnapshot(threadId, messages, {
+      source: "content-builder-app",
+      saved_by: "mobile-client",
+    }).catch((error) => {
+      console.warn("Failed to save history snapshot", error);
+    });
+  }, [messages, runtime, stream.isLoading, threadId]);
 
   const refreshThreads = useCallback(async () => {
     if (!connection.pairingToken) {
@@ -412,6 +431,9 @@ function AuthenticatedAgentWorkspace({
   }
 
   async function startRecording() {
+    if (recorderRef.current) {
+      return;
+    }
     try {
       void StreamingPcmPlayer.unlockAudio().catch(() => undefined);
       setVoiceEmotion(null);
@@ -649,6 +671,7 @@ function ChatTab({
             <button
               className={`icon-button ${recording ? "recording" : ""}`}
               onPointerDown={onRecordStart}
+              onPointerCancel={onRecordStop}
               onPointerUp={onRecordStop}
               onPointerLeave={() => recording && onRecordStop()}
               title="按住说话"

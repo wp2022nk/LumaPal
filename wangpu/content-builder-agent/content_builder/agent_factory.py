@@ -32,6 +32,7 @@ from .config import (
     resolve_project_path,
 )
 from .local_shell_backend import create_confirmed_local_shell_backend
+from .growth_memory import memory_root
 from .thread_storage import runtime_thread_id, thread_paths
 from .tools import get_tools
 
@@ -140,9 +141,12 @@ def _build_server_backend(config: MainAgentConfig) -> Any:
 
     def backend_factory(runtime: Any) -> Any:
         paths = thread_paths(runtime_thread_id(runtime), output_root=config.output_root)
+        memory_dir = memory_root()
+        memory_dir.mkdir(parents=True, exist_ok=True)
         path_aliases = {
             "/output": paths.artifacts,
             "/games": paths.games,
+            "/memory": memory_dir,
             "/project": PROJECT_DIR,
         }
         shell_backend = create_confirmed_local_shell_backend(
@@ -152,6 +156,7 @@ def _build_server_backend(config: MainAgentConfig) -> Any:
             extra_env={
                 "CONTENT_BUILDER_OUTPUT_DIR": str(paths.artifacts),
                 "CONTENT_BUILDER_GAMES_DIR": str(paths.games),
+                "CONTENT_BUILDER_MEMORY_DIR": str(memory_dir),
                 "CONTENT_BUILDER_PROJECT_DIR": str(PROJECT_DIR),
             },
         )
@@ -160,6 +165,7 @@ def _build_server_backend(config: MainAgentConfig) -> Any:
             routes={
                 "/output/": FilesystemBackend(root_dir=paths.artifacts, virtual_mode=True),
                 "/games/": FilesystemBackend(root_dir=paths.games, virtual_mode=True),
+                "/memory/": FilesystemBackend(root_dir=memory_dir, virtual_mode=True),
                 "/project/": FilesystemBackend(root_dir=PROJECT_DIR, virtual_mode=True),
             },
         )

@@ -16,6 +16,7 @@ from ..config import PROJECT_DIR
 
 PAIRING_FILE = PROJECT_DIR / "pairing.local.yaml"
 PAIRING_ENV = "CONTENT_BUILDER_PAIRING_TOKEN"
+PAIRING_PRINTED_ENV = "CONTENT_BUILDER_PAIRING_TOKEN_PRINTED"
 PREVIEW_TTL_SECONDS = 60 * 30
 
 
@@ -43,6 +44,16 @@ def pairing_token() -> str:
         encoding="utf-8",
     )
     return generated
+
+
+def print_pairing_token_hint_once() -> None:
+    """Print the LAN pairing token for direct `langgraph dev` runs."""
+
+    if os.environ.get(PAIRING_PRINTED_ENV) == "1":
+        return
+    os.environ[PAIRING_PRINTED_ENV] = "1"
+    print("Pair the phone with this token:", flush=True)
+    print(pairing_token(), flush=True)
 
 
 def extract_request_token(headers: dict[bytes, bytes] | dict[str, str]) -> str:

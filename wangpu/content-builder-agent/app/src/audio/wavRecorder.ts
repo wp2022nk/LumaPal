@@ -6,8 +6,15 @@ export class WavRecorder {
   private chunks: Float32Array[] = [];
 
   async start(): Promise<void> {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("当前环境不支持麦克风录音，请确认已授予录音权限。");
+    }
     this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    this.context = new AudioContext();
+    const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextConstructor) {
+      throw new Error("当前环境不支持音频采集。");
+    }
+    this.context = new AudioContextConstructor();
     this.source = this.context.createMediaStreamSource(this.stream);
     this.processor = this.context.createScriptProcessor(4096, 1, 1);
     this.processor.onaudioprocess = (event) => {

@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import logging
 import mimetypes
 import os
 import tempfile
+import threading
 import uuid
 from pathlib import Path
 from typing import Annotated, Any
@@ -14,6 +16,7 @@ from urllib.parse import quote
 
 import yaml
 from fastapi import (
+    Body,
     Depends,
     FastAPI,
     File,
@@ -30,15 +33,18 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 from content_builder.config import DEFAULT_SECRETS_FILE, load_main_config
+from content_builder.history import save_thread_history_snapshot
 from content_builder.server.security import (
     extract_request_token,
     make_preview_token,
+    print_pairing_token_hint_once,
     preview_token_is_valid,
     token_is_valid,
 )
 from content_builder.thread_storage import resolve_thread_file, thread_paths
 
 
+logger = logging.getLogger(__name__)
 app = FastAPI(title="Content Builder Android API")
 app.add_middleware(
     CORSMiddleware,
@@ -65,6 +71,8 @@ TEXT_SUFFIXES = {
     ".yml",
 }
 _asr_manager: Any = None
+_asr_initialization_error: str | None = None
+_asr_lock = threading.Lock()
 
 
 @app.exception_handler(ValueError)
@@ -78,6 +86,36 @@ class KeyUpdate(BaseModel):
     qwen: str | None = None
     dashscope: str | None = None
     tavily: str | None = None
+
+
+def _ensure_asr_manager_sync(*, force_retry: bool = False) -> Any:
+    global _asr_initialization_error, _asr_manager
+    if _asr_manager is not None:
+        return _asr_manager
+    with _asr_lock:
+        if _asr_manager is not None:
+            return _asr_manager
+        if _asr_initialization_error and not force_retry:
+            raise RuntimeError(_asr_initialization_error)
+        try:
+            config = load_main_config()
+            if not config.voice.enabled:
+                raise RuntimeError("Voice is disabled in main_agent.yaml")
+            from content_builder.voice.asr import ASRManager
+
+            _asr_manager = ASRManager(config.voice.asr)
+            _asr_initialization_error = None
+            return _asr_manager
+        except (FileNotFoundError, RuntimeError, ValueError) as error:
+            _asr_initialization_error = str(error)
+            raise
+
+
+def preload_asr_on_import() -> None:
+    try:
+        _ensure_asr_manager_sync(force_retry=True)
+    except (FileNotFoundError, RuntimeError, ValueError) as error:
+        logger.warning("FunASR preload failed: %s", error)
 
 
 def _require_pairing_token(
@@ -272,27 +310,50 @@ async def upload_image(thread_id: str, image: Annotated[UploadFile, File()]) -> 
         raise HTTPException(status_code=413, detail="Image exceeds the 20 MB upload limit")
     relative_path = f"uploads/images/{uuid.uuid4().hex}{suffix}"
     target = await asyncio.to_thread(_save_upload, thread_id, relative_path, content)
-    return await asyncio.to_thread(_entry, thread_id, target, relative_path)
+    entry = await asyncio.to_thread(_entry, thread_id, target, relative_path)
+    await asyncio.to_thread(
+        save_thread_history_snapshot,
+        thread_id,
+        event={"type": "upload_image", "file": entry},
+    )
+    return entry
 
 
 @app.post("/api/content-builder/threads/{thread_id}/voice/asr", dependencies=[Depends(_require_pairing_token)])
 async def transcribe_audio(thread_id: str, audio: Annotated[UploadFile, File()]) -> dict[str, str]:
-    global _asr_manager
     suffix = Path(audio.filename or "recording.wav").suffix.lower() or ".wav"
     content = await audio.read(MAX_UPLOAD_BYTES + 1)
     if len(content) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="Audio exceeds the 20 MB upload limit")
     target = await asyncio.to_thread(_save_upload, thread_id, f"uploads/voice/{uuid.uuid4().hex}{suffix}", content)
-    config = await asyncio.to_thread(load_main_config)
     try:
-        if _asr_manager is None:
-            from content_builder.voice.asr import ASRManager
-
-            _asr_manager = await asyncio.to_thread(ASRManager, config.voice.asr)
-        transcript = await _asr_manager.recognize_file(target, session_id=thread_id)
+        asr_manager = await asyncio.to_thread(_ensure_asr_manager_sync, force_retry=True)
+        transcript = await asr_manager.recognize_file(target, session_id=thread_id)
     except (FileNotFoundError, RuntimeError, ValueError) as error:
         raise HTTPException(status_code=503, detail=f"语音识别不可用：{error}") from error
     return {"transcript": transcript}
+
+
+@app.post("/api/content-builder/threads/{thread_id}/history/snapshot", dependencies=[Depends(_require_pairing_token)])
+async def save_history_snapshot(
+    thread_id: str,
+    snapshot: Annotated[dict[str, Any], Body(default_factory=dict)],
+) -> dict[str, str]:
+    messages = snapshot.get("messages")
+    metadata = snapshot.get("metadata")
+    growth_events = snapshot.get("growth_events") if "growth_events" in snapshot else None
+    artifact_refs = snapshot.get("artifact_refs") if "artifact_refs" in snapshot else None
+    profile_updates = snapshot.get("profile_updates") if "profile_updates" in snapshot else None
+    path = await asyncio.to_thread(
+        save_thread_history_snapshot,
+        thread_id,
+        messages=messages if isinstance(messages, list) else [],
+        metadata=metadata if isinstance(metadata, dict) else {},
+        growth_events=growth_events if isinstance(growth_events, list) else None,
+        artifact_refs=artifact_refs if isinstance(artifact_refs, list) else None,
+        profile_updates=profile_updates if isinstance(profile_updates, dict) else None,
+    )
+    return {"thread_id": thread_id, "path": str(path)}
 
 
 @app.get("/api/content-builder/threads/{thread_id}/artifacts", dependencies=[Depends(_require_pairing_token)])
@@ -398,3 +459,7 @@ async def stream_tts(websocket: WebSocket, thread_id: str, token: str = Query(""
             await speaker.close()
         with contextlib.suppress(Exception):
             await websocket.close()
+
+
+print_pairing_token_hint_once()
+preload_asr_on_import()

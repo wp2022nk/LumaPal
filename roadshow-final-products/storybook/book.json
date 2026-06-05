@@ -1,0 +1,67 @@
+{
+  "title": "小水滴滴滴的云朵大冒险",
+  "slug": "didi-cloud-adventure",
+  "audience": "3-7岁",
+  "theme": "水循环科学启蒙",
+  "format": {
+    "page_size": "square-210mm",
+    "page_count": 6
+  },
+  "visual_bible": "主角小水滴滴滴是半透明蓝色水滴，有小圆眼、淡粉脸颊和小小透明挎包；画风为柔软水彩和 gouache 质感；不要出现孩子、家长、机器人、屏幕、文字、水印或 logo。",
+  "pages": [
+    {
+      "id": "page-00-cover",
+      "type": "cover",
+      "text": "一场从茶杯到天空、从云朵到花园的旅行。",
+      "illustration_prompt": "封面：小水滴滴滴站在云朵和雨滴之间，远处有温暖茶杯、花园和太阳光。",
+      "image_path": "images/page-00-cover.png",
+      "alt_text": "小水滴滴滴在云朵和雨滴之间开始旅行",
+      "layout": "full-bleed-title"
+    },
+    {
+      "id": "page-01",
+      "type": "page",
+      "text": "滴滴住在一只温暖的茶杯里。杯口冒出白白的雾，像一条轻轻摇晃的小路。\n滴滴伸伸懒腰：“咦，我好像变轻了！”",
+      "illustration_prompt": "温暖茶杯里，小水滴滴滴发现杯口的白雾。",
+      "image_path": "images/page-01.png",
+      "alt_text": "滴滴在温暖茶杯里发现白雾",
+      "layout": "image-top-text-bottom"
+    },
+    {
+      "id": "page-02",
+      "type": "page",
+      "text": "热热的空气把滴滴托起来。滴滴变成了小小的水蒸气，跟着白雾往天空飘。\n它越飞越高，茶杯变小了，蓝天变近了。",
+      "illustration_prompt": "滴滴变成水蒸气，从茶杯上方轻轻飘向天空。",
+      "image_path": "images/page-02.png",
+      "alt_text": "滴滴化作水蒸气飘上天空",
+      "layout": "image-top-text-bottom"
+    },
+    {
+      "id": "page-03",
+      "type": "page",
+      "text": "滴滴来到云朵王国。这里有圆圆的小水滴，也有雪花宝宝和小冰块。\n云朵说：“水有很多样子，你们都是会旅行的朋友。”",
+      "illustration_prompt": "滴滴来到云朵王国，见到小水滴、雪花和冰块朋友。",
+      "image_path": "images/page-03.png",
+      "alt_text": "滴滴在云朵王国遇见不同形态的水朋友",
+      "layout": "image-top-text-bottom"
+    },
+    {
+      "id": "page-04",
+      "type": "page",
+      "text": "小水滴越来越多，云朵变得胖胖的、沉沉的。\n滴滴和朋友们手拉手，哗啦啦，变成雨滴落向大地。",
+      "illustration_prompt": "云朵变重，小水滴滴滴和朋友们化作雨滴落下，远方有花园和暖阳。",
+      "image_path": "images/page-04.png",
+      "alt_text": "滴滴和水滴朋友们从云朵变成雨落下",
+      "layout": "full-bleed-caption"
+    },
+    {
+      "id": "page-05",
+      "type": "page",
+      "text": "滴滴落进花园，帮一朵蓝色小花喝饱了水。\n太阳出来后，滴滴又变轻了。它挥挥手，重新飘向天空，开始下一次旅行。",
+      "illustration_prompt": "雨后的花园和暖阳，滴滴完成水循环并准备再次飘向天空。",
+      "image_path": "images/page-05.png",
+      "alt_text": "滴滴在花园和太阳光中开始下一次旅行",
+      "layout": "image-top-text-bottom"
+    }
+  ]
+}

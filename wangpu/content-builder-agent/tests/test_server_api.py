@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import tempfile
 import unittest
+import json
 from asyncio import run
 from pathlib import Path
 from unittest.mock import patch
@@ -42,6 +43,8 @@ class ServerAPITests(unittest.TestCase):
             {
                 "CONTENT_BUILDER_PAIRING_TOKEN": "phone-token",
                 "CONTENT_BUILDER_OUTPUT_DIR": self.temporary_dir.name,
+                "CONTENT_BUILDER_HISTORY_DIR": str(Path(self.temporary_dir.name) / "history"),
+                "CONTENT_BUILDER_MEMORY_DIR": str(Path(self.temporary_dir.name) / "history" / "memory"),
                 "CONTENT_BUILDER_SECRETS_FILE": str(self.secrets_path),
             },
         )
@@ -114,6 +117,93 @@ class ServerAPITests(unittest.TestCase):
 
         wrong_thread_url = listed["preview_url"].replace("session-a", "session-b")
         self.assertEqual(self.client.get(wrong_thread_url).status_code, 401)
+
+    def test_history_snapshot_saves_messages_and_mirrors_thread_files(self) -> None:
+        upload = self.client.post(
+            "/api/content-builder/threads/session-a/uploads/images",
+            headers=self.headers,
+            files={"image": ("camera.png", b"\x89PNG\r\n\x1a\nfake", "image/png")},
+        )
+        self.assertEqual(upload.status_code, 200)
+
+        response = self.client.post(
+            "/api/content-builder/threads/session-a/history/snapshot",
+            headers=self.headers,
+            json={
+                "messages": [
+                    {"type": "human", "content": [{"type": "text", "text": "hello"}]},
+                    {"type": "ai", "content": "done"},
+                ],
+                "metadata": {"source": "test"},
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        history_path = Path(response.json()["path"])
+        self.assertEqual(history_path.name, "history.json")
+        payload = json.loads(history_path.read_text(encoding="utf-8"))
+        self.assertIn("session-a", payload["conversations"])
+        self.assertEqual(payload["conversations"]["session-a"]["metadata"], {"source": "test"})
+        self.assertEqual(payload["conversations"]["session-a"]["messages"][1]["content"], "done")
+        self.assertTrue((history_path.parent / "uploads" / "images").is_dir())
+        self.assertFalse((history_path.parent / "session-a").exists())
+        self.assertTrue(any(item["path"].startswith("uploads/images/") for item in payload["files"]))
+
+    def test_history_snapshot_accepts_growth_fields_and_updates_single_profile(self) -> None:
+        response = self.client.post(
+            "/api/content-builder/threads/session-a/history/snapshot",
+            headers=self.headers,
+            json={
+                "messages": [{"type": "human", "content": "我喜欢水滴闯关游戏"}],
+                "growth_events": [
+                    {
+                        "type": "game_preference",
+                        "summary": "孩子主动选择水循环闯关玩法",
+                        "confidence": 0.82,
+                    }
+                ],
+                "artifact_refs": [{"type": "game", "path": "games/didi-cloud-adventure/index.html"}],
+                "profile_updates": {
+                    "summary": "孩子对水的变化和闯关式探索表现出稳定兴趣。",
+                    "interests": ["水的变化"],
+                    "game_type_preferences": ["闯关式知识游戏"],
+                    "evidence": ["主动选择水滴闯关游戏"],
+                },
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        history_path = Path(response.json()["path"])
+        payload = json.loads(history_path.read_text(encoding="utf-8"))
+        self.assertEqual(payload["growth_events"][0]["type"], "game_preference")
+        self.assertEqual(payload["artifact_refs"][0]["type"], "game")
+        self.assertEqual(payload["profile_updates"][0]["updates"]["interests"], ["水的变化"])
+
+        memory_dir = Path(os.environ["CONTENT_BUILDER_MEMORY_DIR"])
+        profile = json.loads((memory_dir / "profile.json").read_text(encoding="utf-8"))
+        self.assertIn("水的变化", profile["interests"])
+        self.assertIn("闯关式知识游戏", profile["game_type_preferences"])
+        self.assertIn("孩子对水的变化", (memory_dir / "profile.md").read_text(encoding="utf-8"))
+        self.assertIn("game_preference", (memory_dir / "events.jsonl").read_text(encoding="utf-8"))
+
+    def test_daily_history_json_collects_all_threads(self) -> None:
+        first = self.client.post(
+            "/api/content-builder/threads/session-a/history/snapshot",
+            headers=self.headers,
+            json={"messages": [{"type": "human", "content": "first"}]},
+        )
+        second = self.client.post(
+            "/api/content-builder/threads/session-b/history/snapshot",
+            headers=self.headers,
+            json={"messages": [{"type": "human", "content": "second"}]},
+        )
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(first.json()["path"], second.json()["path"])
+        payload = json.loads(Path(first.json()["path"]).read_text(encoding="utf-8"))
+        self.assertEqual(payload["conversations"]["session-a"]["messages"][0]["content"], "first")
+        self.assertEqual(payload["conversations"]["session-b"]["messages"][0]["content"], "second")
 
     def test_sandbox_file_route_rejects_path_traversal(self) -> None:
         response = self.client.get(

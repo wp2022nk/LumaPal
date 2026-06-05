@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小星的月度成长报告（第8周）</title>
+<style>
+@page { size: A4; margin: 10mm; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC", Arial, sans-serif; color: #20312f; background: #eef5f3; }
+.report { max-width: 1180px; margin: 0 auto; padding: 28px; }
+.hero { padding: 30px; border-radius: 22px; color: white; background: linear-gradient(135deg, #165b57, #347b68 54%, #e19f4d); }
+.hero h1 { margin: 0 0 10px; font-size: 34px; letter-spacing: 0; }
+.hero p { max-width: 780px; margin: 8px 0 0; font-size: 17px; line-height: 1.7; }
+.period { display: inline-flex; gap: 10px; align-items: center; padding: 7px 12px; border-radius: 999px; background: rgba(255,255,255,.18); font-size: 14px; }
+.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
+.metric, .panel, .theme, .work, .suggestion { border: 1px solid rgba(23,88,82,.14); border-radius: 16px; background: rgba(255,255,255,.94); box-shadow: 0 12px 34px rgba(25,70,62,.09); }
+.metric { padding: 17px; }
+.metric span, .work span, .suggestion span { color: #55736e; font-size: 13px; }
+.metric strong { display: block; margin: 8px 0 4px; color: #174f4b; font-size: 30px; }
+.metric small { color: #72847f; }
+.grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 18px; }
+.panel { margin: 0 0 18px; padding: 22px; }
+.panel h2 { margin: 0 0 16px; color: #174f4b; font-size: 22px; }
+.radar-wrap { display: grid; grid-template-columns: 330px 1fr; gap: 18px; align-items: center; }
+.radar-grid polygon { fill: none; stroke: #c8d8d3; stroke-width: 1; }
+.radar-grid line { stroke: #d5e1dd; stroke-width: 1; }
+.radar-shape { fill: rgba(225,159,77,.35); stroke: #d58d30; stroke-width: 3; }
+.radar-labels text { fill: #315d58; font-size: 13px; font-weight: 700; }
+table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 12px; }
+td, th { padding: 11px 12px; border-bottom: 1px solid #e3ede9; text-align: left; }
+th { color: #55736e; font-size: 13px; }
+.themes, .works, .suggestions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.theme, .work, .suggestion { padding: 16px; box-shadow: none; }
+.theme strong, .work strong { display: block; color: #174f4b; }
+.theme span { display: inline-block; margin: 8px 0; padding: 5px 9px; border-radius: 999px; color: #8a5514; background: #fff0d8; font-weight: 700; }
+.theme p, .work p, .suggestion p { margin: 8px 0 0; line-height: 1.65; }
+.quote { padding: 18px 20px; border-left: 5px solid #e19f4d; border-radius: 14px; background: #fff8eb; font-size: 18px; line-height: 1.7; }
+.quote small { display: block; margin-top: 8px; color: #75614a; font-size: 13px; }
+.evidence-list { margin: 0; padding-left: 20px; line-height: 1.8; }
+.next { border: 1px solid #b9dccf; background: #e6f5ef; }
+.profile { color: #456761; font-size: 14px; line-height: 1.8; }
+@media (max-width: 860px) {
+  .report { padding: 14px; }
+  .metrics, .grid, .radar-wrap, .themes, .works, .suggestions { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 28px; }
+}
+@media print {
+  body { background: white; }
+  .report { padding: 0; }
+  .panel, .metric { box-shadow: none; }
+}
+</style>
+</head>
+<body>
+<main class="report">
+  <section class="hero">
+    <div class="period">第8周 · 月度成长轨迹</div>
+    <h1>小星的月度成长报告（第8周）</h1>
+    <p>本月最明显的成长发生在“水的变化”主题中。孩子从热茶杯白雾出发，逐步把蒸发、云、雨、花园和太阳串成完整故事，能够把科学观察转化为游戏选择、绘本情节和口头解释。</p>
+  </section>
+  <section class="metrics"><article class="metric"><span>亲子/Agent 对话</span><strong>156</strong><small>围绕水、天气、植物展开</small></article><article class="metric"><span>生成绘本</span><strong>5</strong><small>本月完成主题作品合集</small></article><article class="metric"><span>照片探索</span><strong>12</strong><small>从生活照片中追问自然现象</small></article><article class="metric"><span>亲子共创</span><strong>4</strong><small>共同改编角色与结局</small></article></section>
+  <div class="grid">
+    <section class="panel">
+      <h2>能力发展雷达图</h2>
+      <div class="radar-wrap"><svg class="radar" viewBox="0 0 300 300" role="img" aria-label="能力发展雷达图">
+  <g class="radar-grid"><polygon points="150.0,129.2 169.8,143.6 162.2,166.8 137.8,166.8 130.2,143.6" /><polygon points="150.0,108.4 189.6,137.1 174.5,183.7 125.5,183.7 110.4,137.1" /><polygon points="150.0,87.6 209.3,130.7 186.7,200.5 113.3,200.5 90.7,130.7" /><polygon points="150.0,66.8 229.1,124.3 198.9,217.3 101.1,217.3 70.9,124.3" /><polygon points="150.0,46.0 248.9,117.9 211.1,234.1 88.9,234.1 51.1,117.9" /><line x1="150" y1="150" x2="150.0" y2="46.0" /><line x1="150" y1="150" x2="248.9" y2="117.9" /><line x1="150" y1="150" x2="211.1" y2="234.1" /><line x1="150" y1="150" x2="88.9" y2="234.1" /><line x1="150" y1="150" x2="51.1" y2="117.9" /></g>
+  <polygon class="radar-shape" points="150.0,66.8 248.9,117.9 211.1,234.1 101.1,217.3 70.9,124.3" />
+  <g class="radar-labels"><text x="150.0" y="22.0" text-anchor="middle" dominant-baseline="middle">语言表达</text><text x="271.7" y="110.4" text-anchor="middle" dominant-baseline="middle">科学思维</text><text x="225.2" y="253.6" text-anchor="middle" dominant-baseline="middle">创造想象</text><text x="74.8" y="253.6" text-anchor="middle" dominant-baseline="middle">观察探索</text><text x="28.3" y="110.4" text-anchor="middle" dominant-baseline="middle">社会情感</text></g>
+</svg><table><thead><tr><th>维度</th><th>本月</th><th>上月</th><th>趋势</th></tr></thead><tbody><tr><td>语言表达</td><td>★★★★☆</td><td>3.0</td><td>↑</td></tr><tr><td>科学思维</td><td>★★★★★</td><td>3.0</td><td>↑↑</td></tr><tr><td>创造想象</td><td>★★★★★</td><td>4.0</td><td>↑</td></tr><tr><td>观察探索</td><td>★★★★☆</td><td>3.0</td><td>↑</td></tr><tr><td>社会情感</td><td>★★★★☆</td><td>4.0</td><td>→</td></tr></tbody></table></div>
+    </section>
+    <section class="panel">
+      <h2>本月童言精选</h2>
+      <div class="quote">“所以云就是天上的大茶杯冒出来的烟！”<small></small></div>
+    </section>
+  </div>
+  <section class="panel">
+    <h2>TOP3 好奇主题</h2>
+    <div class="themes"><article class="theme"><strong>1. 水的变化</strong><span>32 次</span><p>最高频主题，常追问 A 为什么会变成 B。</p></article><article class="theme"><strong>2. 天气现象</strong><span>21 次</span><p>对云、雨、太阳之间的关系兴趣增强。</p></article><article class="theme"><strong>3. 植物生长</strong><span>18 次</span><p>常把雨水、花朵和照顾行为联系起来。</p></article></div>
+  </section>
+  <section class="panel">
+    <h2>创作成就</h2>
+    <div class="works"><article class="work"><strong>小水滴滴滴的云朵大冒险</strong><span>游戏 + 绘本</span><p>首次把科学知识完整融入角色旅行结构。</p></article><article class="work"><strong>云朵妈妈的喷嚏</strong><span>亲子共创绘本</span><p>能用拟人化解释天气变化。</p></article><article class="work"><strong>种子宝宝醒来了</strong><span>绘本</span><p>把水、阳光和成长建立因果关系。</p></article><article class="work"><strong>风从哪里来</strong><span>问答故事</span><p>开始用比较和假设表达自然观察。</p></article><article class="work"><strong>我家的声音地图</strong><span>生活观察</span><p>能把日常感官经验整理成地图式表达。</p></article></div>
+  </section>
+  <div class="grid">
+    <section class="panel">
+      <h2>成长里程碑</h2>
+      <ul class="evidence-list"><li>第8周第1天 · 从生活现象提出科学问题 · 看到热茶白雾后追问水为什么会飞起来。</li><li>第8周第3天 · 完成知识迁移 · 把热茶白雾迁移到雨、浴室镜子雾气和太阳晒水。</li><li>第8周第5天 · 形成故事化解释 · 把蒸发、云、雨、花园、太阳串成滴滴的冒险路线。</li><li>第8周第7天 · 产出多模态作品 · 围绕同一主题生成游戏、绘本和成长报告三类产物。</li></ul>
+    </section>
+    <section class="panel">
+      <h2>表达力进步</h2>
+      <ul class="evidence-list"></ul>
+    </section>
+  </div>
+  <section class="panel">
+    <h2>个性化建议</h2>
+    <div class="suggestions"><article class="suggestion"><span>深化实验</span><p>安排“冰块融化、杯口白雾、晒水变少”三步观察，让孩子自己说出变化顺序。</p></article><article class="suggestion"><span>拓展阅读</span><p>推荐水循环、云雨和植物喝水主题绘本，优先选择温柔拟人化与科学启蒙结合的风格。</p></article><article class="suggestion"><span>亲子互动</span><p>每周保留 1-2 次共同改编结局，让孩子选择角色帮助谁、为什么帮助。</p></article></div>
+  </section>
+  <section class="panel next">
+    <h2>下周内容预告</h2>
+    <p>{&#x27;title&#x27;: &#x27;下周主题：光和影子的秘密&#x27;, &#x27;why&#x27;: &#x27;孩子已经能理解“变化”和“循环”，适合继续探索光照、影子长短、透明与反射。&#x27;, &#x27;starter_questions&#x27;: [&#x27;为什么影子会变长？&#x27;, &#x27;水杯里的光为什么会弯？&#x27;, &#x27;太阳躲起来以后颜色会变吗？&#x27;]}</p>
+  </section>
+  <section class="panel">
+    <h2>画像更新摘要</h2>
+    <p class="profile">稳定偏好：喜欢把自然科学现象变成拟人角色冒险。；常见问题类型：为什么 A 会变成 B。；偏好的绘本风格：温柔、明亮、有科学启蒙和帮助他人的结局。；偏好的游戏类型：闯关选择、收集徽章、角色旅行路线。</p>
+  </section>
+</main>
+</body>
+</html>

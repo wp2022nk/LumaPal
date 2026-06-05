@@ -99,6 +99,21 @@ export class LanAgentServerRuntime implements AgentRuntime {
     return response.content;
   }
 
+  async saveHistorySnapshot(
+    threadId: string,
+    messages: unknown[],
+    metadata: Record<string, unknown> = {},
+  ): Promise<void> {
+    await this.request(
+      `/api/content-builder/threads/${encodeURIComponent(threadId)}/history/snapshot`,
+      {
+        method: "POST",
+        body: JSON.stringify({ messages, metadata }),
+        headers: { "content-type": "application/json" },
+      },
+    );
+  }
+
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const headers = this.headers(options.headers);
     const response = await fetch(this.absoluteUrl(path), { ...options, headers });

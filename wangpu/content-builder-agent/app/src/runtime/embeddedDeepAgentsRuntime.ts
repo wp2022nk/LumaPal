@@ -59,6 +59,10 @@ export class EmbeddedDeepAgentsRuntime implements AgentRuntime {
     return this.unsupported();
   }
 
+  saveHistorySnapshot(_threadId: string, _messages: unknown[]): Promise<void> {
+    return Promise.resolve();
+  }
+
   private unsupported(): never {
     throw new Error("Embedded Deep Agents runtime is reserved for phase two.");
   }

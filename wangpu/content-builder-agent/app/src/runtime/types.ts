@@ -42,6 +42,7 @@ export interface AgentRuntime {
   listArtifacts(threadId: string): Promise<ArtifactEntry[]>;
   listSandboxTree(threadId: string): Promise<SandboxEntry[]>;
   readSandboxFile(threadId: string, path: string): Promise<string>;
+  saveHistorySnapshot(threadId: string, messages: unknown[], metadata?: Record<string, unknown>): Promise<void>;
   absoluteUrl(path: string): string;
   ttsSocketUrl(threadId: string): string;
 }

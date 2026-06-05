@@ -8,6 +8,7 @@
 
 /wangpu/content-builder-agent/secrets.local.yaml
 /wangpu/content-builder-agent/*.local.yaml
+/history/
 
 /output
 

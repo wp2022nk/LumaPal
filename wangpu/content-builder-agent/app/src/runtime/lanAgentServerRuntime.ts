@@ -36,6 +36,11 @@ export class LanAgentServerRuntime implements AgentRuntime {
     return `${base}/api/content-builder/threads/${encodeURIComponent(threadId)}/voice/tts?token=${token}`;
   }
 
+  hardwareEventsUrl(threadId: string): string {
+    const token = encodeURIComponent(this.connection.pairingToken);
+    return this.absoluteUrl(`/api/xiaozhi/v1/threads/${encodeURIComponent(threadId)}/events?token=${token}`);
+  }
+
   async verifyPairing(): Promise<boolean> {
     const response = await this.request<{ paired: boolean; agent_server_ready: boolean }>(
       "/api/content-builder/gateway/status",
@@ -57,6 +62,10 @@ export class LanAgentServerRuntime implements AgentRuntime {
 
   async verifyKeys(): Promise<KeySettings> {
     return this.request("/api/content-builder/settings/keys/verify", { method: "POST" });
+  }
+
+  async getHardwareStatus(): Promise<{ sessions: Array<{ session_id: string; thread_id: string; device_id: string; tools: string[] }> }> {
+    return this.request("/api/xiaozhi/v1/status");
   }
 
   async uploadImage(threadId: string, image: File): Promise<ArtifactEntry> {

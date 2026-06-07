@@ -42,6 +42,7 @@ from content_builder.server.security import (
     token_is_valid,
 )
 from content_builder.thread_storage import resolve_thread_file, thread_paths
+from content_builder.server.xiaozhi import router as xiaozhi_router
 
 
 logger = logging.getLogger(__name__)
@@ -52,6 +53,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(xiaozhi_router)
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 TEXT_SUFFIXES = {

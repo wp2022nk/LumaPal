@@ -76,7 +76,9 @@ def main() -> None:
     port = int(os.environ.get("CONTENT_BUILDER_PORT", "2024"))
     internal_port = int(os.environ.get("CONTENT_BUILDER_AGENT_SERVER_PORT", "2025"))
     internal_url = f"http://127.0.0.1:{internal_port}"
+    gateway_url = os.environ.get("CONTENT_BUILDER_GATEWAY_URL", f"http://127.0.0.1:{port}")
     os.environ["CONTENT_BUILDER_AGENT_SERVER_URL"] = internal_url
+    os.environ["CONTENT_BUILDER_GATEWAY_URL"] = gateway_url
     child = subprocess.Popen(
         [
             _langgraph_command(),

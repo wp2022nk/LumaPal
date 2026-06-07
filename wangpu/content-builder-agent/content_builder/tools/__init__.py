@@ -12,11 +12,14 @@ from typing import Any
 
 from .image import generate_image
 from .web import web_search
+from .xiaozhi import xiaozhi_call_device_tool, xiaozhi_take_photo
 
 
 TOOL_REGISTRY: Mapping[str, Any] = {
     "generate_image": generate_image,
     "web_search": web_search,
+    "xiaozhi_call_device_tool": xiaozhi_call_device_tool,
+    "xiaozhi_take_photo": xiaozhi_take_photo,
 }
 
 

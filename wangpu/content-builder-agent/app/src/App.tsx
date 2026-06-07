@@ -78,9 +78,28 @@ type ContentBuilderStream = ReturnType<typeof useStream<AgentState>> & {
   getSubagentsByMessage: (messageId: string) => SubagentStreamInterface[];
 };
 
+interface HardwareEventMessage {
+  thread_id?: string;
+  role?: string;
+  content?: string;
+}
+
 const DEFAULT_KEYS: KeySettings = {
   configured: { qwen: false, dashscope: false, tavily: false },
 };
+
+function hardwareEventToMessage(payload: HardwareEventMessage): AppMessage | null {
+  const content = String(payload.content || "").trim();
+  const role = payload.role === "assistant" ? "ai" : payload.role === "human" ? "human" : "";
+  if (!content || !role) {
+    return null;
+  }
+  return {
+    id: `xiaozhi-${payload.thread_id || "thread"}-${role}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    type: role,
+    content,
+  };
+}
 
 export default function App() {
   const [connection, setConnection] = useState(loadConnectionSettings);
@@ -185,6 +204,7 @@ function AuthenticatedAgentWorkspace({
   const [sidebarOpen, setSidebarOpen] = useState(() => typeof window === "undefined" || window.innerWidth > 760);
   const [voiceEmotion, setVoiceEmotion] = useState<VoiceEmotion | null>(null);
   const [voicePlayback, setVoicePlayback] = useState<VoicePlaybackState>("idle");
+  const [hardwareMessages, setHardwareMessages] = useState<AppMessage[]>([]);
   const recorderRef = useRef<WavRecorder | undefined>(undefined);
   const ttsRef = useRef<StreamingPcmPlayer | undefined>(undefined);
   const ttsSeenText = useRef("");
@@ -211,8 +231,46 @@ function AuthenticatedAgentWorkspace({
   } as UseStreamOptions<AgentState> & { filterSubagentMessages: true }) as ContentBuilderStream;
 
   const messages = stream.messages as unknown as AppMessage[];
+  const displayMessages = useMemo(() => [...messages, ...hardwareMessages], [hardwareMessages, messages]);
   const todos = stream.values.todos || [];
   const allSubagents = [...stream.subagents.values()] as SubagentStreamInterface[];
+
+  useEffect(() => {
+    if (!threadId || !connection.pairingToken) {
+      setHardwareMessages([]);
+      return;
+    }
+    if (typeof EventSource === "undefined") {
+      return;
+    }
+    setHardwareMessages([]);
+    const events = new EventSource(runtime.hardwareEventsUrl(threadId));
+    const handleMessage = (event: MessageEvent<string>) => {
+      try {
+        const next = hardwareEventToMessage(JSON.parse(event.data) as HardwareEventMessage);
+        if (next) {
+          setHardwareMessages((current) => [...current, next]);
+        }
+      } catch (error) {
+        console.warn("Failed to parse Xiaozhi hardware message", error);
+      }
+    };
+    const handlePhoto = () => setRefreshNonce((current) => current + 1);
+    const handleError = (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data) as { message?: string };
+        if (payload.message) {
+          setNotice(payload.message);
+        }
+      } catch {
+        setNotice("Xiaozhi 硬件事件解析失败。");
+      }
+    };
+    events.addEventListener("message", handleMessage as EventListener);
+    events.addEventListener("photo", handlePhoto);
+    events.addEventListener("hardware_error", handleError as EventListener);
+    return () => events.close();
+  }, [connection.pairingToken, runtime, threadId]);
 
   useEffect(() => {
     if (!threadId || stream.isLoading || messages.length === 0) {
@@ -529,7 +587,7 @@ function AuthenticatedAgentWorkspace({
               attachments={attachments}
               draft={draft}
               isLoading={Boolean(runtime.connection.pairingToken) && stream.isLoading}
-              messages={messages}
+              messages={displayMessages}
               recording={recording}
               stream={stream}
               onAttachmentRemove={(id) => setAttachments((current) => current.filter((item) => item.id !== id))}

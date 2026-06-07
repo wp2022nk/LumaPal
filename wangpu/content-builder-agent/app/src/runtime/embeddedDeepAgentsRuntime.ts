@@ -23,6 +23,10 @@ export class EmbeddedDeepAgentsRuntime implements AgentRuntime {
     return this.unsupported();
   }
 
+  hardwareEventsUrl(): string {
+    return this.unsupported();
+  }
+
   verifyPairing(): Promise<boolean> {
     return Promise.resolve(true);
   }
@@ -36,6 +40,10 @@ export class EmbeddedDeepAgentsRuntime implements AgentRuntime {
   }
 
   verifyKeys(): Promise<KeySettings> {
+    return this.unsupported();
+  }
+
+  getHardwareStatus(): Promise<{ sessions: Array<{ session_id: string; thread_id: string; device_id: string; tools: string[] }> }> {
     return this.unsupported();
   }
 

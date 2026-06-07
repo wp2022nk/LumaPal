@@ -9,8 +9,7 @@ model:
   env_model: QWEN_TEXT_MODEL
   env_base_url: QWEN_BASE_URL
   base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
-  enable_thinking: true
-  thinking_budget: 4096
+  enable_thinking: false
 
 system_prompt_file: AGENTS.md
 memory:
@@ -21,6 +20,8 @@ skills:
 
 tools:
   - generate_image
+  - xiaozhi_take_photo
+  - xiaozhi_call_device_tool
 
 subagents_config: subagents.yaml
 

@@ -68,6 +68,50 @@ def _read_previous(path: Path) -> dict[str, Any]:
     return data if isinstance(data, dict) else {}
 
 
+def _message_count(value: Any) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value if value >= 0 else None
+
+
+def _prior_day_snapshot_paths(day: str) -> list[Path]:
+    root = history_root()
+    if not root.exists():
+        return []
+    paths: list[Path] = []
+    for child in root.iterdir():
+        if not child.is_dir() or child.name >= day:
+            continue
+        snapshot_path = child / "history.json"
+        if snapshot_path.is_file():
+            paths.append(snapshot_path)
+    return sorted(paths, key=lambda value: value.parent.name)
+
+
+def _previous_message_count(thread_id: str, day: str) -> int:
+    """Return how many messages earlier daily snapshots already recorded."""
+
+    count = 0
+    for path in _prior_day_snapshot_paths(day):
+        payload = _read_previous(path)
+        conversations = payload.get("conversations")
+        if not isinstance(conversations, dict):
+            continue
+        conversation = conversations.get(thread_id)
+        if not isinstance(conversation, dict):
+            continue
+
+        explicit_count = _message_count(conversation.get("total_message_count"))
+        if explicit_count is not None:
+            count = explicit_count
+            continue
+
+        previous_messages = conversation.get("messages")
+        if isinstance(previous_messages, list):
+            count = max(count, len(previous_messages))
+    return count
+
+
 def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile("w", delete=False, dir=path.parent, encoding="utf-8") as handle:
@@ -109,10 +153,26 @@ def save_thread_history_snapshot(
     previous_conversation = conversations.get(safe_thread_id)
     if not isinstance(previous_conversation, dict):
         previous_conversation = {}
+
+    previous_count = _previous_message_count(safe_thread_id, day)
+    if messages is not None:
+        total_message_count = len(messages)
+        message_window_start = previous_count if len(messages) >= previous_count else 0
+        daily_messages = messages[message_window_start:]
+    else:
+        previous_messages = previous_conversation.get("messages", [])
+        daily_messages = previous_messages if isinstance(previous_messages, list) else []
+        message_window_start = _message_count(previous_conversation.get("message_window_start")) or 0
+        total_message_count = _message_count(previous_conversation.get("total_message_count"))
+        if total_message_count is None:
+            total_message_count = message_window_start + len(daily_messages)
+
     conversations[safe_thread_id] = {
         "thread_id": safe_thread_id,
         "updated_at": datetime.now().astimezone().isoformat(),
-        "messages": messages if messages is not None else previous_conversation.get("messages", []),
+        "messages": daily_messages,
+        "message_window_start": message_window_start,
+        "total_message_count": total_message_count,
         "metadata": metadata if metadata is not None else previous_conversation.get("metadata", {}),
         "growth_events": growth_events if growth_events is not None else previous_conversation.get("growth_events", []),
         "artifact_refs": artifact_refs if artifact_refs is not None else previous_conversation.get("artifact_refs", []),

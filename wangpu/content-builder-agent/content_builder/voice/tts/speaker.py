@@ -149,6 +149,10 @@ class VoiceResponseSpeaker:
         """消费参考 StreamTTS 输出，并在每段文本对应音频生成时做情绪识别。"""
 
         async for audio_data, text in self.tts_manager.process_llm_stream(self._llm_text_stream()):
+            if text:
+                send_segment_text = getattr(self.pcm_player, "send_segment_text", None)
+                if callable(send_segment_text):
+                    await send_segment_text(text)
             # 对齐 src/back/connection_websocket.py：音频和文本都来自
             # StreamTTS。src 会把 audio_data.data 作为 base64 PCM chunk 发给
             # 前端；控制台则直接交给 Python 版 PCMStreamPlayer 播放。

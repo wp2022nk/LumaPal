@@ -302,6 +302,7 @@ def create_confirmed_local_shell_backend(
                     bufsize=0,
                     env=self._env,
                     cwd=str(self.cwd),
+                    errors="replace",
                 )
             except Exception as exc:
                 message = f"Error executing command ({type(exc).__name__}): {exc}"

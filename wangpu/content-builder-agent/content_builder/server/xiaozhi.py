@@ -7,11 +7,16 @@ adapts device capabilities into Content Builder conversations.
 from __future__ import annotations
 
 import asyncio
+import audioop
 import contextlib
+import ipaddress
 import json
 import logging
 import os
+import re
+import socket
 import struct
+import subprocess
 import tempfile
 import time
 import uuid
@@ -20,11 +25,11 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated, Any
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 from fastapi import APIRouter, Body, Depends, File, Form, Header, HTTPException, Query, Request, UploadFile, WebSocket, WebSocketDisconnect
 from langgraph_sdk import get_client
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from langchain_core.messages import HumanMessage
 
 from content_builder.config import DEFAULT_THREAD_ID, load_main_config, create_qwen_model
@@ -38,13 +43,22 @@ from content_builder.voice.tts import VoiceResponseSpeaker
 
 
 router = APIRouter(prefix="/api/xiaozhi", tags=["xiaozhi"])
+compat_router = APIRouter(tags=["xiaozhi"])
 logger = logging.getLogger(__name__)
 
 XIAOZHI_DEFAULT_THREAD_ID = os.environ.get("CONTENT_BUILDER_XIAOZHI_THREAD_ID", "xiaozhi-hardware")
 OPUS_FRAME_DURATION_MS = 60
 OPUS_INPUT_SAMPLE_RATE = 16000
-OPUS_OUTPUT_SAMPLE_RATE = 24000
+OPUS_OUTPUT_SAMPLE_RATE = 16000
 OPUS_CHANNELS = 1
+OPUS_SAMPLE_WIDTH = 2
+XIAOZHI_TTS_PREBUFFER_FRAMES = 3
+XIAOZHI_TTS_TAIL_DRAIN_MS = int(os.environ.get("CONTENT_BUILDER_XIAOZHI_TTS_TAIL_DRAIN_MS", "120"))
+XIAOZHI_AUTO_VAD_RMS_THRESHOLD = int(os.environ.get("CONTENT_BUILDER_XIAOZHI_VAD_RMS_THRESHOLD", "500"))
+XIAOZHI_AUTO_VAD_MIN_SPEECH_MS = int(os.environ.get("CONTENT_BUILDER_XIAOZHI_VAD_MIN_SPEECH_MS", "300"))
+XIAOZHI_AUTO_VAD_SILENCE_MS = int(os.environ.get("CONTENT_BUILDER_XIAOZHI_VAD_SILENCE_MS", "800"))
+XIAOZHI_AUTO_VAD_MAX_SPEECH_MS = int(os.environ.get("CONTENT_BUILDER_XIAOZHI_VAD_MAX_SPEECH_MS", "12000"))
+XIAOZHI_PHOTO_UPLOAD_WAIT_TIMEOUT = int(os.environ.get("CONTENT_BUILDER_XIAOZHI_PHOTO_UPLOAD_WAIT_TIMEOUT", "60"))
 MAX_IMAGE_BYTES = 20 * 1024 * 1024
 ALLOWED_DEVICE_TOOLS = {
     "self.get_device_status",
@@ -64,6 +78,17 @@ ALLOWED_DEVICE_TOOLS = {
 
 def _device_tool_key(name: str) -> str:
     return "".join(character for character in name.lower() if character.isalnum())
+
+
+def _is_photo_like_device_tool(name: str) -> bool:
+    return _device_tool_key(name) in {
+        "takephoto",
+        "selfcameratakephoto",
+        "cameratakephoto",
+        "takescreenshot",
+        "selfcameratakescreenshot",
+        "cameratakescreenshot",
+    }
 
 
 DEVICE_TOOL_ALIASES = {
@@ -118,9 +143,9 @@ def _require_pairing_token(
 def _public_base_url(request: Request) -> str:
     configured = os.environ.get("CONTENT_BUILDER_PUBLIC_BASE_URL", "").strip().rstrip("/")
     if configured:
-        return configured
+        return _public_base_url_for_remote(configured, str(getattr(getattr(request, "client", None), "host", "") or ""))
     base = str(request.base_url).rstrip("/")
-    return base.replace("wss://", "https://", 1).replace("ws://", "http://", 1)
+    return _public_base_url_for_remote(base, str(getattr(getattr(request, "client", None), "host", "") or ""))
 
 
 def _public_ws_url(request: Request) -> str:
@@ -129,18 +154,144 @@ def _public_ws_url(request: Request) -> str:
 
 
 def _public_base_url_from_websocket(websocket: WebSocket) -> str:
+    remote_host = str(getattr(getattr(websocket, "client", None), "host", "") or "")
     configured = os.environ.get("CONTENT_BUILDER_PUBLIC_BASE_URL", "").strip().rstrip("/")
     if configured:
-        return configured
-    parts = urlsplit(str(websocket.url))
-    base = f"{parts.scheme}://{parts.netloc}"
+        return _public_base_url_for_remote(configured, remote_host)
+    return _public_base_url_for_remote(str(websocket.url), remote_host)
+
+
+def _public_base_url_for_remote(url: str, remote_host: str = "") -> str:
+    parts = urlsplit(url)
+    host = parts.hostname or ""
+    port = f":{parts.port}" if parts.port else ""
+    local_candidates = _local_ipv4_candidates()
+    if _host_is_not_device_reachable(host) or _host_is_stale_private_ipv4(host, local_candidates):
+        host = _best_local_ip_for_remote(remote_host, local_candidates) or host
+    host_part = f"[{host}]" if ":" in host and not host.startswith("[") else host
+    base = f"{parts.scheme}://{host_part}{port}"
     return base.replace("wss://", "https://", 1).replace("ws://", "http://", 1)
+
+
+def _host_is_not_device_reachable(host: str) -> bool:
+    normalized = host.strip().strip("[]").lower()
+    if normalized in {"", "localhost", "0.0.0.0", "::", "::1"}:
+        return True
+    try:
+        return ipaddress.ip_address(normalized).is_loopback
+    except ValueError:
+        return False
+
+
+def _local_ip_for_remote(remote_host: str) -> str:
+    remote = remote_host.strip().strip("[]")
+    if not remote:
+        return ""
+    try:
+        family = socket.AF_INET6 if ":" in remote else socket.AF_INET
+        with socket.socket(family, socket.SOCK_DGRAM) as sock:
+            sock.connect((remote, 9))
+            local = sock.getsockname()[0]
+        if local and not _host_is_not_device_reachable(local):
+            return local
+    except OSError:
+        return ""
+    return ""
+
+
+def _best_local_ip_for_remote(remote_host: str, candidates: list[str] | None = None) -> str:
+    routed_ip = _local_ip_for_remote(remote_host)
+    if routed_ip:
+        return routed_ip
+    candidates = candidates if candidates is not None else _local_ipv4_candidates()
+    if not candidates:
+        return ""
+    remote = _parse_ipv4(remote_host)
+
+    def score(candidate: str) -> int:
+        candidate_ip = _parse_ipv4(candidate)
+        if candidate_ip is None:
+            return -100
+        value = 0
+        if candidate_ip.is_private:
+            value += 20
+        if str(candidate_ip).endswith(".1"):
+            value -= 5
+        if remote is not None and _same_ipv4_24(candidate_ip, remote):
+            value += 100
+        return value
+
+    return max(candidates, key=score)
+
+
+def _host_is_stale_private_ipv4(host: str, local_candidates: list[str]) -> bool:
+    address = _parse_ipv4(host)
+    return bool(address and address.is_private and str(address) not in local_candidates)
+
+
+def _local_ipv4_candidates() -> list[str]:
+    candidates: list[str] = []
+    for candidate in [*_local_ipv4_candidates_from_hostname(), *_local_ipv4_candidates_from_ipconfig()]:
+        if candidate not in candidates and _usable_ipv4(candidate):
+            candidates.append(candidate)
+    return candidates
+
+
+def _local_ipv4_candidates_from_hostname() -> list[str]:
+    try:
+        return [info[-1][0] for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET)]
+    except OSError:
+        return []
+
+
+def _local_ipv4_candidates_from_ipconfig() -> list[str]:
+    if os.name != "nt":
+        return []
+    try:
+        output = subprocess.check_output(["ipconfig"], text=True, encoding="utf-8", errors="ignore")
+    except (OSError, subprocess.SubprocessError):
+        return []
+    return re.findall(r"IPv4[^\r\n:：]*[:：]\s*([0-9]+(?:\.[0-9]+){3})", output)
+
+
+def _usable_ipv4(candidate: str) -> bool:
+    address = _parse_ipv4(candidate)
+    return bool(address and not (address.is_loopback or address.is_link_local or address.is_multicast or address.is_unspecified))
+
+
+def _parse_ipv4(candidate: str) -> ipaddress.IPv4Address | None:
+    try:
+        address = ipaddress.ip_address(candidate.strip().strip("[]"))
+    except ValueError:
+        return None
+    return address if isinstance(address, ipaddress.IPv4Address) else None
+
+
+def _same_ipv4_24(left: ipaddress.IPv4Address, right: ipaddress.IPv4Address) -> bool:
+    return str(left).split(".")[:3] == str(right).split(".")[:3]
+
+
+def _photo_payload_has_file(payload: Any) -> bool:
+    if not isinstance(payload, dict):
+        return False
+    file_payload = payload.get("file")
+    return isinstance(file_payload, dict) and bool(file_payload.get("path"))
 
 
 def _extract_ws_token(websocket: WebSocket, query_token: str) -> str:
     if query_token:
         return query_token
     return extract_request_token(dict(websocket.headers))
+
+
+def _vision_token_valid(
+    *,
+    authorization: str | None = None,
+    x_api_key: str | None = None,
+    token: str = "",
+) -> bool:
+    candidate = token or extract_request_token({"authorization": authorization or "", "x-api-key": x_api_key or ""})
+    return token_is_valid(candidate)
 
 
 def _agent_server_url() -> str:
@@ -215,7 +366,7 @@ class OpusCodec:
     voice turn reports a clear error.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, pcm_sample_rate: int = OPUS_OUTPUT_SAMPLE_RATE) -> None:
         try:
             import opuslib  # type: ignore
         except Exception as exc:  # pragma: no cover - exercised by deployment diagnostics
@@ -229,14 +380,16 @@ class OpusCodec:
         self.encoder = opuslib.Encoder(OPUS_OUTPUT_SAMPLE_RATE, OPUS_CHANNELS, opuslib.APPLICATION_AUDIO)
         self.input_frame_samples = OPUS_INPUT_SAMPLE_RATE * OPUS_FRAME_DURATION_MS // 1000
         self.output_frame_samples = OPUS_OUTPUT_SAMPLE_RATE * OPUS_FRAME_DURATION_MS // 1000
-        self.output_frame_bytes = self.output_frame_samples * OPUS_CHANNELS * 2
+        self.output_frame_bytes = self.output_frame_samples * OPUS_CHANNELS * OPUS_SAMPLE_WIDTH
+        self.pcm_sample_rate = pcm_sample_rate
+        self._ratecv_state: Any = None
         self._pcm_remainder = bytearray()
 
     def decode(self, frame: bytes) -> bytes:
         return self.decoder.decode(frame, self.input_frame_samples, decode_fec=False)
 
     def encode_pcm_stream(self, pcm: bytes) -> list[bytes]:
-        self._pcm_remainder.extend(pcm)
+        self._pcm_remainder.extend(self._resample_pcm(pcm))
         frames: list[bytes] = []
         while len(self._pcm_remainder) >= self.output_frame_bytes:
             chunk = bytes(self._pcm_remainder[: self.output_frame_bytes])
@@ -251,32 +404,58 @@ class OpusCodec:
         self._pcm_remainder.clear()
         return [self.encoder.encode(padded, self.output_frame_samples)]
 
+    def _resample_pcm(self, pcm: bytes) -> bytes:
+        if not pcm or self.pcm_sample_rate == OPUS_OUTPUT_SAMPLE_RATE:
+            return pcm
+        converted, self._ratecv_state = audioop.ratecv(
+            pcm,
+            OPUS_SAMPLE_WIDTH,
+            OPUS_CHANNELS,
+            self.pcm_sample_rate,
+            OPUS_OUTPUT_SAMPLE_RATE,
+            self._ratecv_state,
+        )
+        return converted
+
 
 class XiaozhiWebSocketOpusPlayer:
     """VoiceResponseSpeaker PCM adapter that sends Xiaozhi Opus frames."""
 
     def __init__(self, session: "XiaozhiSession") -> None:
         self.session = session
-        self.codec = OpusCodec()
+        self.codec = OpusCodec(pcm_sample_rate=session.tts_sample_rate)
         self.started = False
         self._pending_segment_text = ""
+        self._segment_open = False
+        self._send_queue: asyncio.Queue[tuple[str, bytes | str | None]] = asyncio.Queue()
+        self._send_task: asyncio.Task[None] | None = None
 
     async def start(self) -> None:
         self.started = True
+        if self._send_task is None or self._send_task.done():
+            self._send_task = asyncio.create_task(self._send_worker())
 
     async def send_segment_text(self, text: str) -> None:
         self._pending_segment_text = text
 
     async def enqueue_pcm(self, pcm_data: bytes, *, segment_start: bool = False) -> None:
         if segment_start:
-            await self.session.send_tts_sentence_start(self._pending_segment_text)
+            await self._queue_segment_end()
+            await self._send_queue.put(("start", self._pending_segment_text))
             self._pending_segment_text = ""
+            self._segment_open = True
         for frame in self.codec.encode_pcm_stream(pcm_data):
-            await self.session.send_binary(frame)
+            await self._send_queue.put(("frame", frame))
 
     async def mark_segment_end(self) -> None:
         for frame in self.codec.flush():
-            await self.session.send_binary(frame)
+            await self._send_queue.put(("frame", frame))
+        await self._queue_segment_end()
+
+    async def _queue_segment_end(self) -> None:
+        if self._segment_open:
+            await self._send_queue.put(("end", None))
+            self._segment_open = False
 
     async def send_emotion(self, emotion: dict[str, str | float]) -> None:
         await self.session.send_llm_emotion(
@@ -289,11 +468,85 @@ class XiaozhiWebSocketOpusPlayer:
         )
 
     async def drain(self) -> None:
-        return None
+        await self._send_queue.join()
+        if self._send_task and self._send_task.done():
+            self._send_task.result()
 
     async def close(self) -> None:
-        return None
+        await self.drain()
+        if self._send_task and not self._send_task.done():
+            await self._send_queue.put(("close", None))
+            await self._send_task
 
+    async def _send_worker(self) -> None:
+        segment_text = ""
+        segment_buffer: list[bytes] = []
+        segment_started = False
+        paced_start = 0.0
+        play_position_ms = 0
+
+        async def start_segment() -> None:
+            nonlocal segment_started, paced_start, play_position_ms
+            if segment_started:
+                return
+            await self.session.send_tts_sentence_start(segment_text)
+            for buffered_frame in segment_buffer:
+                await self.session.send_binary(buffered_frame)
+            segment_buffer.clear()
+            segment_started = True
+            paced_start = time.perf_counter()
+            play_position_ms = OPUS_FRAME_DURATION_MS
+
+        async def send_paced_frame(frame: bytes) -> None:
+            nonlocal play_position_ms
+            expected_time = paced_start + (play_position_ms / 1000)
+            delay = expected_time - time.perf_counter()
+            if delay > 0:
+                await asyncio.sleep(delay)
+            await self.session.send_binary(frame)
+            play_position_ms += OPUS_FRAME_DURATION_MS
+
+        async def finish_segment() -> None:
+            nonlocal segment_text, segment_started, paced_start, play_position_ms
+            if not segment_started and not segment_buffer:
+                segment_text = ""
+                return
+            await start_segment()
+            if XIAOZHI_TTS_TAIL_DRAIN_MS > 0:
+                await asyncio.sleep(XIAOZHI_TTS_TAIL_DRAIN_MS / 1000)
+            await self.session.send_tts_sentence_end()
+            segment_text = ""
+            segment_started = False
+            paced_start = 0.0
+            play_position_ms = 0
+
+        while True:
+            kind, payload = await self._send_queue.get()
+            try:
+                if kind == "close":
+                    await finish_segment()
+                    return
+                if kind == "start":
+                    await finish_segment()
+                    segment_text = str(payload or "")
+                    segment_buffer = []
+                    segment_started = False
+                    paced_start = 0.0
+                    play_position_ms = 0
+                    continue
+                if kind == "end":
+                    await finish_segment()
+                    continue
+                if kind != "frame" or not isinstance(payload, bytes):
+                    continue
+                if not segment_started:
+                    segment_buffer.append(payload)
+                    if len(segment_buffer) >= XIAOZHI_TTS_PREBUFFER_FRAMES:
+                        await start_segment()
+                    continue
+                await send_paced_frame(payload)
+            finally:
+                self._send_queue.task_done()
 
 @dataclass
 class XiaozhiSession:
@@ -307,8 +560,19 @@ class XiaozhiSession:
     pending: dict[int, asyncio.Future[dict[str, Any]]] = field(default_factory=dict)
     next_request_id: int = 1
     audio_frames: list[bytes] = field(default_factory=list)
-    current_listen_mode: str = "manual"
+    manual_listen_started: bool = False
+    current_listen_mode: str = "auto"
     current_user_transcript: str = ""
+    tts_sample_rate: int = 24000
+    server_is_speaking: bool = False
+    auto_vad_codec: OpusCodec | None = None
+    auto_speech_started: bool = False
+    auto_speech_started_at: float = 0.0
+    auto_last_voice_at: float = 0.0
+    auto_speech_frames: list[bytes] = field(default_factory=list)
+    photo_uploads: asyncio.Queue[dict[str, Any]] = field(default_factory=asyncio.Queue)
+    vision_url: str = ""
+    last_photo_upload_at: float = 0.0
     agent_task: asyncio.Task[None] | None = None
     closed: bool = False
 
@@ -342,7 +606,7 @@ class XiaozhiSession:
             return payload[4 : 4 + payload_size]
         return payload
 
-    async def send_mcp_request(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def send_mcp_request(self, method: str, params: dict[str, Any] | None = None, *, timeout: int = 20) -> dict[str, Any]:
         request_id = self.next_request_id
         self.next_request_id += 1
         loop = asyncio.get_running_loop()
@@ -360,11 +624,11 @@ class XiaozhiSession:
             }
         )
         try:
-            return await asyncio.wait_for(future, timeout=20)
+            return await asyncio.wait_for(future, timeout=timeout)
         finally:
             self.pending.pop(request_id, None)
 
-    async def call_tool(self, name: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def call_tool(self, name: str, arguments: dict[str, Any] | None = None, *, timeout: int = 20) -> dict[str, Any]:
         resolved_name = _resolve_device_tool_name(name, self.tools)
         if resolved_name not in ALLOWED_DEVICE_TOOLS:
             raise HTTPException(status_code=403, detail=f"Device tool is not allowed: {name}")
@@ -376,16 +640,109 @@ class XiaozhiSession:
             )
         if resolved_name != name:
             logger.info("Resolved Xiaozhi device tool alias %s -> %s", name, resolved_name)
-        return await self.send_mcp_request("tools/call", {"name": resolved_name, "arguments": arguments or {}})
+        return await self.send_mcp_request("tools/call", {"name": resolved_name, "arguments": arguments or {}}, timeout=timeout)
+
+    async def call_photo_tool(self, name: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
+        self.clear_photo_uploads()
+        logger.info(
+            "Calling Xiaozhi photo tool thread=%s tool=%s vision_url=%s",
+            self.thread_id,
+            name,
+            self.vision_url or "not-initialized",
+        )
+        tool_task = asyncio.create_task(self.call_tool(name, arguments, timeout=XIAOZHI_PHOTO_UPLOAD_WAIT_TIMEOUT))
+        upload_task = asyncio.create_task(self.wait_for_photo_upload())
+        try:
+            done, _pending = await asyncio.wait(
+                {tool_task, upload_task},
+                return_when=asyncio.FIRST_COMPLETED,
+                timeout=XIAOZHI_PHOTO_UPLOAD_WAIT_TIMEOUT,
+            )
+            if upload_task in done:
+                if not tool_task.done():
+                    tool_task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError, Exception):
+                        await tool_task
+                return upload_task.result()
+            if tool_task in done:
+                try:
+                    tool_result = tool_task.result()
+                except TimeoutError as exc:
+                    with contextlib.suppress(TimeoutError):
+                        return await asyncio.wait_for(upload_task, timeout=XIAOZHI_PHOTO_UPLOAD_WAIT_TIMEOUT)
+                    raise HTTPException(
+                        status_code=504,
+                        detail=(
+                            "Xiaozhi photo tool timed out before an image was uploaded; "
+                            f"vision_url={self.vision_url or 'not-initialized'}"
+                        ),
+                    ) from exc
+                if _photo_payload_has_file(tool_result):
+                    return tool_result
+                with contextlib.suppress(TimeoutError):
+                    return await asyncio.wait_for(upload_task, timeout=XIAOZHI_PHOTO_UPLOAD_WAIT_TIMEOUT)
+                logger.warning(
+                    "Xiaozhi photo tool returned before upload thread=%s tool=%s result=%s vision_url=%s",
+                    self.thread_id,
+                    name,
+                    tool_result,
+                    self.vision_url or "not-initialized",
+                )
+
+            logger.warning(
+                "Xiaozhi photo upload timed out thread=%s tool=%s vision_url=%s tools=%s",
+                self.thread_id,
+                name,
+                self.vision_url or "not-initialized",
+                sorted(self.tools),
+            )
+            raise HTTPException(
+                status_code=504,
+                detail=(
+                    "Xiaozhi photo upload timed out; "
+                    f"vision_url={self.vision_url or 'not-initialized'}"
+                ),
+            )
+        finally:
+            for task in (tool_task, upload_task):
+                if not task.done():
+                    task.cancel()
+
+    async def remember_photo_upload(self, payload: dict[str, Any]) -> None:
+        self.last_photo_upload_at = time.monotonic()
+        await self.photo_uploads.put(payload)
+
+    async def wait_for_photo_upload(self) -> dict[str, Any]:
+        return await asyncio.wait_for(self.photo_uploads.get(), timeout=XIAOZHI_PHOTO_UPLOAD_WAIT_TIMEOUT)
+
+    def clear_photo_uploads(self) -> None:
+        while True:
+            try:
+                self.photo_uploads.get_nowait()
+            except asyncio.QueueEmpty:
+                return
 
     async def initialize_mcp(self, base: str) -> None:
+        vision_token = pairing_token()
+        self.vision_url = (
+            f"{base}/mcp/vision/explain"
+            f"?thread_id={quote(self.thread_id)}&token={quote(vision_token)}"
+        )
+        logger.info("Xiaozhi MCP vision URL thread=%s url=%s", self.thread_id, self.vision_url)
         params = {
+            "protocolVersion": "2024-11-05",
             "capabilities": {
+                "roots": {"listChanged": True},
+                "sampling": {},
                 "vision": {
-                    "url": f"{base}/api/xiaozhi/v1/vision/upload?thread_id={self.thread_id}",
-                    "token": pairing_token(),
+                    "url": self.vision_url,
+                    "token": vision_token,
                 }
-            }
+            },
+            "clientInfo": {
+                "name": "XiaozhiClient",
+                "version": "1.0.0",
+            },
         }
         with contextlib.suppress(Exception):
             await self.send_mcp_request("initialize", params)
@@ -427,6 +784,9 @@ class XiaozhiSession:
     async def send_tts_sentence_start(self, text: str = "") -> None:
         await self.send_json({"type": "tts", "state": "sentence_start", "text": text})
 
+    async def send_tts_sentence_end(self) -> None:
+        await self.send_json({"type": "tts", "state": "sentence_end"})
+
     async def send_llm_emotion(self, emotion: str, text: str = "") -> None:
         await self.send_json({"type": "llm", "emotion": emotion, "text": text, "content": text})
 
@@ -441,6 +801,12 @@ class XiaozhiSession:
         self.pending.clear()
         if self.agent_task and not self.agent_task.done():
             self.agent_task.cancel()
+
+    def reset_auto_vad(self) -> None:
+        self.auto_speech_started = False
+        self.auto_speech_started_at = 0.0
+        self.auto_last_voice_at = 0.0
+        self.auto_speech_frames.clear()
 
 
 class XiaozhiSessionManager:
@@ -555,56 +921,107 @@ async def call_device_tool(thread_id: str, payload: Annotated[dict[str, Any], Bo
     original_user_text = str(getattr(session, "current_user_transcript", "") or "")
     if original_user_text and name in {"self.camera.take_photo", "take_photo", "take_screenshot"}:
         arguments = {**arguments, "question": original_user_text}
-    return await session.call_tool(name, arguments)
+    try:
+        if _is_photo_like_device_tool(name) and isinstance(session, XiaozhiSession):
+            return await session.call_photo_tool(name, arguments)
+        return await session.call_tool(name, arguments)
+    except TimeoutError as exc:
+        raise HTTPException(status_code=504, detail=f"Xiaozhi device tool timed out: {name}") from exc
+
+
+@compat_router.get("/mcp/vision/explain")
+async def explain_vision_health() -> Response:
+    return Response("MCP Vision interface is running", media_type="text/plain")
+
+
+async def _handle_vision_upload(
+    *,
+    route_name: str,
+    thread_id: str,
+    token: str,
+    authorization: str | None,
+    x_api_key: str | None,
+    file: UploadFile | None,
+    question: str,
+) -> JSONResponse:
+    if not await asyncio.to_thread(_vision_token_valid, authorization=authorization, x_api_key=x_api_key, token=token):
+        raise HTTPException(status_code=401, detail="Invalid vision token")
+    if file is None:
+        raise HTTPException(status_code=400, detail="Missing image file")
+    content = await file.read(MAX_IMAGE_BYTES + 1)
+    upload_payload, _image_path = await asyncio.to_thread(_save_vision_upload_sync, thread_id, content, question)
+    active_session = session_manager.active_for_thread(thread_id)
+    if active_session is not None:
+        await active_session.remember_photo_upload(upload_payload)
+    logger.info("Xiaozhi photo uploaded via %s thread=%s file=%s", route_name, thread_id, upload_payload["file"]["path"])
+    await asyncio.to_thread(
+        save_thread_history_snapshot,
+        thread_id,
+        event={"type": "xiaozhi_photo_upload", "question": question, "file": upload_payload["file"]},
+    )
+    await session_manager.publish(thread_id, "photo_uploaded", upload_payload)
+    return JSONResponse(upload_payload)
+
+
+@compat_router.post("/mcp/vision/explain")
+async def explain_vision_compat(
+    thread_id: str = Query(XIAOZHI_DEFAULT_THREAD_ID),
+    token: str = Query(""),
+    authorization: Annotated[str | None, Header()] = None,
+    x_api_key: Annotated[str | None, Header()] = None,
+    file: Annotated[UploadFile | None, File()] = None,
+    question: Annotated[str, Form()] = "",
+) -> JSONResponse:
+    return await _handle_vision_upload(
+        route_name="mcp/vision/explain",
+        thread_id=thread_id,
+        token=token,
+        authorization=authorization,
+        x_api_key=x_api_key,
+        file=file,
+        question=question,
+    )
 
 
 @router.post("/v1/vision/explain")
 async def explain_vision(
     thread_id: str = Query(XIAOZHI_DEFAULT_THREAD_ID),
+    token: str = Query(""),
     authorization: Annotated[str | None, Header()] = None,
+    x_api_key: Annotated[str | None, Header()] = None,
     file: Annotated[UploadFile | None, File()] = None,
     question: Annotated[str, Form()] = "",
 ) -> JSONResponse:
-    if not await asyncio.to_thread(token_is_valid, extract_request_token({"authorization": authorization or ""})):
-        raise HTTPException(status_code=401, detail="Invalid vision token")
-    if file is None:
-        raise HTTPException(status_code=400, detail="Missing image file")
-    content = await file.read(MAX_IMAGE_BYTES + 1)
-    upload_payload, image_path = await asyncio.to_thread(_save_vision_upload_sync, thread_id, content, question)
-    virtual_path = upload_payload["file"]["path"]
-
-    result_text = await asyncio.to_thread(_explain_image_sync, question or "请描述这张图片。", image_path)
-    payload = {
-        "success": True,
-        "result": result_text,
-        "file": {"path": virtual_path, "mime_type": "image/jpeg"},
-    }
-    await asyncio.to_thread(
-        save_thread_history_snapshot,
-        thread_id,
-        event={"type": "xiaozhi_photo", "question": question, "file": payload["file"], "result": result_text},
+    return await _handle_vision_upload(
+        route_name="api/vision/explain",
+        thread_id=thread_id,
+        token=token,
+        authorization=authorization,
+        x_api_key=x_api_key,
+        file=file,
+        question=question,
     )
-    await session_manager.publish(
-        thread_id,
-        "photo",
-        {"thread_id": thread_id, "question": question, "result": result_text, "file": payload["file"]},
-    )
-    return JSONResponse(payload)
 
 
 @router.post("/v1/vision/upload")
 async def upload_vision(
     thread_id: str = Query(XIAOZHI_DEFAULT_THREAD_ID),
+    token: str = Query(""),
     authorization: Annotated[str | None, Header()] = None,
+    x_api_key: Annotated[str | None, Header()] = None,
     file: Annotated[UploadFile | None, File()] = None,
     question: Annotated[str, Form()] = "",
 ) -> JSONResponse:
-    if not await asyncio.to_thread(token_is_valid, extract_request_token({"authorization": authorization or ""})):
+    if not await asyncio.to_thread(_vision_token_valid, authorization=authorization, x_api_key=x_api_key, token=token):
         raise HTTPException(status_code=401, detail="Invalid vision token")
     if file is None:
         raise HTTPException(status_code=400, detail="Missing image file")
     content = await file.read(MAX_IMAGE_BYTES + 1)
     payload, _image_path = await asyncio.to_thread(_save_vision_upload_sync, thread_id, content, question)
+    active_session = session_manager.active_for_thread(thread_id)
+    if active_session is not None:
+        await active_session.remember_photo_upload(payload)
+    logger.info("Xiaozhi photo uploaded via upload thread=%s file=%s", thread_id, payload["file"]["path"])
     await session_manager.publish(thread_id, "photo_uploaded", payload)
     return JSONResponse(payload)
 
@@ -654,7 +1071,6 @@ def _save_vision_upload_sync(thread_id: str, content: bytes, question: str) -> t
     virtual_path = f"uploads/images/{image_path.name}"
     payload = {
         "success": True,
-        "result": "Photo uploaded. The assistant will analyze it server-side.",
         "thread_id": thread_id,
         "question": question,
         "file": {"path": virtual_path, "mime_type": "image/jpeg"},
@@ -726,7 +1142,10 @@ async def websocket_endpoint(websocket: WebSocket, thread_id: str = Query(XIAOZH
             if "bytes" in message and message["bytes"] is not None:
                 audio_frame = session.unpack_audio(message["bytes"])
                 if audio_frame:
-                    session.audio_frames.append(audio_frame)
+                    if session.manual_listen_started:
+                        session.audio_frames.append(audio_frame)
+                    else:
+                        await _handle_device_audio(session, audio_frame)
                 continue
             if "text" not in message or message["text"] is None:
                 continue
@@ -737,6 +1156,67 @@ async def websocket_endpoint(websocket: WebSocket, thread_id: str = Query(XIAOZH
         await session.publish("disconnected", {"thread_id": thread_id, "session_id": session.session_id, "reason": str(exc)})
     finally:
         session_manager.unregister(session)
+
+
+async def _handle_device_audio(session: XiaozhiSession, audio_frame: bytes) -> None:
+    """Handle full-duplex Xiaozhi audio that arrives without a listen/stop event."""
+
+    try:
+        if session.auto_vad_codec is None:
+            session.auto_vad_codec = OpusCodec(pcm_sample_rate=OPUS_INPUT_SAMPLE_RATE)
+        pcm = session.auto_vad_codec.decode(audio_frame)
+    except Exception as exc:
+        await session.publish(
+            "hardware_error",
+            {"thread_id": session.thread_id, "message": f"Failed to decode Xiaozhi audio frame: {exc}"},
+        )
+        return
+
+    if not pcm:
+        return
+
+    now = time.monotonic()
+    rms = audioop.rms(pcm, OPUS_SAMPLE_WIDTH)
+    is_voice = rms >= XIAOZHI_AUTO_VAD_RMS_THRESHOLD
+
+    if is_voice:
+        if session.server_is_speaking and session.agent_task and not session.agent_task.done():
+            session.agent_task.cancel()
+            with contextlib.suppress(Exception):
+                await session.send_json({"type": "tts", "state": "stop"})
+            await session.publish("abort", {"thread_id": session.thread_id, "reason": "barge-in"})
+
+        if not session.auto_speech_started:
+            session.auto_speech_started = True
+            session.auto_speech_started_at = now
+            session.auto_speech_frames.clear()
+            await session.publish("listening", {"thread_id": session.thread_id, "state": "auto_speech_start", "rms": rms})
+
+        session.auto_last_voice_at = now
+        session.auto_speech_frames.append(audio_frame)
+        return
+
+    if not session.auto_speech_started:
+        return
+
+    session.auto_speech_frames.append(audio_frame)
+    speech_ms = int((now - session.auto_speech_started_at) * 1000)
+    silence_ms = int((now - session.auto_last_voice_at) * 1000)
+    if speech_ms < XIAOZHI_AUTO_VAD_MIN_SPEECH_MS:
+        return
+    if silence_ms < XIAOZHI_AUTO_VAD_SILENCE_MS and speech_ms < XIAOZHI_AUTO_VAD_MAX_SPEECH_MS:
+        return
+
+    frames = list(session.auto_speech_frames)
+    session.reset_auto_vad()
+    await session.publish(
+        "listening",
+        {"thread_id": session.thread_id, "state": "auto_speech_stop", "speech_ms": speech_ms, "silence_ms": silence_ms},
+    )
+    if session.agent_task and not session.agent_task.done():
+        await session.publish("listening", {"thread_id": session.thread_id, "state": "auto_speech_dropped_busy"})
+        return
+    session.agent_task = asyncio.create_task(_run_voice_turn_from_audio(session, frames))
 
 
 async def _handle_device_text(session: XiaozhiSession, text: str) -> None:
@@ -751,14 +1231,26 @@ async def _handle_device_text(session: XiaozhiSession, text: str) -> None:
         state = payload.get("state")
         session.current_listen_mode = str(payload.get("mode") or session.current_listen_mode)
         if state == "start":
+            session.manual_listen_started = session.current_listen_mode == "manual"
+            if session.manual_listen_started:
+                session.reset_auto_vad()
             session.audio_frames.clear()
-            await session.publish("listening", {"thread_id": session.thread_id, "state": "start"})
+            await session.publish(
+                "listening",
+                {"thread_id": session.thread_id, "state": "start", "mode": session.current_listen_mode},
+            )
         elif state == "stop":
-            if session.agent_task and not session.agent_task.done():
-                session.agent_task.cancel()
-            session.agent_task = asyncio.create_task(_run_voice_turn_from_audio(session, list(session.audio_frames)))
+            manual_frames = list(session.audio_frames)
+            session.manual_listen_started = False
             session.audio_frames.clear()
+            if manual_frames:
+                if session.agent_task and not session.agent_task.done():
+                    session.agent_task.cancel()
+                session.agent_task = asyncio.create_task(_run_voice_turn_from_audio(session, manual_frames))
         elif state == "detect":
+            session.manual_listen_started = False
+            session.audio_frames.clear()
+            session.reset_auto_vad()
             text = str(payload.get("text") or "").strip()
             await session.publish("wake", {"thread_id": session.thread_id, "text": text})
             if text:
@@ -789,13 +1281,17 @@ async def _run_text_turn(session: XiaozhiSession, transcript: str) -> None:
             metadata={"source": "xiaozhi-text"},
         )
 
+        session.server_is_speaking = True
         await session.send_json({"type": "tts", "state": "start"})
         await _run_agent_tts_turn(session, transcript, config)
         await session.send_json({"type": "tts", "state": "stop"})
+        session.server_is_speaking = False
     except asyncio.CancelledError:
+        session.server_is_speaking = False
         await session.send_json({"type": "tts", "state": "stop"})
         raise
     except Exception as exc:
+        session.server_is_speaking = False
         message = f"Xiaozhi text turn failed: {exc}"
         await session.publish("hardware_error", {"thread_id": session.thread_id, "message": message})
         with contextlib.suppress(Exception):
@@ -825,13 +1321,17 @@ async def _run_voice_turn_from_audio(session: XiaozhiSession, opus_frames: list[
             metadata={"source": "xiaozhi-hardware"},
         )
 
+        session.server_is_speaking = True
         await session.send_json({"type": "tts", "state": "start"})
         await _run_agent_tts_turn(session, transcript, config)
         await session.send_json({"type": "tts", "state": "stop"})
+        session.server_is_speaking = False
     except asyncio.CancelledError:
+        session.server_is_speaking = False
         await session.send_json({"type": "tts", "state": "stop"})
         raise
     except Exception as exc:
+        session.server_is_speaking = False
         message = f"Xiaozhi voice turn failed: {exc}"
         await session.publish("hardware_error", {"thread_id": session.thread_id, "message": message})
         with contextlib.suppress(Exception):
@@ -840,6 +1340,7 @@ async def _run_voice_turn_from_audio(session: XiaozhiSession, opus_frames: list[
 
 async def _run_agent_tts_turn(session: XiaozhiSession, transcript: str, config: Any) -> None:
     session.current_user_transcript = transcript
+    session.tts_sample_rate = int(getattr(config.voice.tts, "sample_rate", 24000) or 24000)
     speaker = VoiceResponseSpeaker(config.voice, config.secrets, pcm_player=XiaozhiWebSocketOpusPlayer(session))
     await speaker.start()
     delta_filter = MainTokenDeltaFilter()

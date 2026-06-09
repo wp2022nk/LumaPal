@@ -10,7 +10,7 @@ import httpx
 from langchain.tools import ToolRuntime
 from langchain_core.tools import tool
 
-from content_builder.multimodal import build_user_content
+from content_builder.multimodal import build_image_content
 from content_builder.server.security import pairing_token
 from content_builder.thread_storage import resolve_thread_file, runtime_thread_id
 
@@ -55,22 +55,34 @@ def _as_dict(payload: Any) -> dict[str, Any] | None:
     return None
 
 
-def _uploaded_photo_content(thread_id: str, upload_result: Any, question: str) -> Any:
+def _photo_error_content_and_artifact(error: str, **extra: Any) -> tuple[list[Any], dict[str, Any]]:
+    artifact = {"success": False, "error": error}
+    artifact.update(extra)
+    return [], artifact
+
+
+def _uploaded_photo_content_and_artifact(thread_id: str, upload_result: Any) -> tuple[Any, dict[str, Any]]:
+    """Convert a Xiaozhi photo upload payload into an image-only tool result."""
+
     upload_payload = _as_dict(upload_result)
     if not upload_payload:
-        return upload_result
+        return _photo_error_content_and_artifact("Xiaozhi did not return an image payload.", result=upload_result)
     if upload_payload.get("success") is False:
-        return upload_payload
+        return [], upload_payload
     file_payload = upload_payload.get("file")
     if not isinstance(file_payload, dict) or not file_payload.get("path"):
-        return upload_payload
+        return _photo_error_content_and_artifact("Xiaozhi photo payload did not include an image file.", result=upload_payload)
 
     try:
         image_path = resolve_thread_file(str(upload_payload.get("thread_id") or thread_id), str(file_payload["path"]))
-        requested_question = str(upload_payload.get("question") or question or "请描述这张图片。")
-        return build_user_content(requested_question, [image_path])
+        artifact = {
+            **upload_payload,
+            "image_path": str(image_path),
+            "content_type": "image",
+        }
+        return build_image_content([image_path]), artifact
     except (FileNotFoundError, ValueError) as exc:
-        return f"\u7167\u7247\u5df2\u4e0a\u4f20\uff0c\u4f46\u8bfb\u53d6\u56fe\u7247\u5931\u8d25\uff1a{exc}"
+        return _photo_error_content_and_artifact(str(exc), **upload_payload)
 
 
 def _is_photo_like_tool(name: str) -> bool:
@@ -85,7 +97,13 @@ def _is_photo_like_tool(name: str) -> bool:
     }
 
 
-def _call_device_tool(thread_id: str, name: str, arguments: dict[str, Any], *, analyze_upload: bool = True) -> Any:
+def _call_device_tool(
+    thread_id: str,
+    name: str,
+    arguments: dict[str, Any],
+    *,
+    photo_content_and_artifact: bool = False,
+) -> Any:
     url = f"{_gateway_url()}/api/xiaozhi/v1/sessions/{thread_id}/mcp/tools/call"
     try:
         with httpx.Client(timeout=60) as client:
@@ -97,35 +115,48 @@ def _call_device_tool(thread_id: str, name: str, arguments: dict[str, Any], *, a
         if response.status_code == 404:
             detail = _response_detail(response)
             if "does not expose tool" in detail:
-                return f"\u5df2\u8fde\u63a5 xiaozhi \u8bbe\u5907\uff0c\u4f46\u5b83\u6ca1\u6709\u66b4\u9732\u8bf7\u6c42\u7684\u5de5\u5177\uff1a{detail}"
-            return "\u5f53\u524d\u6ca1\u6709\u8fde\u63a5\u5230\u8fd9\u4e2a\u4f1a\u8bdd\u7684 xiaozhi \u786c\u4ef6\uff0c\u65e0\u6cd5\u8c03\u7528\u8bbe\u5907\u5de5\u5177\u3002"
+                message = f"Xiaozhi device is connected, but it does not expose the requested tool: {detail}"
+            else:
+                message = "No Xiaozhi device is connected for this conversation."
+            if photo_content_and_artifact:
+                return _photo_error_content_and_artifact(message)
+            return message
         if response.status_code == 403:
             detail = _response_detail(response)
-            return f"\u8bbe\u5907\u5de5\u5177 {name} \u4e0d\u5728\u540e\u7aef\u767d\u540d\u5355\u5185\uff0c\u5df2\u62d2\u7edd\u8c03\u7528\u3002{detail}"
+            message = f"Device tool {name} is not allowed by the backend whitelist. {detail}"
+            if photo_content_and_artifact:
+                return _photo_error_content_and_artifact(message)
+            return message
         response.raise_for_status()
         result = _extract_mcp_text(response.json())
-        if analyze_upload and _is_photo_like_tool(name):
-            question = str(arguments.get("question") or arguments.get("prompt") or "")
-            return _uploaded_photo_content(thread_id, result, question)
+        if photo_content_and_artifact and _is_photo_like_tool(name):
+            return _uploaded_photo_content_and_artifact(thread_id, result)
         return result
     except httpx.HTTPError as exc:
-        return f"\u8c03\u7528 xiaozhi \u8bbe\u5907\u5de5\u5177\u5931\u8d25\uff1a{exc}"
+        message = f"Failed to call Xiaozhi device tool: {exc}"
+        if photo_content_and_artifact:
+            return _photo_error_content_and_artifact(str(exc))
+        return message
 
 
-@tool
+@tool(response_format="content_and_artifact")
 def xiaozhi_take_photo(question: str, runtime: ToolRuntime) -> Any:
-    """Take a photo with the connected Xiaozhi device and answer a visual question.
+    """Take a photo with the connected Xiaozhi device and return the captured image.
 
     Args:
-        question: The visual question to ask about the captured photo.
+        question: The user's visual request that caused this photo capture.
     """
 
     thread_id = runtime_thread_id(runtime)
-    return _call_device_tool(
+    result = _call_device_tool(
         thread_id,
         "self.camera.take_photo",
         {"question": question},
+        photo_content_and_artifact=True,
     )
+    if isinstance(result, tuple) and len(result) == 2:
+        return result
+    return _photo_error_content_and_artifact("Xiaozhi did not return an image payload.", result=result)
 
 
 @tool

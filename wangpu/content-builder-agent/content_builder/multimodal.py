@@ -90,6 +90,12 @@ def _image_to_block(image: ImageInput) -> dict[str, Any]:
     return _image_url_block(_local_image_to_data_url(Path(image_value)))
 
 
+def build_image_content(images: Iterable[ImageInput]) -> list[dict[str, Any]]:
+    """Build provider-native image content blocks without adding text."""
+
+    return [_image_to_block(image) for image in images]
+
+
 def build_user_content(text: str, images: Iterable[ImageInput] | None = None) -> UserContent:
     """构建 Deep Agents user message 的 content。
 
@@ -107,6 +113,6 @@ def build_user_content(text: str, images: Iterable[ImageInput] | None = None) ->
     if not image_list:
         return text
 
-    blocks = [_image_to_block(image) for image in image_list]
+    blocks = build_image_content(image_list)
     blocks.append({"type": "text", "text": text})
     return blocks

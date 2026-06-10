@@ -7,6 +7,7 @@ import unittest
 import json
 from asyncio import run
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import httpx
@@ -16,7 +17,7 @@ from content_builder.server import api
 from content_builder.server.api import WebSocketPCMPlayer, app
 from content_builder.server.security import make_preview_token, preview_token_is_valid
 from content_builder.server.xiaozhi import XiaozhiSession, XiaozhiWebSocketOpusPlayer, _agent_input_for_xiaozhi_turn, _handle_device_audio, _handle_device_text, _public_base_url_from_websocket, session_manager
-from content_builder.tools.xiaozhi import _call_device_tool, _uploaded_photo_content_and_artifact
+from content_builder.tools.xiaozhi import _call_device_tool
 from content_builder.thread_storage import resolve_thread_file, thread_paths
 
 
@@ -715,27 +716,36 @@ Wireless LAN adapter WLAN:
         self.assertEqual(payload["result"], "桌上有一本书。")
         self.assertEqual(payload["thread_id"], "xiaozhi-python")
 
-    def test_xiaozhi_uploaded_photo_returns_multimodal_tool_content(self) -> None:
-        image_path = thread_paths("xiaozhi-python").uploads / "images" / "camera.jpg"
-        image_path.parent.mkdir(parents=True, exist_ok=True)
-        image_path.write_bytes(b"fake-jpeg")
-        upload_result = {
-            "success": True,
-            "thread_id": "xiaozhi-python",
-            "question": "What is displayed on the screen?",
-            "file": {"path": "uploads/images/camera.jpg", "mime_type": "image/jpeg"},
-        }
+    def test_xiaozhi_photo_tool_returns_success_string(self) -> None:
+        class FakeResponse:
+            status_code = 200
 
-        content, artifact = _uploaded_photo_content_and_artifact("agent-thread", upload_result)
+            def raise_for_status(self) -> None:
+                return None
 
-        self.assertIsInstance(content, list)
-        self.assertEqual(len(content), 1)
-        self.assertEqual(content[0]["type"], "image_url")
-        self.assertTrue(content[0]["image_url"]["url"].startswith("data:image/jpeg;base64,"))
-        self.assertEqual(artifact["content_type"], "image")
-        self.assertTrue(str(artifact["image_path"]).endswith("camera.jpg"))
+            def json(self) -> dict[str, object]:
+                return {"result": {"content": [{"type": "text", "text": "ignored"}]}}
 
-    def test_xiaozhi_photo_tool_error_has_no_text_content(self) -> None:
+        class FakeClient:
+            def __enter__(self) -> "FakeClient":
+                return self
+
+            def __exit__(self, *args: object) -> None:
+                return None
+
+            def post(self, *args: object, **kwargs: object) -> FakeResponse:
+                return FakeResponse()
+
+        with patch("content_builder.tools.xiaozhi.httpx.Client", return_value=FakeClient()):
+            result = _call_device_tool(
+                "session-a",
+                "self.camera.take_photo",
+                {"question": "what is this?"},
+            )
+
+        self.assertEqual(result, "成功")
+
+    def test_xiaozhi_photo_tool_returns_error_message_on_http_failure(self) -> None:
         class FakeClient:
             def __enter__(self) -> "FakeClient":
                 return self
@@ -747,16 +757,59 @@ Wireless LAN adapter WLAN:
                 raise httpx.ReadTimeout("timed out")
 
         with patch("content_builder.tools.xiaozhi.httpx.Client", return_value=FakeClient()):
-            content, artifact = _call_device_tool(
+            result = _call_device_tool(
                 "session-a",
                 "self.camera.take_photo",
                 {"question": "what is this?"},
-                photo_content_and_artifact=True,
             )
 
-        self.assertEqual(content, [])
-        self.assertFalse(artifact["success"])
-        self.assertIn("timed out", artifact["error"])
+        self.assertIn("timed out", str(result))
+
+    def test_xiaozhi_photo_tool_call_returns_uploaded_file_payload(self) -> None:
+        """Simulate the agent calling take_photo via the REST endpoint, with the firmware
+        sending the tool response via MCP and uploading the photo via /mcp/vision/explain.
+
+        This test verifies the full chain: REST call → MCP request to firmware → firmware
+        uploads photo via REST → backend stores photo → call_photo_tool returns upload payload.
+        """
+
+        async def exercise() -> dict[str, Any]:
+            from content_builder.server.xiaozhi import session_manager
+
+            session = XiaozhiSession(websocket=object(), thread_id="xiaozhi-python", device_id="", client_id="")
+            session.vision_url = "http://testserver/mcp/vision/explain?thread_id=xiaozhi-python&token=phone-token"
+            session.tools = {"take_photo": {}}
+            session_manager.register(session)
+            try:
+                pending_upload: dict[str, Any] = {
+                    "success": True,
+                    "thread_id": "xiaozhi-python",
+                    "question": "帮我看看手里拿的是什么",
+                    "file": {"path": "uploads/images/abc123.jpg", "mime_type": "image/jpeg"},
+                }
+
+                async def fake_call_tool(name: str, arguments: dict[str, Any] | None = None, **kwargs: object) -> dict[str, Any]:
+                    # Simulate the firmware uploading the photo before responding
+                    await session.remember_photo_upload(pending_upload)
+                    # Return the MCP response that the firmware would send back
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "result": {
+                            "content": [{"type": "text", "text": json.dumps(pending_upload)}],
+                            "isError": False,
+                        },
+                    }
+
+                session.call_tool = fake_call_tool  # type: ignore[method-assign]
+
+                return await session.call_photo_tool("take_photo", {"question": "帮我看看手里拿的是什么"})
+            finally:
+                session_manager.unregister(session)
+
+        result = run(exercise())
+        self.assertTrue(result["success"])
+        self.assertEqual(result["file"]["path"], "uploads/images/abc123.jpg")
 
     def test_updating_keys_clears_the_cached_agent(self) -> None:
         with patch("content_builder.agent_factory.clear_content_writer_cache") as clear_cache:

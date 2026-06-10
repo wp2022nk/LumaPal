@@ -1,8 +1,9 @@
 {
   "title": "小星的月度成长报告（第8周）",
+  "slug": "growth-report",
   "period": "第8周 · 月度成长轨迹",
   "child_name": "小星",
-  "summary": "本月最明显的成长发生在“水的变化”主题中。孩子从热茶杯白雾出发，逐步把蒸发、云、雨、花园和太阳串成完整故事，能够把科学观察转化为游戏选择、绘本情节和口头解释。",
+  "summary": "本月最明显的成长发生在「水的变化」主题中。孩子从热茶杯白雾出发，逐步把蒸发、云、雨、花园和太阳串成完整故事，能把科学观察转化为游戏选择、绘本情节和口头解释。",
   "hero_quote": "所以云就是天上的大茶杯冒出来的烟！",
   "metrics": [
     {"label": "亲子/Agent 对话", "value": 156, "unit": "次", "note": "围绕水、天气、植物展开"},
@@ -11,23 +12,173 @@
     {"label": "亲子共创", "value": 4, "unit": "次", "note": "共同改编角色与结局"}
   ],
   "abilities": [
-    {"name": "语言表达", "score": 4.0, "previous": 3.0, "evidence": "能使用“因为……所以……”“先……然后……最后……”复述故事路线。"},
+    {"name": "语言表达", "score": 4.0, "previous": 3.0, "evidence": "能使用「因为……所以……」「先……然后……最后……」复述故事路线。"},
     {"name": "科学思维", "score": 5.0, "previous": 3.0, "evidence": "能把热茶白雾迁移到下雨、镜子起雾、太阳晒水等现象。"},
     {"name": "创造想象", "score": 5.0, "previous": 4.0, "evidence": "把水循环转化成云朵王国、派对和花园任务。"},
-    {"name": "观察探索", "score": 4.0, "previous": 3.0, "evidence": "持续从身边物品提出“为什么会变成这样”的问题。"},
+    {"name": "观察探索", "score": 4.0, "previous": 3.0, "evidence": "持续从身边物品提出「为什么会变成这样」的问题。"},
     {"name": "社会情感", "score": 4.0, "previous": 4.0, "evidence": "在故事里倾向让角色帮助花朵、照顾朋友。"}
   ],
   "curiosity_themes": [
-    {"name": "水的变化", "count": 32, "insight": "最高频主题，常追问 A 为什么会变成 B。"},
-    {"name": "天气现象", "count": 21, "insight": "对云、雨、太阳之间的关系兴趣增强。"},
-    {"name": "植物生长", "count": 18, "insight": "常把雨水、花朵和照顾行为联系起来。"}
+    {
+      "name": "水的变化",
+      "count": 32,
+      "insight": "最高频主题，常追问 A 为什么会变成 B。",
+      "evidence_image": "history/2026-06-08/uploads/images/4e365f973bf54042bfc20a6d902fde54.jpeg",
+      "evidence_note": "把热茶白雾迁移到浴室镜子、太阳晒水和雨水，迁移能力开始出现。"
+    },
+    {
+      "name": "天气现象",
+      "count": 21,
+      "insight": "对云、雨、太阳之间的关系兴趣增强。",
+      "evidence_image": "history/2026-06-08/uploads/images/9e9b122110434d5bab6d94bc07119248.jpg",
+      "evidence_note": "能够用「云就是天上的大茶杯冒出来的烟」这样的拟人化语言解释天气。"
+    },
+    {
+      "name": "植物生长",
+      "count": 18,
+      "insight": "常把雨水、花朵和照顾行为联系起来。",
+      "evidence_image": "history/2026-06-09/uploads/images/06f39fb7fcdb437c93ff07ec25cc3447.jpg",
+      "evidence_note": "在花园场景里主动把「给花浇水」和「花会长大」串联成因果链。"
+    }
   ],
   "works": [
-    {"title": "小水滴滴滴的云朵大冒险", "type": "游戏 + 绘本", "highlight": "首次把科学知识完整融入角色旅行结构。"},
-    {"title": "云朵妈妈的喷嚏", "type": "亲子共创绘本", "highlight": "能用拟人化解释天气变化。"},
-    {"title": "种子宝宝醒来了", "type": "绘本", "highlight": "把水、阳光和成长建立因果关系。"},
-    {"title": "风从哪里来", "type": "问答故事", "highlight": "开始用比较和假设表达自然观察。"},
-    {"title": "我家的声音地图", "type": "生活观察", "highlight": "能把日常感官经验整理成地图式表达。"}
+    {
+      "title": "小水滴滴滴的云朵大冒险",
+      "type": "游戏 + 绘本",
+      "highlight": "首次把科学知识完整融入角色旅行结构。",
+      "cover_image": "roadshow-final-products/storybook/images/page-00-cover.png",
+      "link": "roadshow-final-products/storybook/book.html"
+    },
+    {
+      "title": "云朵妈妈的喷嚏",
+      "type": "亲子共创绘本",
+      "highlight": "能用拟人化解释天气变化。",
+      "cover_image": "history/2026-06-08/artifacts/didi-cloud-book/cover.png"
+    },
+    {
+      "title": "种子宝宝醒来了",
+      "type": "绘本",
+      "highlight": "把水、阳光和成长建立因果关系。",
+      "cover_image": "history/2026-06-07/artifacts/singing-tree/cover.png"
+    },
+    {
+      "title": "会唱歌的树",
+      "type": "故事 + 封面",
+      "highlight": "把倾听、耐心和帮助他人的主题串成完整情节。",
+      "cover_image": "history/2026-06-08/artifacts/singing-tree/cover.png"
+    },
+    {
+      "title": "我家的声音地图",
+      "type": "生活观察",
+      "highlight": "能把日常感官经验整理成地图式表达。",
+      "cover_image": "history/2026-06-08/uploads/images/c1002fd6d7ca4b1c814319d954d83f9c.jpg"
+    }
+  ],
+  "exploration_photos": [
+    {
+      "image": "history/2026-06-08/uploads/images/4e365f973bf54042bfc20a6d902fde54.jpeg",
+      "caption": "热茶杯白雾：水的变化起点",
+      "date": "2026-06-08",
+      "theme": "水的变化"
+    },
+    {
+      "image": "history/2026-06-08/uploads/images/607ad76a661d4d36a9e49b0c3f4c850f.png",
+      "caption": "绘本插图样张：水循环画面",
+      "date": "2026-06-08",
+      "theme": "创作成就"
+    },
+    {
+      "image": "history/2026-06-08/uploads/images/08cc6a7194e34042a38a95551180b98c.jpeg",
+      "caption": "户外观察：自然现象的疑问起点",
+      "date": "2026-06-08",
+      "theme": "天气现象"
+    },
+    {
+      "image": "history/2026-06-08/uploads/images/c1002fd6d7ca4b1c814319d954d83f9c.jpg",
+      "caption": "声音地图：把日常整理成可表达的形式",
+      "date": "2026-06-08",
+      "theme": "生活观察"
+    },
+    {
+      "image": "history/2026-06-08/uploads/images/9e9b122110434d5bab6d94bc07119248.jpg",
+      "caption": "日常拍摄：好奇心来源",
+      "date": "2026-06-08",
+      "theme": "生活观察"
+    },
+    {
+      "image": "history/2026-06-08/uploads/images/c84bafb68f0b41cd83121f15244d79ea.jpg",
+      "caption": "生活记录：场景中提出「为什么」",
+      "date": "2026-06-08",
+      "theme": "观察探索"
+    },
+    {
+      "image": "history/2026-06-08/uploads/images/26c061fcc06e47ed98e12d0393346c1d.jpg",
+      "caption": "小观察：水滴、起雾、阳光等微观变化",
+      "date": "2026-06-08",
+      "theme": "水的变化"
+    },
+    {
+      "image": "history/2026-06-08/uploads/images/3be936ae52f04947b693ddd4f8aaecc3.jpg",
+      "caption": "户外记录：与天气现象对话",
+      "date": "2026-06-08",
+      "theme": "天气现象"
+    }
+  ],
+  "artifact_gallery": [
+    {
+      "type": "绘本",
+      "title": "小水滴滴滴的云朵大冒险",
+      "cover_image": "roadshow-final-products/storybook/images/page-00-cover.png",
+      "link": "roadshow-final-products/storybook/book.html"
+    },
+    {
+      "type": "游戏",
+      "title": "滴滴的云朵大冒险（闯关）",
+      "cover_image": "roadshow-final-products/storybook/images/page-04.png",
+      "link": "roadshow-final-products/game/index.html"
+    },
+    {
+      "type": "故事封面",
+      "title": "会唱歌的树",
+      "cover_image": "history/2026-06-08/artifacts/singing-tree/cover.png"
+    },
+    {
+      "type": "故事封面",
+      "title": "云朵妈妈的喷嚏",
+      "cover_image": "history/2026-06-08/artifacts/didi-cloud-book/cover.png"
+    }
+  ],
+  "highlights": [
+    {
+      "type": "童言",
+      "content": "所以云就是天上的大茶杯冒出来的烟！",
+      "source": "第8周互动摘录",
+      "date": "2026-06-08"
+    },
+    {
+      "type": "童言",
+      "content": "蜗牛是不是把家背在身上，就不会想妈妈了？",
+      "source": "睡前故事共创",
+      "date": "2026-06-07"
+    },
+    {
+      "type": "创作",
+      "content": "完成《会唱歌的树》封面绘制，把倾听和善良的主题串成完整情节。",
+      "source": "故事创作",
+      "date": "2026-06-07"
+    },
+    {
+      "type": "迁移",
+      "content": "把热茶白雾迁移到浴室镜子起雾、太阳晒水等场景。",
+      "source": "观察探索",
+      "date": "2026-06-08"
+    },
+    {
+      "type": "里程碑",
+      "content": "首次把科学知识完整融入角色旅行结构，生成游戏+绘本双产物。",
+      "source": "创作成就",
+      "date": "2026-06-09"
+    }
   ],
   "milestones": [
     {"date": "第8周第1天", "title": "从生活现象提出科学问题", "detail": "看到热茶白雾后追问水为什么会飞起来。"},
@@ -35,15 +186,38 @@
     {"date": "第8周第5天", "title": "形成故事化解释", "detail": "把蒸发、云、雨、花园、太阳串成滴滴的冒险路线。"},
     {"date": "第8周第7天", "title": "产出多模态作品", "detail": "围绕同一主题生成游戏、绘本和成长报告三类产物。"}
   ],
+  "expression_progress": [
+    "开始使用「因为……所以……」解释因果，能串联两到三步的推理链。",
+    "能用「先……然后……最后……」复述完整过程，顺序感增强。",
+    "用拟人化语言（云朵王国、花园派对）替代生硬概念描述。",
+    "开始出现自发的类比：「云就是天上的大茶杯冒出来的烟」。",
+    "在亲子共创里愿意让角色帮助别人，体现温柔助人的情节偏好。"
+  ],
   "suggestions": [
-    {"title": "深化实验", "body": "安排“冰块融化、杯口白雾、晒水变少”三步观察，让孩子自己说出变化顺序。"},
-    {"title": "拓展阅读", "body": "推荐水循环、云雨和植物喝水主题绘本，优先选择温柔拟人化与科学启蒙结合的风格。"},
-    {"title": "亲子互动", "body": "每周保留 1-2 次共同改编结局，让孩子选择角色帮助谁、为什么帮助。"}
+    {
+      "tag": "实验",
+      "title": "深化实验",
+      "body": "安排「冰块融化、杯口白雾、晒水变少」三步观察，让孩子自己说出变化顺序。"
+    },
+    {
+      "tag": "阅读",
+      "title": "拓展阅读",
+      "body": "推荐水循环、云雨和植物喝水主题绘本，优先选择温柔拟人化与科学启蒙结合的风格。"
+    },
+    {
+      "tag": "互动",
+      "title": "亲子互动",
+      "body": "每周保留 1-2 次共同改编结局，让孩子选择角色帮助谁、为什么帮助。"
+    }
   ],
   "next_theme": {
     "title": "下周主题：光和影子的秘密",
-    "why": "孩子已经能理解“变化”和“循环”，适合继续探索光照、影子长短、透明与反射。",
-    "starter_questions": ["为什么影子会变长？", "水杯里的光为什么会弯？", "太阳躲起来以后颜色会变吗？"]
+    "why": "孩子已经能理解「变化」和「循环」，适合继续探索光照、影子长短、透明与反射。",
+    "starter_questions": [
+      "为什么影子会变长？",
+      "水杯里的光为什么会弯？",
+      "太阳躲起来以后颜色会变吗？"
+    ]
   },
   "profile_update_summary": [
     "稳定偏好：喜欢把自然科学现象变成拟人角色冒险。",

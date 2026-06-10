@@ -6,14 +6,28 @@ Use this reference for parent-facing child growth trajectory reports in this pro
 
 Use a polished dashboard-document hybrid:
 
-- Hero header: child report title, period, one-sentence growth summary.
+- Hero header: child report title, period, one-sentence growth summary, mood chips.
 - Metric strip: conversations, storybooks, exploration captures, parent-child co-creation.
-- Ability radar: language expression, scientific thinking, creative imagination, observation, social-emotional growth.
-- Curiosity themes: ranked topics with counts and short interpretation.
-- Works gallery: generated storybooks, games, drawings, and memorable outputs.
+- Ability radar: language expression, scientific thinking, creative imagination, observation, social-emotional growth, with a current/change/trend table.
+- Curiosity themes: ranked topics with counts, insight, and an evidence photo.
+- Works gallery: generated storybooks, games, drawings, and memorable outputs, each with a cover.
+- Artifacts corridor: 4-column cover wall of the latest generated artifacts (storybooks, games, story artifacts); each card links to the original HTML.
+- Exploration album: 1:1 thumbnails of `history/<date>/uploads/images/*`, grouped by theme; caption + date on each card.
+- Highlights timeline: left/right alternating entries with type badge, date, source, and 童言 / 创作 / 迁移 / 里程碑 content.
 - Milestone card: narrative explanation of the most important growth shift.
-- Suggestions: one deepening activity, one expansion resource, one parent-child interaction suggestion.
-- Next theme preview: one concrete activity prompt for the coming week.
+- Suggestions: one deepening activity, one expansion resource, one parent-child interaction suggestion, tagged as 实验 / 阅读 / 互动 chips.
+- Next theme preview: one concrete activity prompt for the coming week with numbered starter questions.
+- Profile update summary: bullet list of durable observations.
+
+## Photo & Artifact Inclusion
+
+Photos and artifact covers are first-class citizens of the report. They are the bridge between a metric and the lived experience of the child.
+
+- Every `curiosity_themes[*]` entry should carry an `evidence_image` and a one-sentence `evidence_note`. When a theme has no obvious photo, reuse a related `exploration_photos` entry rather than showing a placeholder.
+- Every `works[*]` entry should carry a `cover_image` and a `link` to the underlying HTML/PDF artifact. If the cover is unavailable, fall back to a colored placeholder card so the grid stays balanced.
+- The artifacts corridor is built from `artifact_gallery`. Keep it curated (3-6 entries) and prefer storybook covers, game screenshots, and story-artifact covers over generic photos.
+- The exploration album is a grid of square thumbnails (`aspect-ratio: 1`); each card shows the theme chip, caption, and date. Drop silently when an image is missing.
+- For PDF rendering, request the renderer to embed images as `data:` URIs (the `--embed-images` flag) so headless Chrome can resolve them without `file://` access.
 
 ## External Design Notes
 

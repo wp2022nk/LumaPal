@@ -31,19 +31,41 @@ If the report is for a roadshow/demo and the user provided a script, use the scr
 
 1. Collect evidence: questions, creative choices, game behavior, storybook outputs, parent-child interactions, emotion snippets, and produced artifacts.
 2. Separate stable patterns from one-off observations. Avoid permanent profile updates from weak evidence.
-3. Produce `report-data.json` with:
+3. Scan the **photo and artifact** sources (see "Image-aware Report" below) so that every theme, work, and timeline entry has a concrete image to anchor it.
+4. Produce `report-data.json` with:
    - overview metrics
    - ability dimensions with current/previous/trend
-   - top curiosity themes
+   - top curiosity themes (each with `evidence_image` + `evidence_note` when possible)
    - favorite question type
-   - creative works
+   - creative works (each with `cover_image` + optional `link` to the artifact)
    - milestones
    - expression progress
    - personalized suggestions
    - next theme
    - profile updates and evidence
-4. Render with `scripts/render_growth_report.py`.
-5. Update `/memory/profile.json`, regenerate `/memory/profile.md`, and append `/memory/events.jsonl` when the report yields durable observations.
+   - `exploration_photos` (8+ items, derived from `history/<date>/uploads/images/*`)
+   - `artifact_gallery` (covers from storybooks, games, prior story artifacts)
+   - `highlights` (timeline: 童言 / 创作 / 迁移 / 里程碑)
+5. Render with `scripts/render_growth_report.py`. Use `--embed-images` when also producing the PDF so Chrome headless can resolve the images via `data:` URIs.
+6. Update `/memory/profile.json`, regenerate `/memory/profile.md`, and append `/memory/events.jsonl` when the report yields durable observations.
+
+## Image-aware Report
+
+Reports should make the child's month tangible by surfacing real photos and artifact covers, not only text metrics. Collect images from these sources:
+
+- `history/<YYYY-MM-DD>/uploads/images/*.{jpg,jpeg,png}` — parent-uploaded observations and conversational screenshots. Group by date and choose the most representative 8-12 photos for `exploration_photos`.
+- `history/<YYYY-MM-DD>/artifacts/<artifact>/cover.png` — covers of artifacts generated earlier in the project's life (e.g. `singing-tree/cover.png`, `didi-cloud-book/cover.png`).
+- `roadshow-final-products/storybook/images/*.png` and `roadshow-final-products/game/index.html` — recent storybook covers and game links, suitable for `artifact_gallery`.
+- `history/<YYYY-MM-DD>/artifacts/roadshow-final-products/**` and any `storybooks/<slug>/` covers.
+
+When assigning images:
+
+- Each `curiosity_themes[*]` should carry an `evidence_image` path (workspace-relative, e.g. `history/2026-06-08/uploads/images/...`) and a short `evidence_note` describing why it matters.
+- Each `works[*]` should carry a `cover_image` and, when available, a `link` to the artifact's `book.html` or `index.html` so the gallery becomes a clickable corridor.
+- `exploration_photos[*].image` paths are resolved by the renderer; if an image is missing the photo is silently dropped (no broken `<img>`).
+- `artifact_gallery[*]` mirrors the latest set of generated artifacts and is rendered as a 4-column cover wall; provide at least 3 entries.
+
+The renderer also accepts a `slug` field. When supplied, the PDF is written as `<slug>.pdf`; otherwise it defaults to `growth-report.pdf`.
 
 ## Visual Standard
 
@@ -53,7 +75,7 @@ Reports should be beautiful but immediately understandable:
 
 - Start with a clear monthly/weekly headline and 3-5 key metrics.
 - Use grouped cards, a radar chart, trend markers, works gallery, milestone narrative, and next-action suggestions.
-- Include evidence snippets so parents see why the report reached its conclusions.
+- Anchor every claim with a real photo (主题/作品/探险相册) and a 童言 timeline so parents see the source of every conclusion.
 - Keep language warm, specific, and non-clinical.
 - Do not expose private raw chat logs unless the user explicitly asks.
 
@@ -62,8 +84,13 @@ Reports should be beautiful but immediately understandable:
 Use the bundled script:
 
 ```powershell
-python /project/skills/growth-trajectory-report/scripts/render_growth_report.py --data /output/growth-report/report-data.json --output-dir /output/growth-report --pdf
+python wangpu/content-builder-agent/skills/growth-trajectory-report/scripts/render_growth_report.py --data /output/growth-report/report-data.json --output-dir /output/growth-report --pdf --embed-images
 ```
+
+Flags:
+
+- `--pdf`: also render the report to PDF via local Chrome/Edge.
+- `--embed-images`: when producing the PDF, embed images as `data:` URIs so Chrome headless can resolve them without `file://` access. The HTML produced without this flag uses `file://` URIs (better for double-clicking locally).
 
 The script writes:
 
@@ -77,6 +104,11 @@ If PDF rendering fails, keep the HTML and data file and state that the PDF is mi
 ## Completion Checklist
 
 - Report data is traceable to source history, script, or artifacts.
+- Each `curiosity_themes[*]` entry has an `evidence_image` and a one-sentence `evidence_note`.
+- Each `works[*]` entry has a `cover_image`; links to the original artifact (`book.html` / `index.html`) are filled when available.
+- `exploration_photos` contains at least 6 entries drawn from `history/<date>/uploads/images/*`.
+- `artifact_gallery` contains at least 3 entries covering both storybook and game artifacts.
+- `highlights` contains a balanced timeline (童言 / 创作 / 迁移 / 里程碑).
 - Visual output is suitable for parent-facing review and roadshow projection.
 - Profile updates are evidence-based and written to both JSON and Markdown.
 - Events are appended to `/memory/events.jsonl`.

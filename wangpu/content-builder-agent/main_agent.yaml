@@ -20,7 +20,6 @@ skills:
 
 tools:
   - generate_image
-  - xiaozhi_take_photo
   - xiaozhi_call_device_tool
 
 subagents_config: subagents.yaml

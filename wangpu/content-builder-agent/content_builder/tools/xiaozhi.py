@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+import contextlib
+import json
 import os
+from pathlib import Path
 from typing import Any
 
 import httpx
 from langchain.tools import ToolRuntime
 from langchain_core.tools import tool
 
+from content_builder.multimodal import build_image_content
 from content_builder.server.security import pairing_token
-from content_builder.thread_storage import runtime_thread_id
+from content_builder.thread_storage import resolve_thread_file, runtime_thread_id
 
 
 def _gateway_url() -> str:
@@ -27,6 +31,31 @@ def _extract_mcp_text(response_payload: dict[str, Any]) -> Any:
         if texts:
             return "\n".join(str(text) for text in texts)
     return result
+
+
+def _photo_payload_has_file(payload: Any) -> bool:
+    return isinstance(payload, dict) and isinstance(payload.get("file"), dict) and bool(payload["file"].get("path"))
+
+
+def _extract_photo_payload(response_payload: dict[str, Any]) -> dict[str, Any] | None:
+    if _photo_payload_has_file(response_payload):
+        return response_payload
+    result = response_payload.get("result")
+    if _photo_payload_has_file(result):
+        return result
+    content = result.get("content") if isinstance(result, dict) else None
+    if not isinstance(content, list):
+        return None
+    for item in content:
+        if not isinstance(item, dict) or item.get("text") is None:
+            continue
+        with contextlib.suppress(json.JSONDecodeError, TypeError):
+            parsed = json.loads(str(item["text"]))
+            if _photo_payload_has_file(parsed):
+                return parsed
+            if isinstance(parsed, dict) and _photo_payload_has_file(parsed.get("result")):
+                return parsed["result"]
+    return None
 
 
 def _response_detail(response: httpx.Response) -> str:
@@ -71,14 +100,38 @@ def _call_device_tool(thread_id: str, name: str, arguments: dict[str, Any]) -> A
             detail = _response_detail(response)
             return f"Device tool {name} is not allowed by the backend whitelist. {detail}"
         response.raise_for_status()
+        payload = response.json()
         if _is_photo_like_tool(name):
-            return "成功"
-        return _extract_mcp_text(response.json())
+            photo_payload = _extract_photo_payload(payload)
+            if photo_payload is not None:
+                return photo_payload
+        return _extract_mcp_text(payload)
     except httpx.HTTPError as exc:
         return f"Failed to call Xiaozhi device tool: {exc}"
 
 
-@tool
+def _tool_response_for_agent(thread_id: str, result: Any) -> tuple[Any, Any]:
+    if not _photo_payload_has_file(result):
+        return result, result
+
+    file_payload = result.get("file") if isinstance(result, dict) else {}
+    relative_path = str(file_payload.get("path") or "") if isinstance(file_payload, dict) else ""
+    text_payload = json.dumps(result, ensure_ascii=False)
+    text_block = {
+        "type": "text",
+        "text": (
+            "Xiaozhi photo captured. Inspect the attached image directly before answering. "
+            f"Photo payload: {text_payload}"
+        ),
+    }
+    try:
+        image_path = resolve_thread_file(thread_id, relative_path)
+        return [text_block, *build_image_content([Path(image_path)])], result
+    except (OSError, ValueError, FileNotFoundError):
+        return text_payload, result
+
+
+@tool(response_format="content_and_artifact")
 def xiaozhi_call_device_tool(name: str, arguments: dict[str, Any], runtime: ToolRuntime) -> Any:
     """Call a safe whitelisted MCP tool exposed by connected Xiaozhi hardware.
 
@@ -87,4 +140,5 @@ def xiaozhi_call_device_tool(name: str, arguments: dict[str, Any], runtime: Tool
         arguments: Tool arguments as a JSON object.
     """
 
-    return _call_device_tool(runtime_thread_id(runtime), name, arguments or {})
+    thread_id = runtime_thread_id(runtime)
+    return _tool_response_for_agent(thread_id, _call_device_tool(thread_id, name, arguments or {}))

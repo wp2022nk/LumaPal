@@ -36,4 +36,5 @@ packages = [
   "content_builder.voice.tts.providers",
   "content_builder.voice.emotion",
   "content_builder.server",
+  "content_builder.server.xiaozhi",
 ]

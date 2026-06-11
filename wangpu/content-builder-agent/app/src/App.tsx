@@ -103,15 +103,18 @@ function hardwareEventToMessage(payload: HardwareEventMessage): AppMessage | nul
 
 export default function App() {
   const [connection, setConnection] = useState(loadConnectionSettings);
+  const [connectionRevision, setConnectionRevision] = useState(0);
 
   function saveConnection(next: ConnectionSettings) {
     saveConnectionSettings(next);
+    saveThreadId(null);
     setConnection({ baseUrl: next.baseUrl.trim(), pairingToken: next.pairingToken.trim() });
+    setConnectionRevision((current) => current + 1);
   }
 
   return (
     <AgentWorkspace
-      key={`${connection.baseUrl}:${connection.pairingToken}`}
+      key={`${connection.baseUrl}:${connection.pairingToken}:${connectionRevision}`}
       connection={connection}
       onSaveConnection={saveConnection}
     />

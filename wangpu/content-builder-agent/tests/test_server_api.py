@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import os
 import tempfile
 import unittest
 import json
 from asyncio import run
+from contextlib import redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
@@ -16,8 +19,9 @@ from fastapi.testclient import TestClient
 from content_builder.server import api
 from content_builder.server.api import WebSocketPCMPlayer, app
 from content_builder.server.security import make_preview_token, preview_token_is_valid
-from content_builder.server.xiaozhi import XiaozhiSession, XiaozhiWebSocketOpusPlayer, _agent_input_for_xiaozhi_turn, _handle_device_audio, _handle_device_text, _public_base_url_from_websocket, session_manager
-from content_builder.tools.xiaozhi import _call_device_tool
+from content_builder.server.xiaozhi import XiaozhiSession, XiaozhiWebSocketOpusPlayer, _agent_input_for_xiaozhi_turn, _handle_device_audio, _handle_device_text, _public_base_url_from_websocket, _run_agent_tts_turn, session_manager
+from content_builder.streaming import StreamEvent
+from content_builder.tools.xiaozhi import _call_device_tool, _tool_response_for_agent, xiaozhi_call_device_tool
 from content_builder.thread_storage import resolve_thread_file, thread_paths
 
 
@@ -154,7 +158,7 @@ class ServerAPITests(unittest.TestCase):
 
     def test_xiaozhi_photo_tool_call_uses_original_turn_text(self) -> None:
         class FakeSession:
-            current_user_transcript = "帮我看看手里拿的是什么"
+            current_user_transcript = "please look at what I am holding"
 
             async def call_tool(self, name: str, arguments: dict) -> dict:
                 self.name = name
@@ -171,7 +175,7 @@ class ServerAPITests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(fake.name, "take_photo")
-        self.assertEqual(fake.arguments["question"], "帮我看看手里拿的是什么")
+        self.assertEqual(fake.arguments["question"], "please look at what I am holding")
 
     def test_xiaozhi_session_manager_indexes_agent_thread_alias(self) -> None:
         class FakeSession:
@@ -221,6 +225,246 @@ class ServerAPITests(unittest.TestCase):
         self.assertEqual(result["params"]["name"], "take_photo")
         self.assertEqual(result["params"]["arguments"], {"question": "what do you see?"})
 
+    def test_xiaozhi_device_tool_alias_resolves_reference_photo_tool(self) -> None:
+        session = XiaozhiSession(websocket=object(), thread_id="session-a", device_id="", client_id="")
+        session.tools = {"self.camera.take_photo": {}}
+
+        async def fake_send_mcp_request(method: str, params: dict, **kwargs: object) -> dict:
+            return {"method": method, "params": params}
+
+        session.send_mcp_request = fake_send_mcp_request  # type: ignore[method-assign]
+
+        result = run(session.call_tool("take_photo", {"question": "what do you see?"}))
+
+        self.assertEqual(result["method"], "tools/call")
+        self.assertEqual(result["params"]["name"], "self.camera.take_photo")
+        self.assertEqual(result["params"]["arguments"], {"question": "what do you see?"})
+
+    def test_xiaozhi_mcp_tool_call_prints_structured_call_and_result(self) -> None:
+        class FakeWebSocket:
+            def __init__(self) -> None:
+                self.messages: list[dict[str, Any]] = []
+
+            async def send_text(self, message: str) -> None:
+                payload = json.loads(message)
+                self.messages.append(payload)
+                request_id = payload["payload"]["id"]
+                await session.handle_mcp_payload(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {"content": [{"type": "text", "text": "ok"}]},
+                    }
+                )
+
+        session = XiaozhiSession(websocket=FakeWebSocket(), thread_id="session-a", device_id="", client_id="")
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            result = run(session.call_tool("self.get_device_status", {"verbose": True}))
+
+        output = buffer.getvalue()
+        self.assertIn("Xiaozhi MCP Tool Call", output)
+        self.assertIn("tool: self.get_device_status", output)
+        self.assertIn("arguments:", output)
+        self.assertIn("Xiaozhi MCP Tool Result", output)
+        self.assertEqual(result["result"]["content"][0]["text"], "ok")
+
+    def test_xiaozhi_session_sends_tool_event_to_firmware(self) -> None:
+        class FakeWebSocket:
+            def __init__(self) -> None:
+                self.messages: list[dict[str, Any]] = []
+
+            async def send_text(self, message: str) -> None:
+                self.messages.append(json.loads(message))
+
+        websocket = FakeWebSocket()
+        session = XiaozhiSession(websocket=websocket, thread_id="session-a", device_id="", client_id="")
+
+        run(session.send_tool_event({"state": "started", "name": "generate_image", "arguments": {"prompt": "moon"}}))
+
+        self.assertEqual(websocket.messages[0]["type"], "tts")
+        self.assertEqual(websocket.messages[0]["state"], "sentence_start")
+        self.assertIn("Tool started: generate_image", websocket.messages[0]["text"])
+        self.assertIn("moon", websocket.messages[0]["text"])
+        self.assertEqual(websocket.messages[0]["session_id"], session.session_id)
+        self.assertEqual(websocket.messages[1]["type"], "tts")
+        self.assertEqual(websocket.messages[1]["state"], "sentence_end")
+
+    def test_xiaozhi_direct_agent_turn_streams_local_tokens_without_agent_server(self) -> None:
+        class FakeWebSocket:
+            def __init__(self) -> None:
+                self.messages: list[dict[str, Any]] = []
+
+            async def send_text(self, message: str) -> None:
+                self.messages.append(json.loads(message))
+
+        class FakeSpeaker:
+            instances: list["FakeSpeaker"] = []
+
+            def __init__(self, *_args: object, **_kwargs: object) -> None:
+                self.tokens: list[str] = []
+                self.flushes = 0
+                self.closed = False
+                FakeSpeaker.instances.append(self)
+
+            async def start(self) -> None:
+                return None
+
+            async def feed_token(self, text: str) -> None:
+                self.tokens.append(text)
+
+            async def flush(self) -> None:
+                self.flushes += 1
+
+            async def close(self) -> None:
+                self.closed = True
+
+        async def fake_events(*_args: object, **_kwargs: object):
+            yield StreamEvent("token", "main", "回答")
+            yield StreamEvent("final", "main", "回答")
+
+        config = SimpleNamespace(
+            voice=SimpleNamespace(tts=SimpleNamespace(sample_rate=24000)),
+            secrets=SimpleNamespace(),
+            conversation=SimpleNamespace(max_turns=50),
+        )
+        session = XiaozhiSession(websocket=FakeWebSocket(), thread_id="session-a", device_id="", client_id="")
+        buffer = io.StringIO()
+        with (
+            patch("content_builder.server.xiaozhi.turn_service.create_content_writer", return_value=object()) as create_agent,
+            patch("content_builder.server.xiaozhi.turn_service.astream_agent_events", side_effect=fake_events) as stream_events,
+            patch("content_builder.server.xiaozhi.turn_service.VoiceResponseSpeaker", FakeSpeaker),
+            patch("content_builder.server.xiaozhi.turn_service.save_thread_history_snapshot"),
+            redirect_stdout(buffer),
+        ):
+            run(_run_agent_tts_turn(session, "问题", config))
+
+        create_agent.assert_called_once_with(runtime_mode="cli")
+        stream_events.assert_called_once()
+        self.assertEqual(FakeSpeaker.instances[0].tokens, ["回答"])
+        self.assertEqual(FakeSpeaker.instances[0].flushes, 1)
+        self.assertTrue(FakeSpeaker.instances[0].closed)
+        output = buffer.getvalue()
+        self.assertIn("stage: llm_start", output)
+        self.assertIn("stage: llm_token", output)
+        self.assertIn("stage: llm_final", output)
+
+    def test_xiaozhi_direct_agent_tool_events_are_text_only_for_firmware(self) -> None:
+        class FakeWebSocket:
+            def __init__(self) -> None:
+                self.messages: list[dict[str, Any]] = []
+
+            async def send_text(self, message: str) -> None:
+                self.messages.append(json.loads(message))
+
+        class FakeSpeaker:
+            def __init__(self, *_args: object, **_kwargs: object) -> None:
+                self.tokens: list[str] = []
+
+            async def start(self) -> None:
+                return None
+
+            async def feed_token(self, text: str) -> None:
+                self.tokens.append(text)
+
+            async def flush(self) -> None:
+                return None
+
+            async def close(self) -> None:
+                return None
+
+        async def fake_events(*_args: object, **_kwargs: object):
+            yield StreamEvent(
+                "tool_call",
+                "main",
+                "[main] 调用工具: generate_image",
+                {"tool_name": "generate_image", "input": {"prompt": "moon"}},
+            )
+            yield StreamEvent("final", "main", "完成")
+
+        config = SimpleNamespace(
+            voice=SimpleNamespace(tts=SimpleNamespace(sample_rate=24000)),
+            secrets=SimpleNamespace(),
+            conversation=SimpleNamespace(max_turns=50),
+        )
+        websocket = FakeWebSocket()
+        session = XiaozhiSession(websocket=websocket, thread_id="session-a", device_id="", client_id="")
+        with (
+            patch("content_builder.server.xiaozhi.turn_service.create_content_writer", return_value=object()),
+            patch("content_builder.server.xiaozhi.turn_service.astream_agent_events", side_effect=fake_events),
+            patch("content_builder.server.xiaozhi.turn_service.VoiceResponseSpeaker", FakeSpeaker),
+            patch("content_builder.server.xiaozhi.turn_service.save_thread_history_snapshot"),
+            redirect_stdout(io.StringIO()),
+        ):
+            run(_run_agent_tts_turn(session, "画月亮", config))
+
+        tool_messages = [
+            message
+            for message in websocket.messages
+            if message.get("type") == "tts" and message.get("state") == "sentence_start"
+        ]
+        self.assertEqual(len(tool_messages), 1)
+        self.assertIn("Tool started: generate_image", tool_messages[0]["text"])
+        self.assertIn("moon", tool_messages[0]["text"])
+
+    def test_xiaozhi_photo_intent_is_prompted_for_agent_tool_call(self) -> None:
+        class FakeWebSocket:
+            def __init__(self) -> None:
+                self.messages: list[dict[str, Any]] = []
+
+            async def send_text(self, message: str) -> None:
+                self.messages.append(json.loads(message))
+
+        class FakeSpeaker:
+            def __init__(self, *_args: object, **_kwargs: object) -> None:
+                return None
+
+            async def start(self) -> None:
+                return None
+
+            async def feed_token(self, _text: str) -> None:
+                return None
+
+            async def flush(self) -> None:
+                return None
+
+            async def close(self) -> None:
+                return None
+
+        stream_calls: list[tuple[tuple[object, ...], dict[str, Any]]] = []
+
+        async def fake_events(*args: object, **kwargs: object):
+            stream_calls.append((args, kwargs))
+            yield StreamEvent("final", "main", "这是一个玩具。")
+
+        config = SimpleNamespace(
+            voice=SimpleNamespace(tts=SimpleNamespace(sample_rate=24000)),
+            secrets=SimpleNamespace(),
+            conversation=SimpleNamespace(max_turns=50),
+        )
+        websocket = FakeWebSocket()
+        session = XiaozhiSession(websocket=websocket, thread_id="session-a", device_id="", client_id="")
+        session.tools = {"take_photo": {}, "self.audio_speaker.set_volume": {}}
+
+        async def fake_call_photo_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+            raise AssertionError("photo must be initiated by the agent tool, not by turn_service")
+
+        session.call_photo_tool = fake_call_photo_tool  # type: ignore[method-assign]
+        with (
+            patch("content_builder.server.xiaozhi.turn_service.create_content_writer", return_value=object()),
+            patch("content_builder.server.xiaozhi.turn_service.astream_agent_events", side_effect=fake_events),
+            patch("content_builder.server.xiaozhi.turn_service.VoiceResponseSpeaker", FakeSpeaker),
+            patch("content_builder.server.xiaozhi.turn_service.save_thread_history_snapshot"),
+            redirect_stdout(io.StringIO()),
+        ):
+            run(_run_agent_tts_turn(session, "拍张照片看看这是什么。", config))
+
+        agent_message = str(stream_calls[0][0][1])
+        self.assertIn("拍张照片看看这是什么。", agent_message)
+        self.assertIn("Exposed device tools: self.audio_speaker.set_volume, take_photo", agent_message)
+        self.assertIn("MUST call xiaozhi_call_device_tool", agent_message)
+        self.assertNotIn("images", stream_calls[0][1])
+
     def test_xiaozhi_initialize_mcp_reads_paginated_tools(self) -> None:
         session = XiaozhiSession(websocket=object(), thread_id="session-a", device_id="", client_id="")
         requests: list[tuple[str, dict]] = []
@@ -240,10 +484,17 @@ class ServerAPITests(unittest.TestCase):
 
         session.send_mcp_request = fake_send_mcp_request  # type: ignore[method-assign]
 
-        run(session.initialize_mcp("http://127.0.0.1:2024"))
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run(session.initialize_mcp("http://127.0.0.1:2024"))
 
         self.assertIn("self.audio_speaker.set_volume", session.tools)
         self.assertIn("take_photo", session.tools)
+        output = buffer.getvalue()
+        self.assertIn("Xiaozhi MCP Tools Page", output)
+        self.assertIn("tool_count: 2", output)
+        self.assertIn("camera_tools:", output)
+        self.assertIn("take_photo", output)
         initialize_request = requests[0]
         self.assertEqual(initialize_request[0], "initialize")
         self.assertEqual(initialize_request[1]["protocolVersion"], "2024-11-05")
@@ -260,6 +511,7 @@ class ServerAPITests(unittest.TestCase):
 
         class FakeWebSocket:
             url = "ws://127.0.0.1:2024/api/xiaozhi/v1/ws?thread_id=session-a"
+            scope = {"server": ("127.0.0.1", 2024)}
             client = FakeClient()
 
         with patch("content_builder.server.xiaozhi._local_ip_for_remote", return_value="172.20.10.2"):
@@ -267,12 +519,27 @@ class ServerAPITests(unittest.TestCase):
 
         self.assertEqual(base_url, "http://172.20.10.2:2024")
 
+    def test_xiaozhi_websocket_public_base_url_fills_missing_server_port(self) -> None:
+        class FakeClient:
+            host = "192.168.14.213"
+
+        class FakeWebSocket:
+            url = "ws://192.168.14.214/api/xiaozhi/v1/ws?thread_id=session-a"
+            scope = {"server": ("0.0.0.0", 2024)}
+            client = FakeClient()
+
+        with patch("content_builder.server.xiaozhi._local_ipv4_candidates_from_hostname", return_value=["192.168.14.214"]):
+            base_url = _public_base_url_from_websocket(FakeWebSocket())  # type: ignore[arg-type]
+
+        self.assertEqual(base_url, "http://192.168.14.214:2024")
+
     def test_xiaozhi_websocket_public_base_url_keeps_reachable_host(self) -> None:
         class FakeClient:
             host = "172.20.10.8"
 
         class FakeWebSocket:
             url = "ws://172.20.10.2:2024/api/xiaozhi/v1/ws?thread_id=session-a"
+            scope = {"server": ("0.0.0.0", 2024)}
             client = FakeClient()
 
         with patch("content_builder.server.xiaozhi._local_ipv4_candidates_from_hostname", return_value=["172.20.10.2"]):
@@ -284,6 +551,7 @@ class ServerAPITests(unittest.TestCase):
 
         class FakeWebSocket:
             url = "ws://127.0.0.1:2024/api/xiaozhi/v1/ws?thread_id=session-a"
+            scope = {"server": ("127.0.0.1", 2024)}
             client = FakeClient()
 
         ipconfig_output = """
@@ -307,6 +575,7 @@ Wireless LAN adapter WLAN:
 
         class FakeWebSocket:
             url = "ws://127.0.0.1:2024/api/xiaozhi/v1/ws?thread_id=session-a"
+            scope = {"server": ("127.0.0.1", 2024)}
             client = FakeClient()
 
         ipconfig_output = """
@@ -323,13 +592,40 @@ Wireless LAN adapter WLAN:
 
         self.assertEqual(base_url, "http://172.20.10.2:2024")
 
-    def test_xiaozhi_agent_input_preserves_original_transcript(self) -> None:
+    def test_xiaozhi_websocket_public_base_url_fills_missing_configured_port(self) -> None:
+        class FakeClient:
+            host = "192.168.14.213"
+
+        class FakeWebSocket:
+            url = "ws://127.0.0.1/api/xiaozhi/v1/ws?thread_id=session-a"
+            scope = {"server": ("0.0.0.0", 2024)}
+            client = FakeClient()
+
+        with (
+            patch.dict(os.environ, {"CONTENT_BUILDER_PUBLIC_BASE_URL": "http://192.168.14.214"}),
+            patch("content_builder.server.xiaozhi._local_ipv4_candidates_from_hostname", return_value=["192.168.14.214"]),
+        ):
+            base_url = _public_base_url_from_websocket(FakeWebSocket())  # type: ignore[arg-type]
+
+        self.assertEqual(base_url, "http://192.168.14.214:2024")
+
+    def test_xiaozhi_agent_input_preserves_original_transcript_without_tools(self) -> None:
+        session = XiaozhiSession(websocket=object(), thread_id="session-a", device_id="", client_id="")
+
+        content = _agent_input_for_xiaozhi_turn(session, "What is displayed on the screen?")
+
+        self.assertEqual(content, "What is displayed on the screen?")
+
+    def test_xiaozhi_agent_input_includes_device_tools_for_camera_requests(self) -> None:
         session = XiaozhiSession(websocket=object(), thread_id="session-a", device_id="", client_id="")
         session.tools = {"take_photo": {}, "self.audio_speaker.set_volume": {}}
 
         content = _agent_input_for_xiaozhi_turn(session, "What is displayed on the screen?")
 
-        self.assertEqual(content, "What is displayed on the screen?")
+        self.assertIn("What is displayed on the screen?", content)
+        self.assertIn("Exposed device tools: self.audio_speaker.set_volume, take_photo", content)
+        self.assertIn("Camera tools available: take_photo", content)
+        self.assertIn("MUST call xiaozhi_call_device_tool", content)
 
     def test_xiaozhi_opus_player_closes_each_tts_sentence(self) -> None:
         class FakeCodec:
@@ -649,6 +945,19 @@ Wireless LAN adapter WLAN:
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["file"]["path"].startswith("uploads/images/"))
 
+    def test_xiaozhi_vision_explain_accepts_image_field_from_reference_firmware(self) -> None:
+        response = self.client.post(
+            "/mcp/vision/explain",
+            params={"thread_id": "xiaozhi-python", "token": "phone-token"},
+            data={"question": "what is this?"},
+            files={"image": ("camera.jpg", b"fake-jpeg", "image/jpeg")},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["success"])
+        self.assertTrue(payload["file"]["path"].startswith("uploads/images/"))
+
     def test_xiaozhi_mcp_vision_explain_compat_route_matches_reference_service_path(self) -> None:
         health = self.client.get("/mcp/vision/explain")
         self.assertEqual(health.status_code, 200)
@@ -695,28 +1004,80 @@ Wireless LAN adapter WLAN:
         self.assertTrue(result["success"])
         self.assertEqual(result["file"]["path"], "uploads/images/camera.jpg")
 
+    def test_xiaozhi_photo_tool_saves_image_data_uri_from_mcp_result(self) -> None:
+        async def exercise() -> tuple[dict[str, Any], tuple[str, dict[str, Any]]]:
+            session = XiaozhiSession(websocket=object(), thread_id="xiaozhi-python", device_id="", client_id="")
+
+            async def fake_call_tool(name: str, arguments: dict | None = None, **kwargs: object) -> dict:
+                return {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "result": {
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": json.dumps(
+                                    {
+                                        "success": True,
+                                        "image_data_uri": "data:image/jpeg;base64,ZmFrZS1qcGVn",
+                                        "metadata": {"width": 320, "height": 240},
+                                    }
+                                ),
+                            }
+                        ],
+                        "isError": False,
+                    },
+                }
+
+            session.call_tool = fake_call_tool  # type: ignore[method-assign]
+            async with session_manager.subscribe("xiaozhi-python") as queue:
+                result = await session.call_photo_tool("self.camera.take_photo", {"question": "what is this?"})
+                event = await asyncio.wait_for(queue.get(), timeout=1)
+            return result, event
+
+        result, event = run(exercise())
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["thread_id"], "xiaozhi-python")
+        self.assertEqual(result["question"], "what is this?")
+        self.assertEqual(result["file"]["mime_type"], "image/jpeg")
+        self.assertTrue(result["file"]["path"].startswith("uploads/images/"))
+        self.assertEqual(result["metadata"], {"width": 320, "height": 240})
+        self.assertNotIn("image_data_uri", result)
+        image_path = resolve_thread_file("xiaozhi-python", result["file"]["path"])
+        self.assertEqual(image_path.read_bytes(), b"fake-jpeg")
+        self.assertEqual(event[0], "photo_uploaded")
+        self.assertEqual(event[1]["file"]["path"], result["file"]["path"])
+
     def test_xiaozhi_vision_analyze_uses_uploaded_thread_id(self) -> None:
         image_path = thread_paths("xiaozhi-python").uploads / "images" / "camera.jpg"
         image_path.parent.mkdir(parents=True, exist_ok=True)
         image_path.write_bytes(b"fake-jpeg")
 
-        with patch("content_builder.server.xiaozhi._explain_image_sync", return_value="桌上有一本书。"):
+        with patch("content_builder.server.xiaozhi._explain_image_sync", return_value="book on desk"):
             response = self.client.post(
                 "/api/xiaozhi/v1/vision/analyze",
                 headers=self.headers,
                 json={
                     "thread_id": "xiaozhi-python",
-                    "question": "桌上有什么？",
+                    "question": "what is on the desk?",
                     "file": {"path": "uploads/images/camera.jpg", "mime_type": "image/jpeg"},
                 },
             )
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertEqual(payload["result"], "桌上有一本书。")
+        self.assertEqual(payload["result"], "book on desk")
         self.assertEqual(payload["thread_id"], "xiaozhi-python")
 
-    def test_xiaozhi_photo_tool_returns_success_string(self) -> None:
+    def test_xiaozhi_photo_tool_returns_uploaded_file_payload_from_tool_wrapper(self) -> None:
+        upload_payload = {
+            "success": True,
+            "thread_id": "session-a",
+            "question": "what is this?",
+            "file": {"path": "uploads/images/camera.jpg", "mime_type": "image/jpeg"},
+        }
+
         class FakeResponse:
             status_code = 200
 
@@ -724,7 +1085,12 @@ Wireless LAN adapter WLAN:
                 return None
 
             def json(self) -> dict[str, object]:
-                return {"result": {"content": [{"type": "text", "text": "ignored"}]}}
+                return {
+                    "result": {
+                        "content": [{"type": "text", "text": json.dumps(upload_payload)}],
+                        "isError": False,
+                    }
+                }
 
         class FakeClient:
             def __enter__(self) -> "FakeClient":
@@ -743,7 +1109,27 @@ Wireless LAN adapter WLAN:
                 {"question": "what is this?"},
             )
 
-        self.assertEqual(result, "成功")
+        self.assertEqual(result, upload_payload)
+
+    def test_xiaozhi_photo_tool_response_attaches_image_for_multimodal_model(self) -> None:
+        image_path = thread_paths("session-a").uploads / "images" / "camera.jpg"
+        image_path.parent.mkdir(parents=True, exist_ok=True)
+        image_path.write_bytes(b"fake-jpeg")
+        upload_payload = {
+            "success": True,
+            "thread_id": "session-a",
+            "question": "what is this?",
+            "file": {"path": "uploads/images/camera.jpg", "mime_type": "image/jpeg"},
+        }
+
+        content, artifact = _tool_response_for_agent("session-a", upload_payload)
+
+        self.assertEqual(xiaozhi_call_device_tool.response_format, "content_and_artifact")
+        self.assertEqual(artifact, upload_payload)
+        self.assertIsInstance(content, list)
+        self.assertIn("uploads/images/camera.jpg", content[0]["text"])
+        self.assertEqual(content[1]["type"], "image_url")
+        self.assertTrue(content[1]["image_url"]["url"].startswith("data:image/jpeg;base64,"))
 
     def test_xiaozhi_photo_tool_returns_error_message_on_http_failure(self) -> None:
         class FakeClient:
@@ -769,8 +1155,8 @@ Wireless LAN adapter WLAN:
         """Simulate the agent calling take_photo via the REST endpoint, with the firmware
         sending the tool response via MCP and uploading the photo via /mcp/vision/explain.
 
-        This test verifies the full chain: REST call → MCP request to firmware → firmware
-        uploads photo via REST → backend stores photo → call_photo_tool returns upload payload.
+        This test verifies the full chain: REST call -> MCP request to firmware -> firmware
+        uploads photo via REST -> backend stores photo -> call_photo_tool returns upload payload.
         """
 
         async def exercise() -> dict[str, Any]:
@@ -784,7 +1170,7 @@ Wireless LAN adapter WLAN:
                 pending_upload: dict[str, Any] = {
                     "success": True,
                     "thread_id": "xiaozhi-python",
-                    "question": "帮我看看手里拿的是什么",
+                    "question": "please look at what I am holding",
                     "file": {"path": "uploads/images/abc123.jpg", "mime_type": "image/jpeg"},
                 }
 
@@ -803,7 +1189,10 @@ Wireless LAN adapter WLAN:
 
                 session.call_tool = fake_call_tool  # type: ignore[method-assign]
 
-                return await session.call_photo_tool("take_photo", {"question": "帮我看看手里拿的是什么"})
+                return await session.call_photo_tool(
+                    "take_photo",
+                    {"question": "please look at what I am holding"},
+                )
             finally:
                 session_manager.unregister(session)
 
@@ -885,20 +1274,20 @@ Wireless LAN adapter WLAN:
             "/api/content-builder/threads/session-a/history/snapshot",
             headers=self.headers,
             json={
-                "messages": [{"type": "human", "content": "我喜欢水滴闯关游戏"}],
+                "messages": [{"type": "human", "content": "I like water drop puzzle games"}],
                 "growth_events": [
                     {
                         "type": "game_preference",
-                        "summary": "孩子主动选择水循环闯关玩法",
+                        "summary": "child actively chose a water-cycle puzzle game",
                         "confidence": 0.82,
                     }
                 ],
                 "artifact_refs": [{"type": "game", "path": "games/didi-cloud-adventure/index.html"}],
                 "profile_updates": {
-                    "summary": "孩子对水的变化和闯关式探索表现出稳定兴趣。",
-                    "interests": ["水的变化"],
-                    "game_type_preferences": ["闯关式知识游戏"],
-                    "evidence": ["主动选择水滴闯关游戏"],
+                    "summary": "child shows steady interest in water changes and puzzle exploration",
+                    "interests": ["water changes"],
+                    "game_type_preferences": ["knowledge puzzle games"],
+                    "evidence": ["actively chose the water drop puzzle game"],
                 },
             },
         )
@@ -908,13 +1297,13 @@ Wireless LAN adapter WLAN:
         payload = json.loads(history_path.read_text(encoding="utf-8"))
         self.assertEqual(payload["growth_events"][0]["type"], "game_preference")
         self.assertEqual(payload["artifact_refs"][0]["type"], "game")
-        self.assertEqual(payload["profile_updates"][0]["updates"]["interests"], ["水的变化"])
+        self.assertEqual(payload["profile_updates"][0]["updates"]["interests"], ["water changes"])
 
         memory_dir = Path(os.environ["CONTENT_BUILDER_MEMORY_DIR"])
         profile = json.loads((memory_dir / "profile.json").read_text(encoding="utf-8"))
-        self.assertIn("水的变化", profile["interests"])
-        self.assertIn("闯关式知识游戏", profile["game_type_preferences"])
-        self.assertIn("孩子对水的变化", (memory_dir / "profile.md").read_text(encoding="utf-8"))
+        self.assertIn("water changes", profile["interests"])
+        self.assertIn("knowledge puzzle games", profile["game_type_preferences"])
+        self.assertIn("water changes", (memory_dir / "profile.md").read_text(encoding="utf-8"))
         self.assertIn("game_preference", (memory_dir / "events.jsonl").read_text(encoding="utf-8"))
 
     def test_daily_history_json_collects_all_threads(self) -> None:
@@ -1031,7 +1420,7 @@ Wireless LAN adapter WLAN:
 
 
 class WebSocketPCMPlayerTests(unittest.TestCase):
-    def test_pcm_player_forwards_metadata_and_binary_chunks(self) -> None:
+    def test_pcm_player_sends_audio_and_emotion_events(self) -> None:
         class FakeWebSocket:
             def __init__(self) -> None:
                 self.json: list[dict[str, object]] = []
@@ -1050,10 +1439,10 @@ class WebSocketPCMPlayerTests(unittest.TestCase):
             await player.enqueue_pcm(b"\x00\x01", segment_start=True)
             await player.send_emotion(
                 {
-                    "text": "完成了。",
+                    "text": "done",
                     "emotion_en": "happy",
-                    "emotion_cn": "开心",
-                    "emoji": "🙂",
+                    "emotion_cn": "happy",
+                    "emoji": ":)",
                     "confidence": 1.0,
                 }
             )
@@ -1068,10 +1457,10 @@ class WebSocketPCMPlayerTests(unittest.TestCase):
                 {"type": "segment_start"},
                 {
                     "type": "emotion",
-                    "text": "完成了。",
+                    "text": "done",
                     "emotion_en": "happy",
-                    "emotion_cn": "开心",
-                    "emoji": "🙂",
+                    "emotion_cn": "happy",
+                    "emoji": ":)",
                     "confidence": 1.0,
                 },
                 {"type": "segment_end"},

@@ -22,7 +22,7 @@ warnings.filterwarnings(
 
 import yaml
 from langchain_core._api.deprecation import LangChainPendingDeprecationWarning
-from langchain_qwq import ChatQwen
+from .qwen_model import StableToolCallChatQwen
 
 
 # 这是依赖升级提醒，不影响当前运行；屏蔽它可以避免控制台流式输出被无关警告打断。
@@ -461,7 +461,7 @@ def load_subagents_yaml(config_path: str | Path) -> dict[str, Any]:
     return _read_yaml(resolve_project_path(config_path))
 
 
-def create_qwen_model(config: ModelConfig) -> ChatQwen:
+def create_qwen_model(config: ModelConfig) -> StableToolCallChatQwen:
     """根据配置创建 ChatQwen 实例。
 
     主智能体和配置中声明同名模型的子智能体会复用这个对象，避免每个模块各自
@@ -474,7 +474,7 @@ def create_qwen_model(config: ModelConfig) -> ChatQwen:
             "secrets.local.yaml，并填写 qwen.api_key。"
         )
 
-    return ChatQwen(
+    return StableToolCallChatQwen(
         model=config.model,
         api_key=config.api_key,
         base_url=config.base_url,

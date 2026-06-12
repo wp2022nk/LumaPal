@@ -299,7 +299,13 @@ def _history_artifact_entry(path: Path, virtual_path: str) -> dict[str, Any]:
         "title": _history_artifact_title(path, virtual_path),
         "path": virtual_path,
         "date": _history_artifact_date(path, virtual_path),
-        "source": "roadshow" if virtual_path.startswith("roadshow-final-products/") else "history",
+        "source": (
+            "roadshow"
+            if virtual_path.startswith("roadshow-final-products/")
+            else "output"
+            if virtual_path.startswith("output/")
+            else "history"
+        ),
         "category": _history_artifact_category(path, virtual_path),
         "size": path.stat().st_size,
         "modified_at": path.stat().st_mtime,
@@ -313,6 +319,7 @@ def _iter_history_artifact_files() -> list[tuple[Path, str]]:
     entries: list[tuple[Path, str]] = []
     roots = [
         (history_root(), "history"),
+        (load_main_config().output_root.resolve(), "output"),
         ((WORKSPACE_DIR / "roadshow-final-products").resolve(), "roadshow-final-products"),
     ]
     for root, prefix in roots:
@@ -323,6 +330,8 @@ def _iter_history_artifact_files() -> list[tuple[Path, str]]:
                 continue
             relative = item.relative_to(root)
             if item.name == "history.json" or "memory" in relative.parts:
+                continue
+            if prefix == "output" and "history" in relative.parts:
                 continue
             entries.append((item, f"{prefix}/{relative.as_posix()}"))
     return entries
@@ -345,11 +354,14 @@ def _history_preview_target(virtual_path: str) -> Path:
     if normalized.startswith("history/"):
         root = history_root()
         target = (root / normalized.removeprefix("history/")).resolve()
+    elif normalized.startswith("output/"):
+        root = load_main_config().output_root.resolve()
+        target = (root / normalized.removeprefix("output/")).resolve()
     elif normalized.startswith("roadshow-final-products/"):
         root = (WORKSPACE_DIR / "roadshow-final-products").resolve()
         target = (WORKSPACE_DIR / normalized).resolve()
     else:
-        raise HTTPException(status_code=400, detail="History artifact path must be under history/ or roadshow-final-products/")
+        raise HTTPException(status_code=400, detail="History artifact path must be under history/, output/, or roadshow-final-products/")
     if target != root and root not in target.parents:
         raise HTTPException(status_code=400, detail="Invalid history artifact path")
     if not target.is_file():

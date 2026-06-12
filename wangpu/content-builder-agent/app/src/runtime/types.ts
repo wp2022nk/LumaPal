@@ -28,7 +28,7 @@ export type HistoryArtifactCategory = "storybook" | "audiobook" | "game" | "grow
 export interface HistoryArtifactEntry extends ArtifactEntry {
   title: string;
   date: string;
-  source: "history" | "roadshow";
+  source: "history" | "output" | "roadshow";
   category: HistoryArtifactCategory;
 }
 

@@ -19,7 +19,7 @@ For a conversation source, preserve the child's notable choices, invented names,
 - If the child or parent is still inventing the plot, do **not** jump straight into full storybook production. Continue one decision point at a time until the user confirms the story is finished.
 - Before making the final book, ask for or confirm the ending, the child's favorite moment, and whether any drawing/photo/voice line should be included.
 - Enter this skill's artifact workflow only after the user asks for a 绘本 / 有声绘本 / book, or clearly confirms "可以做成绘本了".
-- The final Web Audio Storybook should preserve the child's exact memorable words where safe and readable.
+- The final `book.html` should preserve the child's exact memorable words where safe and readable.
 
 ## Default Decisions
 
@@ -43,10 +43,6 @@ Create one stable directory using a lowercase ASCII hyphenated slug:
     page-00-cover.png
     page-01.png
     ...
-  audio/
-    page-00-cover.wav
-    page-01.wav
-    ...
   book.html
   <slug>.pdf
 ```
@@ -55,8 +51,9 @@ Create one stable directory using a lowercase ASCII hyphenated slug:
 - `story.md`: title, theme, audience, and the page-by-page reading text.
 - `visual-bible.md`: recurring character, costume, prop, setting, palette, style, continuity, and avoid rules.
 - `book.json`: rendering manifest and illustration source of truth.
-- `audio/page-*.wav`: per-page TTS narration (Qwen DashScope); file name matches `book.json` `pages[].id`. Missing files fall back to the browser's `speechSynthesis` automatically.
-- `book.html` and `<slug>.pdf`: rendered outputs created by the fixed renderer.
+- `audio/page-*.wav`: optional per-page TTS narration (Qwen DashScope); file name matches `book.json` `pages[].id`. Missing files fall back to the browser's `speechSynthesis` automatically.
+- `book.html`: a vertical, up/down scrolling storybook matching the style of `roadshow-final-products/storybook/book.html`; no extra buttons or visible controls.
+- `<slug>.pdf`: final printable PDF created from the same manifest. This is required.
 
 ## Workflow
 
@@ -120,9 +117,9 @@ generate_image(
 - If only one page is weak, revise that page alone while restating all continuity anchors.
 - Do not proceed to PDF rendering if a required illustration failed.
 
-## Rendering To HTML, Audio, and PDF
+## Rendering To HTML And PDF
 
-The renderer converts the structured manifest to a Web Audio Storybook HTML (single-page center stage, click-to-read, no buttons), invokes local Chrome Headless to print the PDF, and synthesises one WAV per page using the bundled TTS tool (`content_builder.tools.tts._synthesize_wav`) when `--audio` is on (default).
+The renderer converts the structured manifest to a vertical, up/down scrolling storybook HTML like `roadshow-final-products/storybook/book.html`, then invokes local Chrome Headless to print the final PDF. When `--audio` is on (default), it also synthesises one optional WAV per page using the bundled TTS tool (`content_builder.tools.tts._synthesize_wav`).
 
 The agent filesystem uses virtual `/output/...` paths. The local execute tool starts commands from the workspace root and does not translate an executable script path, so invoke the script by workspace-relative path while passing virtual artifact paths:
 
@@ -133,28 +130,27 @@ python wangpu/content-builder-agent/skills/storybook/scripts/render_storybook.py
 Flags:
 
 - `--audio` (default on) / `--no-audio`: synthesise per-page WAV using Qwen DashScope. Failures are isolated to a `*-error.txt` per page; the HTML and PDF still render.
-- `--no-pdf`: skip the PDF print step (useful for rapid HTML iteration).
+- `--no-pdf`: skip the PDF print step only for rapid local iteration. Do not use it for the final artifact.
 
 The script resolves `/output/...` to the workspace output directory and writes:
 
 ```text
-/output/storybooks/<slug>/book.html       # Web Audio Storybook
-/output/storybooks/<slug>/audio/page-*.wav
+/output/storybooks/<slug>/book.html       # vertical up/down storybook
+/output/storybooks/<slug>/audio/page-*.wav  # optional narration files
 /output/storybooks/<slug>/<slug>.pdf
 ```
 
-## Web Audio Storybook
+## Vertical Storybook Style
 
-`book.html` is a single-page center stage with these properties:
+`book.html` must follow the existing `roadshow-final-products/storybook/book.html` style:
 
-- One page is shown at a time; navigation is **click-only** with no on-screen buttons.
-- The first click on the stage plays the current page WAV, then auto-advances to the next page with a fade transition.
-- The right 25% of the stage goes forward; the left 25% goes back; the middle replays the current page.
-- Keyboard: `←` / `→` to navigate, `Space` to replay the current page, `Esc` to stop.
-- Missing WAV (or browser audio failure) automatically falls back to `window.speechSynthesis` using the page's `data-text`; behaviour is otherwise identical.
-- A small `♪ 点击翻页朗读` hint and a thin dot row mark progress; neither is a clickable button.
+- Pages are stacked vertically in reading order, so the reader flips/scrolls up and down through the book.
+- Each page is a large illustrated card with the image and story text visible together.
+- There must be no extra buttons, toolbars, dot-row controls, next/previous controls, download controls, or visible generated UI beyond the storybook itself.
+- Clicking a page may play narration if audio is available; missing WAV files may fall back to `window.speechSynthesis` using the page's `data-text`.
+- Keyboard navigation may support ordinary scrolling or page focus, but it must not introduce visible controls.
 
-If a parent's main concern is the printable spread, render the `<slug>.pdf` (same renderer) for A4-spread printing instead of the Web Audio Storybook.
+Always render the `<slug>.pdf` after `book.html`; the final delivery is not complete without the PDF.
 
 ## Completion Checklist
 
@@ -162,6 +158,7 @@ If a parent's main concern is the printable spread, render the `<slug>.pdf` (sam
 - `book.json` page count matches its pages and each declared illustration exists.
 - Page text is short, speakable, and age-appropriate.
 - All repeated characters and setting elements follow `visual-bible.md`.
-- `book.html` is the Web Audio Storybook (no on-screen buttons) and the PDF were produced by the bundled renderer.
-- `audio/page-*.wav` count matches `pages.length`; any failure is documented in `audio/<page-id>-error.txt` and the HTML still works through the `speechSynthesis` fallback.
+- `book.html` uses the vertical up/down storybook style and contains no extra visible buttons or controls.
+- `<slug>.pdf` exists, is non-empty, and was produced by the bundled renderer.
+- If `audio/page-*.wav` files were requested, any failure is documented in `audio/<page-id>-error.txt` and the HTML still works through the `speechSynthesis` fallback.
 - Final response lists every core artifact path and any failed/revised page.

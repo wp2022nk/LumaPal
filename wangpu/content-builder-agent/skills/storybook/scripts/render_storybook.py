@@ -4,10 +4,10 @@
 V2 features:
 - Default ``--audio`` mode: synthesises one WAV per page using the bundled
   Qwen DashScope TTS tool (``content_builder.tools.tts._synthesize_wav``).
-- ``render_audiobook_html`` produces the centered single-page, click-to-read
-  Web Audio Storybook (no buttons) with auto-advance and a
-  ``speechSynthesis`` fallback when a WAV is missing.
-- ``render_print_html`` keeps the original 210mm square pages for the PDF.
+- ``render_audiobook_html`` produces the vertical, continuous-scroll,
+  click-to-read storybook (no buttons) with a ``speechSynthesis`` fallback
+  when a WAV is missing.
+- ``render_print_html`` keeps 210mm square pages for the PDF.
 - TTS failures are isolated per page (``*-error.txt``) and never block PDF.
 
 Image paths in ``book.json`` must remain under ``images/``. The renderer
@@ -243,13 +243,13 @@ def _read_aloud_text(page: dict[str, Any], title: str) -> str:
 
 
 def render_audiobook_html(book: dict[str, Any]) -> str:
-    """Web Audio Storybook: continuous-scroll multi-page view, click-to-read.
+    """Vertical storybook: continuous-scroll multi-page view, click-to-read.
 
     Each ``<section class="page">`` is a 210mm-style block with image and text
     visible at the same time. Clicking anywhere on a page plays that page's
     narration. There is no fade transition, no auto-advance, and no on-screen
-    buttons. The PDF (rendered from this same file) inherits the page-break
-    after each section, so every page appears in the PDF.
+    buttons. The HTML keeps page breaks so it can be inspected similarly to
+    the generated PDF.
     """
     title = html.escape(str(book["title"]))
     pages = book["pages"]

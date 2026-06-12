@@ -15,15 +15,58 @@ from unittest.mock import patch
 
 import httpx
 from fastapi.testclient import TestClient
+from langchain_core.messages import ToolMessage
 
 from content_builder.server import api
 from content_builder.server.api import WebSocketPCMPlayer, app
 from content_builder.server.security import make_preview_token, preview_token_is_valid
 from content_builder.server.xiaozhi import XiaozhiSession, XiaozhiWebSocketOpusPlayer, _agent_input_for_xiaozhi_turn, _handle_device_audio, _handle_device_text, _public_base_url_from_websocket, _run_agent_tts_turn, session_manager
+from content_builder.server.xiaozhi.turn_service import _stream_event_to_tool_event
 from content_builder.streaming import StreamEvent
 from content_builder.tools.xiaozhi import _call_device_tool, _tool_response_for_agent, xiaozhi_call_device_tool
 from content_builder.thread_storage import resolve_thread_file, thread_paths
 from content_builder.history import save_thread_daily_messages
+
+
+class XiaozhiToolEventMappingTests(unittest.TestCase):
+    def test_tool_event_uses_tool_message_name(self) -> None:
+        event = StreamEvent(
+            "tool_result",
+            "main",
+            "[main] 工具返回: web_search\n{}",
+            ToolMessage(content="{}", name="web_search", tool_call_id="call-1"),
+        )
+
+        tool_event = _stream_event_to_tool_event(event)
+
+        self.assertIsNotNone(tool_event)
+        self.assertEqual(tool_event["name"], "web_search")
+
+    def test_tool_event_uses_nested_payload_tool_name(self) -> None:
+        event = StreamEvent(
+            "tool_call",
+            "main",
+            "[main] 调用工具: generate_image\n{}",
+            {"payload": {"tool_name": "generate_image"}, "input": {"prompt": "moon"}},
+        )
+
+        tool_event = _stream_event_to_tool_event(event)
+
+        self.assertIsNotNone(tool_event)
+        self.assertEqual(tool_event["name"], "generate_image")
+
+    def test_tool_event_falls_back_to_text_tool_name(self) -> None:
+        event = StreamEvent(
+            "tool_call",
+            "main",
+            "[main] 调用工具: xiaozhi_call_device_tool\n{}",
+            object(),
+        )
+
+        tool_event = _stream_event_to_tool_event(event)
+
+        self.assertIsNotNone(tool_event)
+        self.assertEqual(tool_event["name"], "xiaozhi_call_device_tool")
 
 
 class ThreadStorageTests(unittest.TestCase):
@@ -1371,6 +1414,9 @@ Wireless LAN adapter WLAN:
         old_file = Path(os.environ["CONTENT_BUILDER_HISTORY_DIR"]) / "2026-06-01" / "games" / "old-game" / "index.html"
         old_file.parent.mkdir(parents=True, exist_ok=True)
         old_file.write_text("<h1>old</h1>", encoding="utf-8")
+        output_file = Path(os.environ["CONTENT_BUILDER_OUTPUT_DIR"]) / "storybooks" / "new-book" / "new-book.pdf"
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        output_file.write_bytes(b"%PDF-output")
         workspace = Path(self.temporary_dir.name) / "workspace"
         roadshow_file = workspace / "roadshow-final-products" / "game" / "index.html"
         roadshow_file.parent.mkdir(parents=True, exist_ok=True)
@@ -1386,6 +1432,7 @@ Wireless LAN adapter WLAN:
             entries = response.json()["entries"]
             paths = {entry["path"] for entry in entries}
             self.assertIn("history/2026-06-08/artifacts/storybook/book.html", paths)
+            self.assertIn("output/storybooks/new-book/new-book.pdf", paths)
             self.assertIn("roadshow-final-products/game/index.html", paths)
             self.assertNotIn("history/2026-06-01/games/old-game/index.html", paths)
 
@@ -1394,6 +1441,14 @@ Wireless LAN adapter WLAN:
             preview = self.client.get(story["preview_url"])
             self.assertEqual(preview.status_code, 200)
             self.assertIn("story", preview.text)
+
+            output_entry = next(entry for entry in entries if entry["path"] == "output/storybooks/new-book/new-book.pdf")
+            self.assertEqual(output_entry["source"], "output")
+            self.assertEqual(output_entry["category"], "storybook")
+            self.assertEqual(output_entry["kind"], "pdf")
+            output_preview = self.client.get(output_entry["preview_url"])
+            self.assertEqual(output_preview.status_code, 200)
+            self.assertEqual(output_preview.content, b"%PDF-output")
 
             bad_path = "history/2026-06-08/%2E%2E/secret.txt"
             token = make_preview_token("history", bad_path)

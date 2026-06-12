@@ -127,9 +127,43 @@ def _stream_event_to_tool_event(event: StreamEvent) -> dict[str, Any] | None:
 
 def _tool_name_from_event(event: StreamEvent) -> str:
     raw = event.raw
+    raw_name = _tool_name_from_raw(raw)
+    if raw_name:
+        return raw_name
+    text_name = _tool_name_from_text(event.text)
+    return text_name or "tool"
+
+
+def _tool_name_from_raw(raw: Any) -> str:
     if isinstance(raw, dict):
-        return str(raw.get("tool_name") or raw.get("name") or raw.get("name") or "tool")
-    return "tool"
+        for key in ("tool_name", "name"):
+            value = raw.get(key)
+            if value:
+                return str(value)
+
+        payload = raw.get("payload")
+        if isinstance(payload, dict):
+            nested_name = _tool_name_from_raw(payload)
+            if nested_name:
+                return nested_name
+
+    for attr in ("tool_name", "name"):
+        value = getattr(raw, attr, None)
+        if value:
+            return str(value)
+
+    return ""
+
+
+def _tool_name_from_text(text: str) -> str:
+    for marker in ("调用工具:", "工具返回:", "工具错误:", "工具参数流:"):
+        if marker not in text:
+            continue
+        tail = text.split(marker, 1)[1].strip()
+        if not tail:
+            continue
+        return tail.splitlines()[0].strip()
+    return ""
 
 
 def _tool_payload_from_event(event: StreamEvent) -> Any:

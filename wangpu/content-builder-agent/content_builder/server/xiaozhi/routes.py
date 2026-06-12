@@ -292,7 +292,10 @@ async def websocket_endpoint(websocket: WebSocket, thread_id: str = Query(""), t
 
     device_id = websocket.headers.get("Device-Id", "")
     client_id = websocket.headers.get("Client-Id", "")
-    thread_id = thread_id or _new_xiaozhi_thread_id(device_id=device_id, client_id=client_id)
+    requested_thread_id = thread_id
+    thread_id = _new_xiaozhi_thread_id(device_id=device_id, client_id=client_id)
+    if requested_thread_id:
+        logger.info("Ignoring Xiaozhi websocket thread_id=%s; using fresh thread_id=%s", requested_thread_id, thread_id)
     protocol_version = websocket.headers.get("Protocol-Version", "1")
     try:
         version = int(protocol_version)

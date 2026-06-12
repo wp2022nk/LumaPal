@@ -175,6 +175,8 @@ class XiaozhiSession:
     auto_speech_started_at: float = 0.0
     auto_last_voice_at: float = 0.0
     auto_speech_frames: list[bytes] = field(default_factory=list)
+    auto_pending_speech_frames: list[bytes] = field(default_factory=list)
+    auto_voice_frame_count: int = 0
     photo_uploads: asyncio.Queue[dict[str, Any]] = field(default_factory=asyncio.Queue)
     vision_url: str = ""
     last_photo_upload_at: float = 0.0
@@ -488,6 +490,8 @@ class XiaozhiSession:
         self.auto_speech_started_at = 0.0
         self.auto_last_voice_at = 0.0
         self.auto_speech_frames.clear()
+        self.auto_pending_speech_frames.clear()
+        self.auto_voice_frame_count = 0
 
 
 class XiaozhiSessionManager:

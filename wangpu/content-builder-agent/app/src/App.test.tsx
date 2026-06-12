@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { useStream } from "@langchain/langgraph-sdk/react";
@@ -10,6 +10,34 @@ const voiceMocks = vi.hoisted(() => ({
   sendText: vi.fn(),
   unlockAudio: vi.fn().mockResolvedValue(undefined),
 }));
+
+class MockEventSource {
+  static instances: MockEventSource[] = [];
+
+  readonly listeners = new Map<string, EventListener[]>();
+  readonly url: string;
+  readonly close = vi.fn();
+
+  constructor(url: string | URL) {
+    this.url = String(url);
+    MockEventSource.instances.push(this);
+  }
+
+  addEventListener(type: string, listener: EventListener): void {
+    this.listeners.set(type, [...(this.listeners.get(type) || []), listener]);
+  }
+
+  removeEventListener(type: string, listener: EventListener): void {
+    this.listeners.set(type, (this.listeners.get(type) || []).filter((item) => item !== listener));
+  }
+
+  emit(type: string, payload: unknown): void {
+    const event = new MessageEvent(type, { data: JSON.stringify(payload) });
+    for (const listener of this.listeners.get(type) || []) {
+      listener(event);
+    }
+  }
+}
 
 vi.mock("@langchain/langgraph-sdk/react", () => ({
   useStream: vi.fn(),
@@ -31,6 +59,8 @@ describe("App pairing gate", () => {
     cleanup();
     localStorage.clear();
     sessionStorage.clear();
+    MockEventSource.instances = [];
+    (globalThis as unknown as { EventSource?: unknown }).EventSource = undefined;
     vi.clearAllMocks();
   });
 
@@ -117,5 +147,113 @@ describe("App pairing gate", () => {
     expect(voiceMocks.unlockAudio).toHaveBeenCalled();
     expect(voiceMocks.connect).toHaveBeenCalled();
     expect(voiceMocks.connect.mock.invocationCallOrder[0]).toBeLessThan(submit.mock.invocationCallOrder[0]);
+  });
+
+  it("keeps Xiaozhi hardware sessions out of LangGraph thread switching", async () => {
+    sessionStorage.setItem("content-builder.pairing-token", "phone-token");
+    (globalThis as unknown as { EventSource: typeof MockEventSource }).EventSource = MockEventSource;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes("/gateway/status")) {
+        return Promise.resolve(new Response(JSON.stringify({
+          paired: true,
+          agent_server_ready: true,
+        }), { status: 200, headers: { "content-type": "application/json" } }));
+      }
+      if (url.includes("/history/artifacts")) {
+        return Promise.resolve(new Response(JSON.stringify({ entries: [] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }));
+      }
+      return Promise.resolve(new Response(JSON.stringify({}), { status: 200, headers: { "content-type": "application/json" } }));
+    });
+    const switchThread = vi.fn();
+    vi.mocked(useStream).mockReturnValue({
+      client: { threads: { search: vi.fn().mockResolvedValue([]) } },
+      getSubagentsByMessage: () => [],
+      isLoading: false,
+      messages: [{ id: "agent-message", type: "ai", content: "agent text" }],
+      stop: vi.fn(),
+      subagents: new Map(),
+      submit: vi.fn(),
+      switchThread,
+      values: {},
+    } as never);
+
+    render(<App />);
+
+    await waitFor(() => expect(MockEventSource.instances).toHaveLength(1));
+    await act(async () => {
+      MockEventSource.instances[0].emit("thread_created", {
+        thread_id: "xiaozhi-device-a-123",
+        device_id: "device-a",
+        updated_at: "2026-06-12T08:00:00Z",
+      });
+    });
+    fireEvent.click(await screen.findByText("Xiaozhi device-a"));
+
+    expect(switchThread).toHaveBeenCalledWith(null);
+    expect(switchThread).not.toHaveBeenCalledWith("xiaozhi-device-a-123");
+    expect(screen.queryByText("agent text")).not.toBeInTheDocument();
+  });
+
+  it("shows historical artifacts with date filters and opens a preview", async () => {
+    sessionStorage.setItem("content-builder.pairing-token", "phone-token");
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes("/gateway/status")) {
+        return Promise.resolve(new Response(JSON.stringify({
+          paired: true,
+          agent_server_ready: true,
+        }), { status: 200, headers: { "content-type": "application/json" } }));
+      }
+      if (url.includes("/history/artifacts")) {
+        return Promise.resolve(new Response(JSON.stringify({
+          entries: [
+            {
+              name: "book.html",
+              title: "小水滴滴滴的云朵大冒险",
+              path: "roadshow-final-products/storybook/book.html",
+              date: "2026-06-05",
+              source: "roadshow",
+              category: "audiobook",
+              size: 10,
+              modified_at: 1,
+              mime_type: "text/html",
+              kind: "html",
+              preview_url: "/api/content-builder/history-preview/token/roadshow-final-products/storybook/book.html",
+            },
+          ],
+        }), { status: 200, headers: { "content-type": "application/json" } }));
+      }
+      return Promise.resolve(new Response(JSON.stringify({}), { status: 200, headers: { "content-type": "application/json" } }));
+    });
+    vi.mocked(useStream).mockReturnValue({
+      client: { threads: { search: vi.fn().mockResolvedValue([]) } },
+      getSubagentsByMessage: () => [],
+      isLoading: false,
+      messages: [],
+      stop: vi.fn(),
+      subagents: new Map(),
+      submit: vi.fn(),
+      switchThread: vi.fn(),
+      values: {},
+    } as never);
+
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /历史/ }));
+    expect(await screen.findByText("历史产物档案馆")).toBeInTheDocument();
+    expect(await screen.findByText("小水滴滴滴的云朵大冒险")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("开始日期"), { target: { value: "2026-06-01" } });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("start_date=2026-06-01"),
+      expect.anything(),
+    ));
+
+    fireEvent.click(screen.getByText("小水滴滴滴的云朵大冒险"));
+    expect(screen.getByRole("dialog", { name: "预览 book.html" })).toBeInTheDocument();
   });
 });

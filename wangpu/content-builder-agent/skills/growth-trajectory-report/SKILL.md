@@ -34,7 +34,8 @@ If the report is for a roadshow/demo and the user provided a script, use the scr
 3. Scan the **photo and artifact** sources (see "Image-aware Report" below) so that every theme, work, and timeline entry has a concrete image to anchor it.
 4. Produce `report-data.json` with:
    - overview metrics
-   - ability dimensions with current/previous/trend
+   - ability dimensions with current/previous/trend/evidence
+   - `methodology` explaining how every radar dimension is derived from chat records, photos, game behavior, story choices, and parent-child co-creation
    - top curiosity themes (each with `evidence_image` + `evidence_note` when possible)
    - favorite question type
    - creative works (each with `cover_image` + optional `link` to the artifact)
@@ -74,8 +75,9 @@ Read `references/report-design.md` before designing or revising report layouts.
 Reports should be beautiful but immediately understandable:
 
 - Start with a clear monthly/weekly headline and 3-5 key metrics.
-- Use grouped cards, a radar chart, trend markers, works gallery, milestone narrative, and next-action suggestions.
+- Use grouped cards, a radar chart, trend markers, an "指标如何得出" methodology section, works gallery, milestone narrative, and next-action suggestions.
 - Anchor every claim with a real photo (主题/作品/探险相册) and a 童言 timeline so parents see the source of every conclusion.
+- Explain radar scores in parent-facing language. Tie each dimension to observable evidence such as question frequency, causal words, cross-scene transfer, role-play choices, artifact output, and parent-child collaboration.
 - Keep language warm, specific, and non-clinical.
 - Do not expose private raw chat logs unless the user explicitly asks.
 
@@ -99,11 +101,18 @@ The script writes:
 /output/growth-report/<slug>.pdf
 ```
 
+For roadshow/demo artifacts, the renderer may also write under `roadshow-final-products/growth-report/`:
+
+```powershell
+python wangpu/content-builder-agent/skills/growth-trajectory-report/scripts/render_growth_report.py --data roadshow-final-products/growth-report/report-data.json --output-dir roadshow-final-products/growth-report --pdf --embed-images
+```
+
 If PDF rendering fails, keep the HTML and data file and state that the PDF is missing.
 
 ## Completion Checklist
 
 - Report data is traceable to source history, script, or artifacts.
+- `methodology` explains how every radar dimension was scored and what evidence was used.
 - Each `curiosity_themes[*]` entry has an `evidence_image` and a one-sentence `evidence_note`.
 - Each `works[*]` entry has a `cover_image`; links to the original artifact (`book.html` / `index.html`) are filled when available.
 - `exploration_photos` contains at least 6 entries drawn from `history/<date>/uploads/images/*`.

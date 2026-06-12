@@ -121,6 +121,86 @@ def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
     temporary_path.replace(path)
 
 
+def _mirror_thread_files(thread_id: str, day_dir: Path) -> None:
+    paths = thread_paths(thread_id)
+    for name, source in (
+        ("uploads", paths.uploads),
+        ("artifacts", paths.artifacts),
+        ("games", paths.games),
+    ):
+        _copy_tree(source, day_dir / name)
+
+
+def _daily_files(day_dir: Path) -> list[dict[str, Any]]:
+    return (
+        _file_entries(day_dir / "uploads", "uploads")
+        + _file_entries(day_dir / "artifacts", "artifacts")
+        + _file_entries(day_dir / "games", "games")
+    )
+
+
+def save_thread_daily_messages(
+    thread_id: str,
+    messages: list[Any],
+    *,
+    metadata: dict[str, Any] | None = None,
+    event: dict[str, Any] | None = None,
+) -> Path:
+    """Append only newly observed chat messages to today's sidecar history."""
+
+    safe_thread_id = validate_thread_id(thread_id)
+    day = _today()
+    path = _snapshot_path(day=day)
+    previous = _read_previous(path)
+    day_dir = path.parent
+    _mirror_thread_files(safe_thread_id, day_dir)
+
+    conversations = previous.get("conversations")
+    if not isinstance(conversations, dict):
+        conversations = {}
+    previous_conversation = conversations.get(safe_thread_id)
+    if not isinstance(previous_conversation, dict):
+        previous_conversation = {}
+
+    previous_messages = previous_conversation.get("messages", [])
+    daily_messages = list(previous_messages) if isinstance(previous_messages, list) else []
+    message_window_start = _message_count(previous_conversation.get("message_window_start"))
+    if message_window_start is None:
+        message_window_start = _previous_message_count(safe_thread_id, day)
+    daily_messages.extend(messages)
+    total_message_count = message_window_start + len(daily_messages)
+
+    conversations[safe_thread_id] = {
+        "thread_id": safe_thread_id,
+        "updated_at": datetime.now().astimezone().isoformat(),
+        "messages": daily_messages,
+        "message_window_start": message_window_start,
+        "total_message_count": total_message_count,
+        "metadata": metadata if metadata is not None else previous_conversation.get("metadata", {}),
+        "growth_events": previous_conversation.get("growth_events", []),
+        "artifact_refs": previous_conversation.get("artifact_refs", []),
+        "profile_updates": previous_conversation.get("profile_updates", {}),
+    }
+
+    events = list(previous.get("events") if isinstance(previous.get("events"), list) else [])
+    if event is not None:
+        events.append({"recorded_at": datetime.now().astimezone().isoformat(), "thread_id": safe_thread_id, **event})
+
+    payload = {
+        "date": day,
+        "updated_at": datetime.now().astimezone().isoformat(),
+        "conversations": conversations,
+        "events": events,
+        "growth_events": list(previous.get("growth_events") if isinstance(previous.get("growth_events"), list) else []),
+        "artifact_refs": list(previous.get("artifact_refs") if isinstance(previous.get("artifact_refs"), list) else []),
+        "profile_updates": list(previous.get("profile_updates") if isinstance(previous.get("profile_updates"), list) else []),
+        "files": _daily_files(day_dir),
+        "mirrored_dir": str(day_dir),
+    }
+    _atomic_write_json(path, payload)
+    return path
+
+
 def save_thread_history_snapshot(
     thread_id: str,
     *,
@@ -138,15 +218,9 @@ def save_thread_history_snapshot(
     day = _today()
     path = _snapshot_path(day=day)
     previous = _read_previous(path)
-    paths = thread_paths(safe_thread_id)
     day_dir = path.parent
 
-    for name, source in (
-        ("uploads", paths.uploads),
-        ("artifacts", paths.artifacts),
-        ("games", paths.games),
-    ):
-        _copy_tree(source, day_dir / name)
+    _mirror_thread_files(safe_thread_id, day_dir)
 
     conversations = previous.get("conversations")
     if not isinstance(conversations, dict):
@@ -245,11 +319,7 @@ def save_thread_history_snapshot(
         "growth_events": previous_growth_events,
         "artifact_refs": previous_artifact_refs,
         "profile_updates": previous_profile_updates,
-        "files": (
-            _file_entries(day_dir / "uploads", "uploads")
-            + _file_entries(day_dir / "artifacts", "artifacts")
-            + _file_entries(day_dir / "games", "games")
-        ),
+        "files": _daily_files(day_dir),
         "mirrored_dir": str(day_dir),
     }
     _atomic_write_json(path, payload)

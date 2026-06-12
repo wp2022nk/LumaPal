@@ -23,6 +23,7 @@ from content_builder.server.xiaozhi import XiaozhiSession, XiaozhiWebSocketOpusP
 from content_builder.streaming import StreamEvent
 from content_builder.tools.xiaozhi import _call_device_tool, _tool_response_for_agent, xiaozhi_call_device_tool
 from content_builder.thread_storage import resolve_thread_file, thread_paths
+from content_builder.history import save_thread_daily_messages
 
 
 class ThreadStorageTests(unittest.TestCase):
@@ -137,6 +138,37 @@ class ServerAPITests(unittest.TestCase):
 
         self.assertEqual(response["type"], "hello")
         self.assertEqual(response["audio_params"], {"format": "opus", "sample_rate": 16000, "channels": 1, "frame_duration": 60})
+
+    def test_xiaozhi_websocket_ignores_old_query_thread_id(self) -> None:
+        with patch("content_builder.server.xiaozhi.XiaozhiSession.initialize_mcp", return_value=None):
+            with self.client.websocket_connect(
+                "/api/xiaozhi/v1/ws?thread_id=xiaozhi-python&token=phone-token",
+                headers={"Device-Id": "device-a", "Client-Id": "client-a", "Protocol-Version": "1"},
+            ) as websocket:
+                websocket.send_json({"type": "hello", "version": 1, "transport": "websocket"})
+                websocket.receive_json()
+                status = self.client.get("/api/xiaozhi/v1/status", headers=self.headers)
+
+        [session] = status.json()["sessions"]
+        self.assertNotEqual(session["thread_id"], "xiaozhi-python")
+        self.assertTrue(session["thread_id"].startswith("xiaozhi-device-a-"))
+
+    def test_xiaozhi_websocket_reconnects_get_distinct_thread_ids(self) -> None:
+        thread_ids: list[str] = []
+        with patch("content_builder.server.xiaozhi.XiaozhiSession.initialize_mcp", return_value=None):
+            for _ in range(2):
+                with self.client.websocket_connect(
+                    "/api/xiaozhi/v1/ws?thread_id=xiaozhi-python&token=phone-token",
+                    headers={"Device-Id": "device-a", "Client-Id": "client-a", "Protocol-Version": "1"},
+                ) as websocket:
+                    websocket.send_json({"type": "hello", "version": 1, "transport": "websocket"})
+                    websocket.receive_json()
+                    status = self.client.get("/api/xiaozhi/v1/status", headers=self.headers)
+                    [session] = status.json()["sessions"]
+                    thread_ids.append(session["thread_id"])
+
+        self.assertEqual(len(set(thread_ids)), 2)
+        self.assertTrue(all(thread_id.startswith("xiaozhi-device-a-") for thread_id in thread_ids))
 
     def test_xiaozhi_device_tool_call_requires_connected_session(self) -> None:
         response = self.client.post(
@@ -344,7 +376,7 @@ class ServerAPITests(unittest.TestCase):
             patch("content_builder.server.xiaozhi.turn_service.create_content_writer", return_value=object()) as create_agent,
             patch("content_builder.server.xiaozhi.turn_service.astream_agent_events", side_effect=fake_events) as stream_events,
             patch("content_builder.server.xiaozhi.turn_service.VoiceResponseSpeaker", FakeSpeaker),
-            patch("content_builder.server.xiaozhi.turn_service.save_thread_history_snapshot"),
+            patch("content_builder.server.xiaozhi.turn_service.save_thread_daily_messages"),
             redirect_stdout(buffer),
         ):
             run(_run_agent_tts_turn(session, "问题", config))
@@ -403,7 +435,7 @@ class ServerAPITests(unittest.TestCase):
             patch("content_builder.server.xiaozhi.turn_service.create_content_writer", return_value=object()),
             patch("content_builder.server.xiaozhi.turn_service.astream_agent_events", side_effect=fake_events),
             patch("content_builder.server.xiaozhi.turn_service.VoiceResponseSpeaker", FakeSpeaker),
-            patch("content_builder.server.xiaozhi.turn_service.save_thread_history_snapshot"),
+            patch("content_builder.server.xiaozhi.turn_service.save_thread_daily_messages"),
             redirect_stdout(io.StringIO()),
         ):
             run(_run_agent_tts_turn(session, "画月亮", config))
@@ -463,7 +495,7 @@ class ServerAPITests(unittest.TestCase):
             patch("content_builder.server.xiaozhi.turn_service.create_content_writer", return_value=object()),
             patch("content_builder.server.xiaozhi.turn_service.astream_agent_events", side_effect=fake_events),
             patch("content_builder.server.xiaozhi.turn_service.VoiceResponseSpeaker", FakeSpeaker),
-            patch("content_builder.server.xiaozhi.turn_service.save_thread_history_snapshot"),
+            patch("content_builder.server.xiaozhi.turn_service.save_thread_daily_messages"),
             redirect_stdout(io.StringIO()),
         ):
             run(_run_agent_tts_turn(session, "拍张照片看看这是什么。", config))
@@ -886,13 +918,98 @@ Wireless LAN adapter WLAN:
                 patch("content_builder.server.xiaozhi._run_voice_turn_from_audio", fake_voice_turn),
             ):
                 await _handle_device_audio(session, b"voice")
+                await _handle_device_audio(session, b"voice")
                 await _handle_device_audio(session, b"silence")
                 self.assertIsNotNone(session.agent_task)
                 await session.agent_task
 
         run(exercise())
 
-        self.assertEqual(started_turns, [[b"voice", b"silence"]])
+        self.assertEqual(started_turns, [[b"voice", b"voice", b"silence"]])
+
+    def test_xiaozhi_audio_while_speaking_does_not_start_listening_or_interrupt(self) -> None:
+        class FakeCodec:
+            def __init__(self, *args, **kwargs) -> None:
+                return None
+
+            def decode(self, frame: bytes) -> bytes:
+                return (10000).to_bytes(2, "little", signed=True) * 960
+
+        class FakeWebSocket:
+            def __init__(self) -> None:
+                self.messages: list[dict[str, Any]] = []
+
+            async def send_text(self, message: str) -> None:
+                self.messages.append(json.loads(message))
+
+        class FakeTask:
+            cancelled = False
+
+            def done(self) -> bool:
+                return False
+
+            def cancel(self) -> None:
+                self.cancelled = True
+
+        async def exercise() -> tuple[XiaozhiSession, FakeTask]:
+            websocket = FakeWebSocket()
+            session = XiaozhiSession(websocket=websocket, thread_id="session-a", device_id="", client_id="")
+            session.server_is_speaking = True
+            task = FakeTask()
+            session.agent_task = task
+            with patch("content_builder.server.xiaozhi.OpusCodec", FakeCodec):
+                await _handle_device_audio(session, b"noise")
+                await _handle_device_audio(session, b"noise")
+            return session, task
+
+        session, task = run(exercise())
+
+        self.assertFalse(session.auto_speech_started)
+        self.assertFalse(task.cancelled)
+        self.assertEqual(session.websocket.messages, [])
+
+    def test_xiaozhi_listen_event_while_speaking_is_ignored(self) -> None:
+        class FakeTask:
+            cancelled = False
+
+            def done(self) -> bool:
+                return False
+
+            def cancel(self) -> None:
+                self.cancelled = True
+
+        async def exercise() -> tuple[XiaozhiSession, FakeTask]:
+            session = XiaozhiSession(websocket=object(), thread_id="session-a", device_id="", client_id="")
+            session.server_is_speaking = True
+            task = FakeTask()
+            session.agent_task = task
+            await _handle_device_text(session, json.dumps({"type": "listen", "state": "detect", "text": "hello"}))
+            return session, task
+
+        session, task = run(exercise())
+
+        self.assertFalse(task.cancelled)
+        self.assertFalse(session.manual_listen_started)
+        self.assertFalse(session.auto_speech_started)
+
+    def test_xiaozhi_sustained_voice_starts_after_reply_is_done(self) -> None:
+        class FakeCodec:
+            def __init__(self, *args, **kwargs) -> None:
+                return None
+
+            def decode(self, frame: bytes) -> bytes:
+                return (10000).to_bytes(2, "little", signed=True) * 960
+
+        async def exercise() -> XiaozhiSession:
+            session = XiaozhiSession(websocket=object(), thread_id="session-a", device_id="", client_id="")
+            with patch("content_builder.server.xiaozhi.OpusCodec", FakeCodec):
+                await _handle_device_audio(session, b"voice")
+                await _handle_device_audio(session, b"voice")
+            return session
+
+        session = run(exercise())
+
+        self.assertTrue(session.auto_speech_started)
 
     def test_xiaozhi_listen_start_defaults_to_full_duplex_auto_mode(self) -> None:
         async def exercise() -> XiaozhiSession:
@@ -1247,6 +1364,42 @@ Wireless LAN adapter WLAN:
         wrong_thread_url = listed["preview_url"].replace("session-a", "session-b")
         self.assertEqual(self.client.get(wrong_thread_url).status_code, 401)
 
+    def test_history_artifacts_scan_history_and_roadshow_with_preview(self) -> None:
+        history_file = Path(os.environ["CONTENT_BUILDER_HISTORY_DIR"]) / "2026-06-08" / "artifacts" / "storybook" / "book.html"
+        history_file.parent.mkdir(parents=True, exist_ok=True)
+        history_file.write_text("<h1>story</h1>", encoding="utf-8")
+        old_file = Path(os.environ["CONTENT_BUILDER_HISTORY_DIR"]) / "2026-06-01" / "games" / "old-game" / "index.html"
+        old_file.parent.mkdir(parents=True, exist_ok=True)
+        old_file.write_text("<h1>old</h1>", encoding="utf-8")
+        workspace = Path(self.temporary_dir.name) / "workspace"
+        roadshow_file = workspace / "roadshow-final-products" / "game" / "index.html"
+        roadshow_file.parent.mkdir(parents=True, exist_ok=True)
+        roadshow_file.write_text("<h1>game</h1>", encoding="utf-8")
+
+        with patch("content_builder.server.api.WORKSPACE_DIR", workspace):
+            response = self.client.get(
+                "/api/content-builder/history/artifacts",
+                headers=self.headers,
+                params={"start_date": "2026-06-08", "end_date": "2099-12-31"},
+            )
+            self.assertEqual(response.status_code, 200)
+            entries = response.json()["entries"]
+            paths = {entry["path"] for entry in entries}
+            self.assertIn("history/2026-06-08/artifacts/storybook/book.html", paths)
+            self.assertIn("roadshow-final-products/game/index.html", paths)
+            self.assertNotIn("history/2026-06-01/games/old-game/index.html", paths)
+
+            story = next(entry for entry in entries if entry["path"].endswith("book.html"))
+            self.assertEqual(story["category"], "storybook")
+            preview = self.client.get(story["preview_url"])
+            self.assertEqual(preview.status_code, 200)
+            self.assertIn("story", preview.text)
+
+            bad_path = "history/2026-06-08/%2E%2E/secret.txt"
+            token = make_preview_token("history", bad_path)
+            rejected = self.client.get(f"/api/content-builder/history-preview/{token}/{bad_path}")
+            self.assertEqual(rejected.status_code, 400)
+
     def test_history_snapshot_saves_messages_and_mirrors_thread_files(self) -> None:
         upload = self.client.post(
             "/api/content-builder/threads/session-a/uploads/images",
@@ -1353,6 +1506,30 @@ Wireless LAN adapter WLAN:
         self.assertEqual([message["content"] for message in conversation["messages"]], ["first", "second"])
         self.assertEqual(conversation["message_window_start"], 0)
         self.assertEqual(conversation["total_message_count"], 2)
+
+    def test_daily_message_append_keeps_only_new_turn_messages(self) -> None:
+        with patch("content_builder.history._today", return_value="2026-06-11"):
+            save_thread_daily_messages(
+                "session-a",
+                [
+                    {"type": "human", "content": "old question"},
+                    {"type": "ai", "content": "old answer"},
+                ],
+                metadata={"source": "xiaozhi-test"},
+            )
+
+        with patch("content_builder.history._today", return_value="2026-06-12"):
+            history_path = save_thread_daily_messages(
+                "session-a",
+                [{"type": "human", "content": "new question"}],
+                metadata={"source": "xiaozhi-test"},
+            )
+
+        payload = json.loads(history_path.read_text(encoding="utf-8"))
+        conversation = payload["conversations"]["session-a"]
+        self.assertEqual([message["content"] for message in conversation["messages"]], ["new question"])
+        self.assertEqual(conversation["message_window_start"], 2)
+        self.assertEqual(conversation["total_message_count"], 3)
 
     def test_daily_history_snapshot_keeps_only_new_messages_after_prior_day(self) -> None:
         with patch("content_builder.history._today", return_value="2026-06-04"):

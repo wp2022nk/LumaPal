@@ -12,10 +12,24 @@ export function PdfPreview({ url }: { url: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    const task = getDocument(url);
-    void task.promise
-      .then(async (document) => {
+    let task: ReturnType<typeof getDocument> | undefined;
+    setError("");
+    void fetch(url)
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`${response.status} ${response.statusText}`);
+        }
+        return response.arrayBuffer();
+      })
+      .then((buffer) => {
         if (cancelled) {
+          return null;
+        }
+        task = getDocument({ data: new Uint8Array(buffer) });
+        return task.promise;
+      })
+      .then(async (document) => {
+        if (cancelled || !document) {
           return;
         }
         setPageCount(document.numPages);
@@ -32,7 +46,7 @@ export function PdfPreview({ url }: { url: string }) {
       .catch((reason: unknown) => setError(String(reason)));
     return () => {
       cancelled = true;
-      void task.destroy();
+      void task?.destroy();
     };
   }, [page, url]);
 

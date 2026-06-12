@@ -51,8 +51,14 @@ def resolve_artifact_path(raw_path: str) -> Path:
     else:
         path = Path(raw)
         resolved = path.resolve() if path.is_absolute() else (WORKSPACE_ROOT / path).resolve()
-    if OUTPUT_ROOT != resolved and OUTPUT_ROOT not in resolved.parents:
-        raise ValueError(f"Report artifact path must be under /output/: {raw_path}")
+    roadshow_root = (WORKSPACE_ROOT / "roadshow-final-products").resolve()
+    if not (
+        resolved == OUTPUT_ROOT
+        or OUTPUT_ROOT in resolved.parents
+        or resolved == roadshow_root
+        or roadshow_root in resolved.parents
+    ):
+        raise ValueError(f"Report artifact path must be under /output/ or roadshow-final-products/: {raw_path}")
     return resolved
 
 
@@ -83,7 +89,7 @@ def image_to_data_uri(path: Path) -> str:
         data = path.read_bytes()
         # Avoid huge payloads
         if len(data) > 2_000_000:
-            return ""
+            return path.as_uri()
         return f"data:{mime};base64,{base64.b64encode(data).decode('ascii')}"
     except OSError:
         return ""
@@ -219,6 +225,22 @@ def render_html(data: dict[str, Any], *, prefer_data: bool = False) -> str:
     ability_rows = "".join(
         f'<tr><td>{text(item.get("name"))}</td><td>{text(ability_value(item, "current"))}</td><td>{text(ability_change(item))}</td><td>{text(ability_trend(item))}</td></tr>'
         for item in abilities
+    )
+    methodology = data.get("methodology") or [
+        {
+            "dimension": item.get("name"),
+            "signals": item.get("evidence") or "来自对话、照片探索、作品选择和亲子共创记录的综合证据。",
+            "scoring": "1-5 分：出现频率、主动性、迁移跨度和表达完整度共同决定；只把稳定重复的证据写入长期画像。",
+        }
+        for item in abilities
+    ]
+    methodology_cards = "".join(
+        f'<article class="method-card">'
+        f'<strong>{text(item.get("dimension") or item.get("title"))}</strong>'
+        f'<p>{text(item.get("signals") or item.get("evidence"))}</p>'
+        f'<small>{text(item.get("scoring") or item.get("method"))}</small>'
+        f'</article>'
+        for item in methodology
     )
 
     # 好奇主题卡（含图）
@@ -383,16 +405,16 @@ def render_html(data: dict[str, Any], *, prefer_data: bool = False) -> str:
 @page {{ size: A4; margin: 10mm; }}
 * {{ box-sizing: border-box; }}
 body {{ margin: 0; font-family: "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC", Arial, sans-serif; color: #20312f; background: #eef5f3; -webkit-font-smoothing: antialiased; }}
-.report {{ max-width: 1200px; margin: 0 auto; padding: 28px; }}
-.hero {{ position: relative; padding: 36px 40px; border-radius: 28px; color: white; background: linear-gradient(135deg, #165b57 0%, #347b68 55%, #e19f4d 100%); overflow: hidden; box-shadow: 0 18px 50px rgba(25,70,62,.18); }}
-.hero::after {{ content: ""; position: absolute; right: -40px; top: -40px; width: 220px; height: 220px; border-radius: 50%; background: rgba(255,255,255,.08); }}
+.report {{ max-width: 1220px; margin: 0 auto; padding: 28px; }}
+.hero {{ position: relative; padding: 40px 42px; border-radius: 18px; color: white; background: linear-gradient(90deg, rgba(65,170,200,.16) 1px, transparent 1px) 0 0 / 42px 42px, linear-gradient(135deg, #102a32 0%, #173f45 56%, #2d7468 100%); overflow: hidden; box-shadow: 0 22px 58px rgba(16,42,50,.24); }}
+.hero::after {{ content: "水滴 -> 云朵 -> 雨滴 -> 花园 -> 阳光"; position: absolute; right: 30px; bottom: 24px; color: rgba(255,255,255,.18); font-size: 15px; font-weight: 800; letter-spacing: .08em; }}
 .hero .period {{ display: inline-flex; gap: 8px; align-items: center; padding: 6px 14px; border-radius: 999px; background: rgba(255,255,255,.18); font-size: 13px; letter-spacing: .08em; }}
 .hero h1 {{ margin: 12px 0 8px; font-size: 36px; letter-spacing: 0; }}
 .hero .child {{ display: inline-block; margin-left: 12px; padding: 4px 10px; border-radius: 8px; background: rgba(255,255,255,.16); font-size: 14px; letter-spacing: .04em; }}
 .hero p {{ max-width: 760px; margin: 8px 0 0; font-size: 17px; line-height: 1.7; }}
 .hero .mood {{ display: inline-flex; gap: 6px; margin-top: 14px; padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,.14); font-size: 12px; letter-spacing: .12em; }}
 .metrics {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 22px 0; }}
-.metric, .panel, .theme, .work, .suggestion, .gallery-card, .photo-card {{ border: 1px solid rgba(23,88,82,.14); border-radius: 18px; background: rgba(255,255,255,.96); box-shadow: 0 12px 34px rgba(25,70,62,.09); }}
+.metric, .panel, .theme, .work, .suggestion, .gallery-card, .photo-card, .method-card {{ border: 1px solid rgba(23,88,82,.14); border-radius: 10px; background: rgba(255,255,255,.96); box-shadow: 0 12px 34px rgba(25,70,62,.09); }}
 .metric {{ padding: 18px; }}
 .metric span {{ color: #55736e; font-size: 13px; }}
 .metric strong {{ display: block; margin: 8px 0 4px; color: #174f4b; font-size: 30px; }}
@@ -409,6 +431,11 @@ body {{ margin: 0; font-family: "Microsoft YaHei", "Noto Sans SC", "Source Han S
 table {{ width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 12px; }}
 td, th {{ padding: 11px 12px; border-bottom: 1px solid #e3ede9; text-align: left; }}
 th {{ color: #55736e; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }}
+.method-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }}
+.method-card {{ padding: 16px; background: #f8fcfa; }}
+.method-card strong {{ color: #174f4b; font-size: 15px; }}
+.method-card p {{ margin: 8px 0; color: #2c4642; font-size: 13px; line-height: 1.65; }}
+.method-card small {{ display: block; color: #6f807b; font-size: 12px; line-height: 1.55; }}
 .themes {{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }}
 .theme {{ padding: 18px; display: flex; flex-direction: column; gap: 10px; }}
 .theme header {{ display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }}
@@ -505,6 +532,11 @@ th {{ color: #55736e; font-size: 12px; letter-spacing: .04em; text-transform: up
       {timeline_markup}
     </section>
   </div>
+
+  <section class="panel">
+    <h2><span class="accent-bar"></span>指标如何得出</h2>
+    <div class="method-grid">{methodology_cards}</div>
+  </section>
 
   <section class="panel">
     <h2><span class="accent-bar"></span>TOP3 好奇主题</h2>

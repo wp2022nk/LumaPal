@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Archive,
+  BarChart3,
+  BookOpen,
   Bot,
   Camera,
+  CalendarDays,
   CheckCircle2,
   Circle,
   Code2,
   FileText,
   Folder,
+  Gamepad2,
   ImagePlus,
   ListChecks,
   LoaderCircle,
@@ -46,15 +51,18 @@ import {
   saveThreadId,
 } from "./runtime/storage";
 import type {
+  AgentRuntime,
   ArtifactEntry,
   ConnectionSettings,
+  HistoryArtifactCategory,
+  HistoryArtifactEntry,
   KeyName,
   KeySettings,
   SandboxEntry,
 } from "./runtime/types";
 import { mergeSandboxEvent, type SandboxLog } from "./sandbox/events";
 
-type Tab = "chat" | "tasks" | "artifacts" | "sandbox" | "settings";
+type Tab = "chat" | "tasks" | "artifacts" | "history" | "sandbox" | "settings";
 
 interface Todo {
   content: string;
@@ -97,6 +105,12 @@ interface AppRealtimeEvent {
 const DEFAULT_KEYS: KeySettings = {
   configured: { qwen: false, dashscope: false, tavily: false },
 };
+
+const UUID_THREAD_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isAgentThreadId(threadId: string | null): threadId is string {
+  return Boolean(threadId && UUID_THREAD_ID_PATTERN.test(threadId));
+}
 
 function hardwareEventToMessage(payload: HardwareEventMessage | AppRealtimeEvent): AppMessage | null {
   if ("message" in payload && payload.message) {
@@ -210,6 +224,10 @@ function AuthenticatedAgentWorkspace({
   const [draft, setDraft] = useState("");
   const [attachments, setAttachments] = useState<PendingImage[]>([]);
   const [artifacts, setArtifacts] = useState<ArtifactEntry[]>([]);
+  const [historyArtifacts, setHistoryArtifacts] = useState<HistoryArtifactEntry[]>([]);
+  const [historyStartDate, setHistoryStartDate] = useState("");
+  const [historyEndDate, setHistoryEndDate] = useState("");
+  const [historyCategory, setHistoryCategory] = useState<HistoryArtifactCategory | "all">("all");
   const [preview, setPreview] = useState<ArtifactEntry | null>(null);
   const [fullImage, setFullImage] = useState("");
   const [sandboxTree, setSandboxTree] = useState<SandboxEntry[]>([]);
@@ -229,12 +247,13 @@ function AuthenticatedAgentWorkspace({
   const previousLoading = useRef(false);
   const lastHistorySnapshot = useRef("");
   const fileInput = useRef<HTMLInputElement>(null);
+  const streamThreadId = isAgentThreadId(threadId) ? threadId : null;
 
   const stream = useStream<AgentState>({
     apiUrl: runtime.connection.baseUrl,
     apiKey: runtime.connection.pairingToken || null,
     assistantId: "content_writer",
-    threadId,
+    threadId: streamThreadId,
     onThreadId: (nextThreadId) => selectThreadState(nextThreadId),
     reconnectOnMount: Boolean(runtime.connection.pairingToken),
     fetchStateHistory: true,
@@ -247,7 +266,7 @@ function AuthenticatedAgentWorkspace({
     onError: (error) => setNotice(error instanceof Error ? error.message : String(error)),
   } as UseStreamOptions<AgentState> & { filterSubagentMessages: true }) as ContentBuilderStream;
 
-  const messages = stream.messages as unknown as AppMessage[];
+  const messages = streamThreadId ? stream.messages as unknown as AppMessage[] : [];
   const displayMessages = useMemo(() => {
     const seen = new Set(messages.map((message, index) => message.id || `${messageRoleKey(message)}:${messageText(message)}:${index}`));
     const extra = realtimeMessages.filter((message, index) => {
@@ -260,8 +279,8 @@ function AuthenticatedAgentWorkspace({
     });
     return [...messages, ...extra];
   }, [messages, realtimeMessages]);
-  const todos = stream.values.todos || [];
-  const allSubagents = [...stream.subagents.values()] as SubagentStreamInterface[];
+  const todos = streamThreadId ? stream.values.todos || [] : [];
+  const allSubagents = streamThreadId ? [...stream.subagents.values()] as SubagentStreamInterface[] : [];
 
   useEffect(() => {
     if (!connection.pairingToken) {
@@ -340,22 +359,22 @@ function AuthenticatedAgentWorkspace({
   }, [connection.pairingToken, runtime, threadId]);
 
   useEffect(() => {
-    if (!threadId || stream.isLoading || messages.length === 0) {
+    if (!streamThreadId || stream.isLoading || messages.length === 0) {
       return;
     }
     const lastMessage = messages[messages.length - 1];
-    const snapshotKey = `${threadId}:${messages.length}:${lastMessage?.id || messageText(lastMessage)}`;
+    const snapshotKey = `${streamThreadId}:${messages.length}:${lastMessage?.id || messageText(lastMessage)}`;
     if (snapshotKey === lastHistorySnapshot.current) {
       return;
     }
     lastHistorySnapshot.current = snapshotKey;
-    void runtime.saveHistorySnapshot(threadId, messages, {
+    void runtime.saveHistorySnapshot(streamThreadId, messages, {
       source: "content-builder-app",
       saved_by: "mobile-client",
     }).catch((error) => {
       console.warn("Failed to save history snapshot", error);
     });
-  }, [messages, runtime, stream.isLoading, threadId]);
+  }, [messages, runtime, stream.isLoading, streamThreadId]);
 
   const refreshThreads = useCallback(async () => {
     if (!connection.pairingToken) {
@@ -381,6 +400,17 @@ function AuthenticatedAgentWorkspace({
     }
   }, [runtime, threadId]);
 
+  const refreshHistoryArtifacts = useCallback(async () => {
+    try {
+      setHistoryArtifacts(await runtime.listHistoryArtifacts({
+        startDate: historyStartDate || undefined,
+        endDate: historyEndDate || undefined,
+      }));
+    } catch (error) {
+      setNotice(readError(error));
+    }
+  }, [historyEndDate, historyStartDate, runtime]);
+
   const refreshSandboxTree = useCallback(async () => {
     if (!threadId) {
       setSandboxTree([]);
@@ -400,7 +430,8 @@ function AuthenticatedAgentWorkspace({
   useEffect(() => {
     void refreshArtifacts();
     void refreshSandboxTree();
-  }, [refreshArtifacts, refreshSandboxTree, refreshNonce]);
+    void refreshHistoryArtifacts();
+  }, [refreshArtifacts, refreshHistoryArtifacts, refreshSandboxTree, refreshNonce]);
 
   useEffect(() => {
     if (!speakResponse.current) {
@@ -429,7 +460,7 @@ function AuthenticatedAgentWorkspace({
   }
 
   function selectThread(nextThreadId: string) {
-    stream.switchThread(nextThreadId);
+    stream.switchThread(isAgentThreadId(nextThreadId) ? nextThreadId : null);
     selectThreadState(nextThreadId);
     setAttachments([]);
     setSandboxFile(null);
@@ -463,7 +494,7 @@ function AuthenticatedAgentWorkspace({
       setActiveTab("settings");
       throw new Error("请先在设置页填写电脑地址和局域网配对 Token。");
     }
-    if (threadId) {
+    if (isAgentThreadId(threadId)) {
       return threadId;
     }
     const created = await stream.client.threads.create({
@@ -655,7 +686,7 @@ function AuthenticatedAgentWorkspace({
             <ChatTab
               attachments={attachments}
               draft={draft}
-              isLoading={Boolean(runtime.connection.pairingToken) && stream.isLoading}
+              isLoading={Boolean(runtime.connection.pairingToken) && Boolean(streamThreadId) && stream.isLoading}
               messages={displayMessages}
               recording={recording}
               stream={stream}
@@ -672,6 +703,20 @@ function AuthenticatedAgentWorkspace({
           )}
           {activeTab === "tasks" && <TasksTab todos={todos} subagents={allSubagents} />}
           {activeTab === "artifacts" && <ArtifactsTab artifacts={artifacts} onOpen={setPreview} />}
+          {activeTab === "history" && (
+            <HistoryArtifactsTab
+              artifacts={historyArtifacts}
+              category={historyCategory}
+              endDate={historyEndDate}
+              startDate={historyStartDate}
+              onCategory={setHistoryCategory}
+              onEndDate={setHistoryEndDate}
+              onOpen={setPreview}
+              onRefresh={() => void refreshHistoryArtifacts()}
+              onStartDate={setHistoryStartDate}
+              runtime={runtime}
+            />
+          )}
           {activeTab === "sandbox" && (
             <SandboxTab
               file={sandboxFile}
@@ -688,6 +733,7 @@ function AuthenticatedAgentWorkspace({
           <NavButton active={activeTab === "chat"} icon={<MessageCircle />} label="对话" onClick={() => setActiveTab("chat")} />
           <NavButton active={activeTab === "tasks"} icon={<ListChecks />} label="任务" onClick={() => setActiveTab("tasks")} />
           <NavButton active={activeTab === "artifacts"} icon={<FileText />} label="产物" onClick={() => setActiveTab("artifacts")} />
+          <NavButton active={activeTab === "history"} icon={<Archive />} label="历史" onClick={() => setActiveTab("history")} />
           <NavButton active={activeTab === "sandbox"} icon={<Terminal />} label="沙盒" onClick={() => setActiveTab("sandbox")} />
           <NavButton active={activeTab === "settings"} icon={<Settings />} label="设置" onClick={() => setActiveTab("settings")} />
         </nav>
@@ -850,6 +896,137 @@ function ArtifactsTab({ artifacts, onOpen }: { artifacts: ArtifactEntry[]; onOpe
       ))}
     </div>
   );
+}
+
+const HISTORY_CATEGORIES: Array<{ value: HistoryArtifactCategory | "all"; label: string; icon: React.ReactNode }> = [
+  { value: "all", label: "全部", icon: <Archive /> },
+  { value: "audiobook", label: "有声绘本", icon: <Volume2 /> },
+  { value: "storybook", label: "绘本", icon: <BookOpen /> },
+  { value: "game", label: "游戏", icon: <Gamepad2 /> },
+  { value: "growth_report", label: "成长报告", icon: <BarChart3 /> },
+  { value: "image", label: "图片", icon: <ImagePlus /> },
+];
+
+function HistoryArtifactsTab({
+  artifacts,
+  category,
+  endDate,
+  startDate,
+  onCategory,
+  onEndDate,
+  onOpen,
+  onRefresh,
+  onStartDate,
+  runtime,
+}: {
+  artifacts: HistoryArtifactEntry[];
+  category: HistoryArtifactCategory | "all";
+  endDate: string;
+  startDate: string;
+  onCategory: (category: HistoryArtifactCategory | "all") => void;
+  onEndDate: (value: string) => void;
+  onOpen: (artifact: HistoryArtifactEntry) => void;
+  onRefresh: () => void;
+  onStartDate: (value: string) => void;
+  runtime: AgentRuntime;
+}) {
+  const visibleArtifacts = artifacts.filter(isVisibleHistoryArtifact);
+  const filtered = visibleArtifacts.filter((artifact) => category === "all" || artifact.category === category);
+  const counts = visibleArtifacts.reduce<Record<string, number>>((memo, artifact) => {
+    memo.all = (memo.all || 0) + 1;
+    memo[artifact.category] = (memo[artifact.category] || 0) + 1;
+    return memo;
+  }, {});
+
+  return (
+    <div className="history-layout">
+      <section className="history-hero">
+        <div>
+          <span className="eyebrow"><CalendarDays size={15} /> 家长端回看</span>
+          <h2>历史产物档案馆</h2>
+          <p>从每日记录和最终答辩产物中整理绘本、游戏、报告、图片与文档。先筛选，再点击打开预览。</p>
+        </div>
+        <button className="secondary-button" onClick={onRefresh}><RefreshCw size={16} /> 刷新</button>
+      </section>
+      <section className="history-controls">
+        <label>
+          开始日期
+          <input type="date" value={startDate} onChange={(event) => onStartDate(event.target.value)} />
+        </label>
+        <label>
+          结束日期
+          <input type="date" value={endDate} onChange={(event) => onEndDate(event.target.value)} />
+        </label>
+        <div className="category-rail" aria-label="按产物类型筛选">
+          {HISTORY_CATEGORIES.map((item) => (
+            <button
+              className={category === item.value ? "active" : ""}
+              key={item.value}
+              onClick={() => onCategory(item.value)}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+              <small>{counts[item.value] || 0}</small>
+            </button>
+          ))}
+        </div>
+      </section>
+      {filtered.length === 0 && (
+        <div className="empty-state"><Archive size={34} /><h2>没有匹配的历史产物</h2><p>调整日期或类型筛选，查看其他共创记录。</p></div>
+      )}
+      {filtered.length > 0 && (
+        <div className="history-grid">
+          {filtered.map((artifact) => (
+            <button className={`history-card ${artifact.category}`} key={artifact.path} onClick={() => onOpen(artifact)}>
+              {artifact.kind === "image"
+                ? (
+                    <div className="history-card-media">
+                      <img src={runtime.absoluteUrl(artifact.preview_url)} alt={artifact.title} loading="lazy" />
+                    </div>
+                  )
+                : <div className="history-card-icon">{historyIcon(artifact.category)}</div>}
+              <span className="history-card-meta">{historyCategoryLabel(artifact.category)} · {artifact.source === "roadshow" ? "最终答辩" : artifact.date}</span>
+              <strong>{artifact.title}</strong>
+              <small>{artifact.path}</small>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function isVisibleHistoryArtifact(artifact: HistoryArtifactEntry): boolean {
+  if (artifact.category === "image") {
+    return artifact.kind === "image";
+  }
+  if (artifact.category === "storybook") {
+    return artifact.kind === "pdf";
+  }
+  if (artifact.category === "audiobook" || artifact.category === "game" || artifact.category === "growth_report") {
+    return artifact.kind === "html";
+  }
+  return false;
+}
+
+function historyIcon(category: HistoryArtifactCategory): React.ReactNode {
+  if (category === "audiobook") return <Volume2 />;
+  if (category === "storybook") return <BookOpen />;
+  if (category === "game") return <Gamepad2 />;
+  if (category === "growth_report") return <BarChart3 />;
+  if (category === "image") return <ImagePlus />;
+  return <FileText />;
+}
+
+function historyCategoryLabel(category: HistoryArtifactCategory): string {
+  return {
+    audiobook: "有声绘本",
+    storybook: "绘本",
+    game: "游戏",
+    growth_report: "成长报告",
+    image: "图片",
+    document: "文档",
+  }[category];
 }
 
 function SandboxTab({
@@ -1024,7 +1201,7 @@ function NavButton({ active, icon, label, onClick }: { active: boolean; icon: Re
 }
 
 function activeTabTitle(tab: Tab): string {
-  return { chat: "对话", tasks: "任务与子智能体", artifacts: "中间产物", sandbox: "代码沙盒", settings: "设置" }[tab];
+  return { chat: "对话", tasks: "任务与子智能体", artifacts: "中间产物", history: "历史产物", sandbox: "代码沙盒", settings: "设置" }[tab];
 }
 
 function formatBytes(bytes: number): string {

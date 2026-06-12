@@ -15,7 +15,7 @@ from typing import Any
 
 from content_builder.agent_factory import create_content_writer
 from content_builder.config import load_main_config
-from content_builder.history import save_thread_history_snapshot
+from content_builder.history import save_thread_daily_messages
 from content_builder.streaming import StreamEvent, astream_agent_events
 from content_builder.voice.console import MainTokenDeltaFilter, UserEchoFilter, ensure_voice_ready
 from content_builder.voice.tts import VoiceResponseSpeaker
@@ -29,6 +29,7 @@ from .constants import (
     XIAOZHI_AUTO_VAD_MIN_SPEECH_MS,
     XIAOZHI_AUTO_VAD_RMS_THRESHOLD,
     XIAOZHI_AUTO_VAD_SILENCE_MS,
+    XIAOZHI_AUTO_VAD_START_FRAMES,
 )
 from .logging import XiaozhiTurnLogger, _print_structured_panel
 from .session import XiaozhiSession
@@ -140,6 +141,10 @@ def _tool_payload_from_event(event: StreamEvent) -> Any:
 async def _handle_device_audio(session: XiaozhiSession, audio_frame: bytes) -> None:
     """Handle full-duplex Xiaozhi audio that arrives without a listen/stop event."""
 
+    if session.server_is_speaking and session.agent_task and not session.agent_task.done():
+        session.reset_auto_vad()
+        return
+
     try:
         if session.auto_vad_codec is None:
             session.auto_vad_codec = _opus_codec_class()(pcm_sample_rate=OPUS_INPUT_SAMPLE_RATE)
@@ -159,25 +164,32 @@ async def _handle_device_audio(session: XiaozhiSession, audio_frame: bytes) -> N
     is_voice = rms >= _root_attr("XIAOZHI_AUTO_VAD_RMS_THRESHOLD", XIAOZHI_AUTO_VAD_RMS_THRESHOLD)
 
     if is_voice:
-        if session.server_is_speaking and session.agent_task and not session.agent_task.done():
-            session.agent_task.cancel()
-            with contextlib.suppress(Exception):
-                await session.send_json({"type": "tts", "state": "stop"})
-            await session.publish("abort", {"thread_id": session.thread_id, "reason": "barge-in"})
-
+        session.auto_voice_frame_count += 1
         if not session.auto_speech_started:
+            session.auto_pending_speech_frames.append(audio_frame)
+
+        start_frames = _root_attr("XIAOZHI_AUTO_VAD_START_FRAMES", XIAOZHI_AUTO_VAD_START_FRAMES)
+        confirmed_speech = session.auto_voice_frame_count >= start_frames
+
+        started_this_frame = False
+        if not session.auto_speech_started and confirmed_speech:
             session.auto_speech_started = True
             session.auto_speech_started_at = now
-            session.auto_speech_frames.clear()
+            session.auto_speech_frames = list(session.auto_pending_speech_frames)
+            session.auto_pending_speech_frames.clear()
+            started_this_frame = True
             session.turn_started_at = now
             session.turn_log = XiaozhiTurnLogger(thread_id=session.thread_id, session_id=session.session_id, mode="voice-auto", started_at=now)
             session.turn_log.stage("listen_start", rms=rms, mode="auto")
             await session.publish("listening", {"thread_id": session.thread_id, "state": "auto_speech_start", "rms": rms})
 
         session.auto_last_voice_at = now
-        session.auto_speech_frames.append(audio_frame)
+        if session.auto_speech_started and not started_this_frame:
+            session.auto_speech_frames.append(audio_frame)
         return
 
+    session.auto_pending_speech_frames.clear()
+    session.auto_voice_frame_count = 0
     if not session.auto_speech_started:
         return
 
@@ -212,6 +224,12 @@ async def _handle_device_text(session: XiaozhiSession, text: str) -> None:
 
     message_type = payload.get("type")
     if message_type == "listen":
+        if session.server_is_speaking and session.agent_task and not session.agent_task.done():
+            session.reset_auto_vad()
+            session.audio_frames.clear()
+            session.manual_listen_started = False
+            await session.publish("listening", {"thread_id": session.thread_id, "state": "ignored_busy"})
+            return
         state = payload.get("state")
         session.current_listen_mode = str(payload.get("mode") or session.current_listen_mode)
         if state == "start":
@@ -268,10 +286,9 @@ async def _run_text_turn(session: XiaozhiSession, transcript: str) -> None:
         await session.send_json({"type": "stt", "text": transcript})
         await session.publish("message", {"thread_id": session.thread_id, "role": "human", "content": transcript})
         await asyncio.to_thread(
-            save_thread_history_snapshot,
+            save_thread_daily_messages,
             session.thread_id,
             messages=[{"type": "human", "content": transcript}],
-            mode="append",
             metadata={"source": "xiaozhi-text"},
         )
 
@@ -314,10 +331,9 @@ async def _run_voice_turn_from_audio(session: XiaozhiSession, opus_frames: list[
         await session.send_json({"type": "stt", "text": transcript})
         await session.publish("message", {"thread_id": session.thread_id, "role": "human", "content": transcript})
         await asyncio.to_thread(
-            save_thread_history_snapshot,
+            save_thread_daily_messages,
             session.thread_id,
             messages=[{"type": "human", "content": transcript}],
-            mode="append",
             metadata={"source": "xiaozhi-hardware"},
         )
 
@@ -387,10 +403,9 @@ async def _run_agent_tts_turn(session: XiaozhiSession, transcript: str, config: 
         logger.info("Xiaozhi assistant final for thread %s: %s", session.thread_id, final_text[:500])
         await session.publish("message", {"thread_id": session.thread_id, "role": "assistant", "content": final_text})
         await asyncio.to_thread(
-            save_thread_history_snapshot,
+            save_thread_daily_messages,
             session.thread_id,
             messages=[{"type": "ai", "content": final_text}],
-            mode="append",
             metadata={"source": "xiaozhi-hardware-direct"},
         )
         turn_log.finish(final_text=final_text)

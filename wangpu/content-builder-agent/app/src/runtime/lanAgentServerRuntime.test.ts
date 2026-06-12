@@ -57,4 +57,31 @@ describe("LanAgentServerRuntime", () => {
     const runtime = new LanAgentServerRuntime({ baseUrl: "https://example.test", pairingToken: "a token" });
     expect(runtime.appEventsUrl()).toBe("https://example.test/api/content-builder/events?token=a%20token");
   });
+
+  it("lists history artifacts with optional date filters", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      entries: [
+        {
+          name: "book.html",
+          title: "有声绘本",
+          path: "roadshow-final-products/storybook/book.html",
+          date: "2026-06-05",
+          source: "roadshow",
+          category: "audiobook",
+          size: 10,
+          modified_at: 1,
+          mime_type: "text/html",
+          kind: "html",
+          preview_url: "/api/content-builder/history-preview/token/roadshow-final-products/storybook/book.html",
+        },
+      ],
+    }), { status: 200, headers: { "content-type": "application/json" } }));
+    const runtime = new LanAgentServerRuntime({ baseUrl: "http://localhost:2024/", pairingToken: "pair-me" });
+
+    await expect(runtime.listHistoryArtifacts({ startDate: "2026-06-01", endDate: "2026-06-12" })).resolves.toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:2024/api/content-builder/history/artifacts?start_date=2026-06-01&end_date=2026-06-12",
+      expect.objectContaining({ headers: expect.any(Headers) }),
+    );
+  });
 });

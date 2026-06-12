@@ -2,6 +2,7 @@ import type {
   AgentRuntime,
   ArtifactEntry,
   ConnectionSettings,
+  HistoryArtifactEntry,
   KeyName,
   KeySettings,
   SandboxEntry,
@@ -60,6 +61,10 @@ export class EmbeddedDeepAgentsRuntime implements AgentRuntime {
   }
 
   listArtifacts(_threadId: string): Promise<ArtifactEntry[]> {
+    return this.unsupported();
+  }
+
+  listHistoryArtifacts(): Promise<HistoryArtifactEntry[]> {
     return this.unsupported();
   }
 

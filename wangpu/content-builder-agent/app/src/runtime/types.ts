@@ -23,6 +23,15 @@ export interface ArtifactEntry {
   preview_url: string;
 }
 
+export type HistoryArtifactCategory = "storybook" | "audiobook" | "game" | "growth_report" | "image" | "document";
+
+export interface HistoryArtifactEntry extends ArtifactEntry {
+  title: string;
+  date: string;
+  source: "history" | "roadshow";
+  category: HistoryArtifactCategory;
+}
+
 export interface SandboxEntry {
   name: string;
   path: string;
@@ -40,6 +49,7 @@ export interface AgentRuntime {
   uploadImage(threadId: string, image: File): Promise<ArtifactEntry>;
   transcribeAudio(threadId: string, audio: Blob): Promise<string>;
   listArtifacts(threadId: string): Promise<ArtifactEntry[]>;
+  listHistoryArtifacts(filters?: { startDate?: string; endDate?: string }): Promise<HistoryArtifactEntry[]>;
   listSandboxTree(threadId: string): Promise<SandboxEntry[]>;
   readSandboxFile(threadId: string, path: string): Promise<string>;
   saveHistorySnapshot(threadId: string, messages: unknown[], metadata?: Record<string, unknown>): Promise<void>;

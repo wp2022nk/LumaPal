@@ -9,6 +9,7 @@ Use a polished dashboard-document hybrid:
 - Hero header: child report title, period, one-sentence growth summary, mood chips.
 - Metric strip: conversations, storybooks, exploration captures, parent-child co-creation.
 - Ability radar: language expression, scientific thinking, creative imagination, observation, social-emotional growth, with a current/change/trend table.
+- Methodology strip: explain how radar scores were inferred from concrete evidence rather than presenting them as mysterious model judgments.
 - Curiosity themes: ranked topics with counts, insight, and an evidence photo.
 - Works gallery: generated storybooks, games, drawings, and memorable outputs, each with a cover.
 - Artifacts corridor: 4-column cover wall of the latest generated artifacts (storybooks, games, story artifacts); each card links to the original HTML.
@@ -45,6 +46,7 @@ Applied project interpretation:
 - Put "what changed this month" before detailed evidence.
 - Keep charts limited to one radar and one ranked theme section.
 - Give every metric a plain-language meaning, not just a number.
+- Make scoring transparent: question frequency supports curiosity themes; causal words support language expression; cross-scene transfer supports scientific thinking; role-play branches support creative imagination; helping choices support social-emotional growth.
 - End with next-week actions that can be tried at home.
 
 ## Writing Rules
@@ -52,6 +54,7 @@ Applied project interpretation:
 - Write for parents, not evaluators.
 - Prefer "孩子正在..." and "建议..." over diagnostic labels.
 - Pair every conclusion with a visible evidence snippet.
+- Never imply a clinical assessment. Present scores as learning signals observed in this product's interaction history.
 - Preserve warm child language when it is safe and relevant.
 - Avoid medical, clinical, or deterministic claims.
 

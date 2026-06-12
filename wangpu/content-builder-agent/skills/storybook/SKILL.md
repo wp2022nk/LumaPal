@@ -14,6 +14,13 @@ Create a complete illustrated picture book for young children from text input. R
 
 For a conversation source, preserve the child's notable choices, invented names, preferred characters, memorable wording, and ending preference. Save a concise provenance summary; do not expose unrelated private conversation details.
 
+## Co-Creation Boundary
+
+- If the child or parent is still inventing the plot, do **not** jump straight into full storybook production. Continue one decision point at a time until the user confirms the story is finished.
+- Before making the final book, ask for or confirm the ending, the child's favorite moment, and whether any drawing/photo/voice line should be included.
+- Enter this skill's artifact workflow only after the user asks for a 绘本 / 有声绘本 / book, or clearly confirms "可以做成绘本了".
+- The final Web Audio Storybook should preserve the child's exact memorable words where safe and readable.
+
 ## Default Decisions
 
 - Audience: ages 3-7 unless the user specifies otherwise.

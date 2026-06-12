@@ -10,6 +10,7 @@ import os
 import tempfile
 import threading
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any
 from urllib.parse import quote
@@ -32,8 +33,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
-from content_builder.config import DEFAULT_SECRETS_FILE, load_main_config
-from content_builder.history import save_thread_history_snapshot
+from content_builder.config import DEFAULT_SECRETS_FILE, WORKSPACE_DIR, load_main_config
+from content_builder.history import history_root, save_thread_history_snapshot
 from content_builder.server.security import (
     extract_request_token,
     make_preview_token,
@@ -59,6 +60,7 @@ app.include_router(xiaozhi_router)
 app.include_router(xiaozhi_compat_router)
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+HISTORY_ARTIFACT_SUFFIXES = IMAGE_SUFFIXES | {".html", ".htm", ".pdf", ".md", ".json", ".txt", ".wav", ".mp3"}
 TEXT_SUFFIXES = {
     ".css",
     ".html",
@@ -232,6 +234,129 @@ def _artifact_entries(thread_id: str) -> list[dict[str, Any]]:
     return entries
 
 
+def _history_artifact_kind(path: Path) -> str:
+    suffix = path.suffix.lower()
+    if suffix in IMAGE_SUFFIXES:
+        return "image"
+    if suffix == ".pdf":
+        return "pdf"
+    if suffix in {".html", ".htm"}:
+        return "html"
+    if suffix in TEXT_SUFFIXES:
+        return "text"
+    return "download"
+
+
+def _history_artifact_category(path: Path, virtual_path: str) -> str:
+    normalized = virtual_path.replace("\\", "/")
+    suffix = path.suffix.lower()
+    if "growth-report/" in normalized:
+        return "growth_report"
+    if "/games/" in normalized or normalized.startswith("roadshow-final-products/game/"):
+        return "game"
+    if "storybook/" in normalized or "/storybooks/" in normalized:
+        if suffix == ".html" and (path.parent / "audio").is_dir():
+            return "audiobook"
+        return "storybook"
+    if suffix in IMAGE_SUFFIXES:
+        return "image"
+    return "document"
+
+
+def _history_artifact_title(path: Path, virtual_path: str) -> str:
+    category = _history_artifact_category(path, virtual_path)
+    if category == "growth_report":
+        return "成长轨迹报告"
+    if category == "game":
+        return path.parent.name if path.name == "index.html" else path.stem
+    if category == "audiobook":
+        return path.parent.name if path.name == "book.html" else path.stem
+    if category == "storybook":
+        return path.parent.name if path.name in {"book.html", "book.json"} else path.stem
+    return path.stem or path.name
+
+
+def _history_artifact_date(path: Path, virtual_path: str) -> str:
+    parts = virtual_path.replace("\\", "/").split("/")
+    if parts and parts[0] == "history" and len(parts) > 1:
+        try:
+            datetime.strptime(parts[1], "%Y-%m-%d")
+            return parts[1]
+        except ValueError:
+            pass
+    return datetime.fromtimestamp(path.stat().st_mtime).astimezone().date().isoformat()
+
+
+def _history_preview_url(virtual_path: str) -> str:
+    signed_token = make_preview_token("history", virtual_path)
+    encoded_path = quote(virtual_path, safe="/")
+    return f"/api/content-builder/history-preview/{signed_token}/{encoded_path}"
+
+
+def _history_artifact_entry(path: Path, virtual_path: str) -> dict[str, Any]:
+    return {
+        "name": path.name,
+        "title": _history_artifact_title(path, virtual_path),
+        "path": virtual_path,
+        "date": _history_artifact_date(path, virtual_path),
+        "source": "roadshow" if virtual_path.startswith("roadshow-final-products/") else "history",
+        "category": _history_artifact_category(path, virtual_path),
+        "size": path.stat().st_size,
+        "modified_at": path.stat().st_mtime,
+        "mime_type": mimetypes.guess_type(path.name)[0] or "application/octet-stream",
+        "kind": _history_artifact_kind(path),
+        "preview_url": _history_preview_url(virtual_path),
+    }
+
+
+def _iter_history_artifact_files() -> list[tuple[Path, str]]:
+    entries: list[tuple[Path, str]] = []
+    roots = [
+        (history_root(), "history"),
+        ((WORKSPACE_DIR / "roadshow-final-products").resolve(), "roadshow-final-products"),
+    ]
+    for root, prefix in roots:
+        if not root.exists():
+            continue
+        for item in root.rglob("*"):
+            if not item.is_file() or item.suffix.lower() not in HISTORY_ARTIFACT_SUFFIXES:
+                continue
+            relative = item.relative_to(root)
+            if item.name == "history.json" or "memory" in relative.parts:
+                continue
+            entries.append((item, f"{prefix}/{relative.as_posix()}"))
+    return entries
+
+
+def _history_artifact_entries(start_date: str | None = None, end_date: str | None = None) -> list[dict[str, Any]]:
+    entries = [_history_artifact_entry(path, virtual_path) for path, virtual_path in _iter_history_artifact_files()]
+    if start_date:
+        entries = [entry for entry in entries if str(entry["date"]) >= start_date]
+    if end_date:
+        entries = [entry for entry in entries if str(entry["date"]) <= end_date]
+    entries.sort(key=lambda item: (str(item["date"]), float(item["modified_at"])), reverse=True)
+    return entries
+
+
+def _history_preview_target(virtual_path: str) -> Path:
+    normalized = virtual_path.replace("\\", "/").strip("/")
+    if normalized.startswith("/") or "/../" in f"/{normalized}/" or normalized.startswith("../"):
+        raise HTTPException(status_code=400, detail="Invalid history artifact path")
+    if normalized.startswith("history/"):
+        root = history_root()
+        target = (root / normalized.removeprefix("history/")).resolve()
+    elif normalized.startswith("roadshow-final-products/"):
+        root = (WORKSPACE_DIR / "roadshow-final-products").resolve()
+        target = (WORKSPACE_DIR / normalized).resolve()
+    else:
+        raise HTTPException(status_code=400, detail="History artifact path must be under history/ or roadshow-final-products/")
+    if target != root and root not in target.parents:
+        raise HTTPException(status_code=400, detail="Invalid history artifact path")
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    return target
+
+
 def _sandbox_entries(thread_id: str) -> list[dict[str, Any]]:
     paths = thread_paths(thread_id)
     entries: list[dict[str, Any]] = []
@@ -401,6 +526,15 @@ async def list_artifacts(thread_id: str) -> dict[str, Any]:
     return {"thread_id": thread_id, "entries": await asyncio.to_thread(_artifact_entries, thread_id)}
 
 
+@app.get("/api/content-builder/history/artifacts", dependencies=[Depends(_require_pairing_token)])
+async def list_history_artifacts(
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+) -> dict[str, Any]:
+    entries = await asyncio.to_thread(_history_artifact_entries, start_date, end_date)
+    return {"entries": entries}
+
+
 @app.get("/api/content-builder/threads/{thread_id}/sandbox/tree", dependencies=[Depends(_require_pairing_token)])
 async def list_sandbox_tree(thread_id: str) -> dict[str, Any]:
     return {"thread_id": thread_id, "entries": await asyncio.to_thread(_sandbox_entries, thread_id)}
@@ -416,6 +550,14 @@ async def preview_file(thread_id: str, token: str, path: str) -> FileResponse:
     if not await asyncio.to_thread(preview_token_is_valid, thread_id, path, token):
         raise HTTPException(status_code=401, detail="Preview link expired or invalid")
     target = await asyncio.to_thread(_preview_target, thread_id, path)
+    return FileResponse(target, filename=target.name, content_disposition_type="inline")
+
+
+@app.get("/api/content-builder/history-preview/{token}/{path:path}")
+async def preview_history_file(token: str, path: str) -> FileResponse:
+    if not await asyncio.to_thread(preview_token_is_valid, "history", path, token):
+        raise HTTPException(status_code=401, detail="Preview link expired or invalid")
+    target = await asyncio.to_thread(_history_preview_target, path)
     return FileResponse(target, filename=target.name, content_disposition_type="inline")
 
 

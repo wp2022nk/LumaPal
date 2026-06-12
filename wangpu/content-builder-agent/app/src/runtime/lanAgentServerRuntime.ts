@@ -2,6 +2,7 @@ import type {
   AgentRuntime,
   ArtifactEntry,
   ConnectionSettings,
+  HistoryArtifactEntry,
   KeyName,
   KeySettings,
   SandboxEntry,
@@ -95,6 +96,21 @@ export class LanAgentServerRuntime implements AgentRuntime {
   async listArtifacts(threadId: string): Promise<ArtifactEntry[]> {
     const response = await this.request<{ entries: ArtifactEntry[] }>(
       `/api/content-builder/threads/${encodeURIComponent(threadId)}/artifacts`,
+    );
+    return response.entries;
+  }
+
+  async listHistoryArtifacts(filters: { startDate?: string; endDate?: string } = {}): Promise<HistoryArtifactEntry[]> {
+    const params = new URLSearchParams();
+    if (filters.startDate) {
+      params.set("start_date", filters.startDate);
+    }
+    if (filters.endDate) {
+      params.set("end_date", filters.endDate);
+    }
+    const query = params.toString();
+    const response = await this.request<{ entries: HistoryArtifactEntry[] }>(
+      `/api/content-builder/history/artifacts${query ? `?${query}` : ""}`,
     );
     return response.entries;
   }

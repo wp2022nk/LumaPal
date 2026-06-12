@@ -84,13 +84,27 @@ interface HardwareEventMessage {
   content?: string;
 }
 
+interface AppRealtimeEvent {
+  thread_id?: string;
+  message?: AppMessage;
+  source?: string;
+  updated_at?: string | number;
+  session_id?: string;
+  device_id?: string;
+  client_id?: string;
+}
+
 const DEFAULT_KEYS: KeySettings = {
   configured: { qwen: false, dashscope: false, tavily: false },
 };
 
-function hardwareEventToMessage(payload: HardwareEventMessage): AppMessage | null {
-  const content = String(payload.content || "").trim();
-  const role = payload.role === "assistant" ? "ai" : payload.role === "human" ? "human" : "";
+function hardwareEventToMessage(payload: HardwareEventMessage | AppRealtimeEvent): AppMessage | null {
+  if ("message" in payload && payload.message) {
+    return payload.message;
+  }
+  const hardwarePayload = payload as HardwareEventMessage;
+  const content = String(hardwarePayload.content || "").trim();
+  const role = hardwarePayload.role === "assistant" ? "ai" : hardwarePayload.role === "human" ? "human" : "";
   if (!content || !role) {
     return null;
   }
@@ -207,7 +221,7 @@ function AuthenticatedAgentWorkspace({
   const [sidebarOpen, setSidebarOpen] = useState(() => typeof window === "undefined" || window.innerWidth > 760);
   const [voiceEmotion, setVoiceEmotion] = useState<VoiceEmotion | null>(null);
   const [voicePlayback, setVoicePlayback] = useState<VoicePlaybackState>("idle");
-  const [hardwareMessages, setHardwareMessages] = useState<AppMessage[]>([]);
+  const [realtimeMessages, setRealtimeMessages] = useState<AppMessage[]>([]);
   const recorderRef = useRef<WavRecorder | undefined>(undefined);
   const ttsRef = useRef<StreamingPcmPlayer | undefined>(undefined);
   const ttsSeenText = useRef("");
@@ -234,31 +248,77 @@ function AuthenticatedAgentWorkspace({
   } as UseStreamOptions<AgentState> & { filterSubagentMessages: true }) as ContentBuilderStream;
 
   const messages = stream.messages as unknown as AppMessage[];
-  const displayMessages = useMemo(() => [...messages, ...hardwareMessages], [hardwareMessages, messages]);
+  const displayMessages = useMemo(() => {
+    const seen = new Set(messages.map((message, index) => message.id || `${messageRoleKey(message)}:${messageText(message)}:${index}`));
+    const extra = realtimeMessages.filter((message, index) => {
+      const key = message.id || `${messageRoleKey(message)}:${messageText(message)}:${index}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+    return [...messages, ...extra];
+  }, [messages, realtimeMessages]);
   const todos = stream.values.todos || [];
   const allSubagents = [...stream.subagents.values()] as SubagentStreamInterface[];
 
   useEffect(() => {
-    if (!threadId || !connection.pairingToken) {
-      setHardwareMessages([]);
+    if (!connection.pairingToken) {
+      setRealtimeMessages([]);
       return;
     }
     if (typeof EventSource === "undefined") {
       return;
     }
-    setHardwareMessages([]);
-    const events = new EventSource(runtime.hardwareEventsUrl(threadId));
+    const events = new EventSource(runtime.appEventsUrl());
+    const appendRealtimeMessage = (payload: AppRealtimeEvent | HardwareEventMessage) => {
+      if (!payload.thread_id || payload.thread_id !== threadId || (payload as AppRealtimeEvent).source === "content-builder-app") {
+        return;
+      }
+      const next = hardwareEventToMessage(payload);
+      if (!next) {
+        return;
+      }
+      setRealtimeMessages((current) => current.some((message) => message.id && message.id === next.id) ? current : [...current, next]);
+    };
+    const upsertRealtimeThread = (payload: AppRealtimeEvent) => {
+      if (!payload.thread_id || payload.source === "content-builder-app") {
+        return;
+      }
+      const updatedAt = realtimeUpdatedAt(payload.updated_at);
+      const title = payload.device_id || payload.client_id
+        ? `Xiaozhi ${payload.device_id || payload.client_id}`
+        : "Xiaozhi hardware session";
+      setThreads((current) => {
+        const existing = current.find((thread) => thread.thread_id === payload.thread_id);
+        const nextThread = {
+          ...(existing || {}),
+          thread_id: payload.thread_id,
+          updated_at: updatedAt,
+          metadata: { ...(existing?.metadata || {}), title },
+        } as Thread;
+        return [nextThread, ...current.filter((thread) => thread.thread_id !== payload.thread_id)]
+          .sort((left, right) => String(right.updated_at || "").localeCompare(String(left.updated_at || "")));
+      });
+    };
     const handleMessage = (event: MessageEvent<string>) => {
       try {
-        const next = hardwareEventToMessage(JSON.parse(event.data) as HardwareEventMessage);
-        if (next) {
-          setHardwareMessages((current) => [...current, next]);
-        }
+        const payload = JSON.parse(event.data) as AppRealtimeEvent;
+        appendRealtimeMessage(payload);
+        upsertRealtimeThread(payload);
       } catch (error) {
-        console.warn("Failed to parse Xiaozhi hardware message", error);
+        console.warn("Failed to parse realtime message", error);
       }
     };
-    const handlePhoto = () => setRefreshNonce((current) => current + 1);
+    const handleThread = (event: MessageEvent<string>) => {
+      try {
+        upsertRealtimeThread(JSON.parse(event.data) as AppRealtimeEvent);
+      } catch (error) {
+        console.warn("Failed to parse realtime thread event", error);
+      }
+    };
+    const handleRefresh = () => setRefreshNonce((current) => current + 1);
     const handleError = (event: MessageEvent<string>) => {
       try {
         const payload = JSON.parse(event.data) as { message?: string };
@@ -269,9 +329,13 @@ function AuthenticatedAgentWorkspace({
         setNotice("Xiaozhi 硬件事件解析失败。");
       }
     };
-    events.addEventListener("message", handleMessage as EventListener);
-    events.addEventListener("photo", handlePhoto);
+    events.addEventListener("message_appended", handleMessage as EventListener);
+    events.addEventListener("thread_created", handleThread as EventListener);
+    events.addEventListener("thread_updated", handleThread as EventListener);
+    events.addEventListener("history_snapshot", handleRefresh);
+    events.addEventListener("artifact_updated", handleRefresh);
     events.addEventListener("hardware_error", handleError as EventListener);
+    events.addEventListener("xiaozhi_hardware_error", handleError as EventListener);
     return () => events.close();
   }, [connection.pairingToken, runtime, threadId]);
 
@@ -369,6 +433,7 @@ function AuthenticatedAgentWorkspace({
     selectThreadState(nextThreadId);
     setAttachments([]);
     setSandboxFile(null);
+    setRealtimeMessages([]);
     setActiveTab("chat");
     closeSidebarOnMobile();
   }
@@ -382,6 +447,7 @@ function AuthenticatedAgentWorkspace({
     setSandboxTree([]);
     setSandboxFile(null);
     setSandboxLogs([]);
+    setRealtimeMessages([]);
     setActiveTab("chat");
     closeSidebarOnMobile();
   }
@@ -973,6 +1039,21 @@ function formatBytes(bytes: number): string {
 
 function readError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function messageRoleKey(message: AppMessage): string {
+  return message.type || message.role || "message";
+}
+
+function realtimeUpdatedAt(value: string | number | undefined): string {
+  if (typeof value === "string" && value) {
+    return value;
+  }
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric > 0) {
+    return new Date(numeric > 100000000000 ? numeric : numeric * 1000).toISOString();
+  }
+  return new Date().toISOString();
 }
 
 function readDataUrl(file: File): Promise<string> {

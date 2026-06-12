@@ -52,4 +52,9 @@ describe("LanAgentServerRuntime", () => {
       "wss://example.test/api/content-builder/threads/thread-one/voice/tts?token=a%20token",
     );
   });
+
+  it("uses a tokenized SSE URL for realtime app events", () => {
+    const runtime = new LanAgentServerRuntime({ baseUrl: "https://example.test", pairingToken: "a token" });
+    expect(runtime.appEventsUrl()).toBe("https://example.test/api/content-builder/events?token=a%20token");
+  });
 });

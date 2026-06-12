@@ -7,6 +7,7 @@ import contextlib
 import json
 import logging
 import time
+import uuid
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Depends, File, Form, Header, HTTPException, Query, Request, UploadFile, WebSocket, WebSocketDisconnect
@@ -62,12 +63,19 @@ def _root_callable(name: str, default):
 
     return getattr(xiaozhi_root, name, default)
 
+
+def _new_xiaozhi_thread_id(*, device_id: str = "", client_id: str = "") -> str:
+    label = (device_id or client_id or "hardware").strip()
+    safe_label = "".join(character if character.isalnum() or character in "-_" else "-" for character in label)
+    safe_label = safe_label.strip("-_")[:32] or "hardware"
+    return f"xiaozhi-{safe_label}-{int(time.time() * 1000)}-{uuid.uuid4().hex[:8]}"
+
 @router.get("/ota")
 @router.post("/ota")
 async def get_ota_config(request: Request, token: str = Query("")) -> dict[str, Any]:
     if not await asyncio.to_thread(token_is_valid, token):
         raise HTTPException(status_code=401, detail="Invalid pairing token")
-    thread_id = request.query_params.get("thread_id") or XIAOZHI_DEFAULT_THREAD_ID
+    thread_id = request.query_params.get("thread_id") or _new_xiaozhi_thread_id()
     ws_base = _public_ws_url(request)
     return {
         "websocket": {
@@ -276,7 +284,7 @@ async def analyze_uploaded_vision(payload: Annotated[dict[str, Any], Body(defaul
 
 
 @router.websocket("/v1/ws")
-async def websocket_endpoint(websocket: WebSocket, thread_id: str = Query(XIAOZHI_DEFAULT_THREAD_ID), token: str = Query("")) -> None:
+async def websocket_endpoint(websocket: WebSocket, thread_id: str = Query(""), token: str = Query("")) -> None:
     await websocket.accept()
     if not await asyncio.to_thread(token_is_valid, _extract_ws_token(websocket, token)):
         await websocket.close(code=4401, reason="Invalid pairing token")
@@ -284,6 +292,7 @@ async def websocket_endpoint(websocket: WebSocket, thread_id: str = Query(XIAOZH
 
     device_id = websocket.headers.get("Device-Id", "")
     client_id = websocket.headers.get("Client-Id", "")
+    thread_id = thread_id or _new_xiaozhi_thread_id(device_id=device_id, client_id=client_id)
     protocol_version = websocket.headers.get("Protocol-Version", "1")
     try:
         version = int(protocol_version)

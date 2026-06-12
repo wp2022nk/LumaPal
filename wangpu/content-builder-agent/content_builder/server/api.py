@@ -29,7 +29,7 @@ from fastapi import (
 )
 from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from content_builder.config import DEFAULT_SECRETS_FILE, load_main_config
@@ -41,6 +41,7 @@ from content_builder.server.security import (
     preview_token_is_valid,
     token_is_valid,
 )
+from content_builder.server.events import app_events, json_sse_line
 from content_builder.thread_storage import resolve_thread_file, thread_paths
 from content_builder.server.xiaozhi import compat_router as xiaozhi_compat_router
 from content_builder.server.xiaozhi import router as xiaozhi_router
@@ -320,6 +321,8 @@ async def upload_image(thread_id: str, image: Annotated[UploadFile, File()]) -> 
         thread_id,
         event={"type": "upload_image", "file": entry},
     )
+    await app_events.publish("artifact_updated", {"entry": entry}, thread_id=thread_id)
+    await app_events.publish("history_snapshot", {"reason": "upload_image"}, thread_id=thread_id)
     return entry
 
 
@@ -352,12 +355,45 @@ async def save_history_snapshot(
         save_thread_history_snapshot,
         thread_id,
         messages=messages if isinstance(messages, list) else [],
+        mode=str(snapshot.get("mode") or "replace"),
         metadata=metadata if isinstance(metadata, dict) else {},
         growth_events=growth_events if isinstance(growth_events, list) else None,
         artifact_refs=artifact_refs if isinstance(artifact_refs, list) else None,
         profile_updates=profile_updates if isinstance(profile_updates, dict) else None,
     )
+    if isinstance(messages, list):
+        source = str(metadata.get("source") or "") if isinstance(metadata, dict) else ""
+        for message in messages[-2:]:
+            if isinstance(message, dict):
+                await app_events.publish("message_appended", {"message": message, "source": source}, thread_id=thread_id)
+    await app_events.publish("thread_updated", {"updated_at": path.stat().st_mtime, "source": str(metadata.get("source") or "") if isinstance(metadata, dict) else ""}, thread_id=thread_id)
+    await app_events.publish("history_snapshot", {"path": str(path)}, thread_id=thread_id)
     return {"thread_id": thread_id, "path": str(path)}
+
+
+@app.get("/api/content-builder/events")
+async def stream_app_events(
+    token: str = Query(""),
+    thread_id: str = Query("*"),
+    authorization: Annotated[str | None, Header()] = None,
+    x_api_key: Annotated[str | None, Header()] = None,
+) -> StreamingResponse:
+    headers = {"authorization": authorization or "", "x-api-key": x_api_key or ""}
+    candidate = token or extract_request_token(headers)
+    if not await asyncio.to_thread(token_is_valid, candidate):
+        raise HTTPException(status_code=401, detail="Invalid pairing token")
+
+    async def events():
+        async with app_events.subscribe(thread_id) as queue:
+            yield json_sse_line("ready", {"thread_id": thread_id})
+            while True:
+                try:
+                    event, payload = await asyncio.wait_for(queue.get(), timeout=20)
+                    yield json_sse_line(event, payload)
+                except asyncio.TimeoutError:
+                    yield json_sse_line("ping", {"thread_id": thread_id})
+
+    return StreamingResponse(events(), media_type="text/event-stream")
 
 
 @app.get("/api/content-builder/threads/{thread_id}/artifacts", dependencies=[Depends(_require_pairing_token)])

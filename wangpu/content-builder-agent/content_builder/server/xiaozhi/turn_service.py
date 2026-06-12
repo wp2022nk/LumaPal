@@ -271,6 +271,7 @@ async def _run_text_turn(session: XiaozhiSession, transcript: str) -> None:
             save_thread_history_snapshot,
             session.thread_id,
             messages=[{"type": "human", "content": transcript}],
+            mode="append",
             metadata={"source": "xiaozhi-text"},
         )
 
@@ -316,6 +317,7 @@ async def _run_voice_turn_from_audio(session: XiaozhiSession, opus_frames: list[
             save_thread_history_snapshot,
             session.thread_id,
             messages=[{"type": "human", "content": transcript}],
+            mode="append",
             metadata={"source": "xiaozhi-hardware"},
         )
 
@@ -387,7 +389,8 @@ async def _run_agent_tts_turn(session: XiaozhiSession, transcript: str, config: 
         await asyncio.to_thread(
             save_thread_history_snapshot,
             session.thread_id,
-            messages=[{"type": "human", "content": transcript}, {"type": "ai", "content": final_text}],
+            messages=[{"type": "ai", "content": final_text}],
+            mode="append",
             metadata={"source": "xiaozhi-hardware-direct"},
         )
         turn_log.finish(final_text=final_text)

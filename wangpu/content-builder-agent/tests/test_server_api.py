@@ -102,6 +102,17 @@ class ServerAPITests(unittest.TestCase):
         self.assertIn("/api/xiaozhi/v1/ws?thread_id=kid-room", payload["websocket"]["url"])
         self.assertIn("server_time", payload)
 
+    def test_xiaozhi_ota_generates_new_thread_when_not_explicit(self) -> None:
+        first = self.client.get("/api/xiaozhi/ota", params={"token": "phone-token"})
+        second = self.client.get("/api/xiaozhi/ota", params={"token": "phone-token"})
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        first_url = first.json()["websocket"]["url"]
+        second_url = second.json()["websocket"]["url"]
+        self.assertIn("/api/xiaozhi/v1/ws?thread_id=xiaozhi-", first_url)
+        self.assertNotEqual(first_url, second_url)
+
     def test_xiaozhi_websocket_hello_uses_reference_audio_params(self) -> None:
         with patch("content_builder.server.xiaozhi.XiaozhiSession.initialize_mcp", return_value=None):
             with self.client.websocket_connect(
@@ -284,8 +295,7 @@ class ServerAPITests(unittest.TestCase):
 
         self.assertEqual(websocket.messages[0]["type"], "tts")
         self.assertEqual(websocket.messages[0]["state"], "sentence_start")
-        self.assertIn("Tool started: generate_image", websocket.messages[0]["text"])
-        self.assertIn("moon", websocket.messages[0]["text"])
+        self.assertEqual(websocket.messages[0]["text"], "正在执行工具：\ngenerate_image")
         self.assertEqual(websocket.messages[0]["session_id"], session.session_id)
         self.assertEqual(websocket.messages[1]["type"], "tts")
         self.assertEqual(websocket.messages[1]["state"], "sentence_end")
@@ -404,8 +414,7 @@ class ServerAPITests(unittest.TestCase):
             if message.get("type") == "tts" and message.get("state") == "sentence_start"
         ]
         self.assertEqual(len(tool_messages), 1)
-        self.assertIn("Tool started: generate_image", tool_messages[0]["text"])
-        self.assertIn("moon", tool_messages[0]["text"])
+        self.assertEqual(tool_messages[0]["text"], "正在执行工具：\ngenerate_image")
 
     def test_xiaozhi_photo_intent_is_prompted_for_agent_tool_call(self) -> None:
         class FakeWebSocket:
@@ -1324,6 +1333,26 @@ Wireless LAN adapter WLAN:
         payload = json.loads(Path(first.json()["path"]).read_text(encoding="utf-8"))
         self.assertEqual(payload["conversations"]["session-a"]["messages"][0]["content"], "first")
         self.assertEqual(payload["conversations"]["session-b"]["messages"][0]["content"], "second")
+
+    def test_history_snapshot_append_mode_keeps_existing_daily_messages_once(self) -> None:
+        first = self.client.post(
+            "/api/content-builder/threads/session-a/history/snapshot",
+            headers=self.headers,
+            json={"mode": "append", "messages": [{"type": "human", "content": "first"}]},
+        )
+        second = self.client.post(
+            "/api/content-builder/threads/session-a/history/snapshot",
+            headers=self.headers,
+            json={"mode": "append", "messages": [{"type": "ai", "content": "second"}]},
+        )
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        payload = json.loads(Path(second.json()["path"]).read_text(encoding="utf-8"))
+        conversation = payload["conversations"]["session-a"]
+        self.assertEqual([message["content"] for message in conversation["messages"]], ["first", "second"])
+        self.assertEqual(conversation["message_window_start"], 0)
+        self.assertEqual(conversation["total_message_count"], 2)
 
     def test_daily_history_snapshot_keeps_only_new_messages_after_prior_day(self) -> None:
         with patch("content_builder.history._today", return_value="2026-06-04"):

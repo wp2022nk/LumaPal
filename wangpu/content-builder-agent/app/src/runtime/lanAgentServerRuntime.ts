@@ -41,6 +41,11 @@ export class LanAgentServerRuntime implements AgentRuntime {
     return this.absoluteUrl(`/api/xiaozhi/v1/threads/${encodeURIComponent(threadId)}/events?token=${token}`);
   }
 
+  appEventsUrl(): string {
+    const token = encodeURIComponent(this.connection.pairingToken);
+    return this.absoluteUrl(`/api/content-builder/events?token=${token}`);
+  }
+
   async verifyPairing(): Promise<boolean> {
     const response = await this.request<{ paired: boolean; agent_server_ready: boolean }>(
       "/api/content-builder/gateway/status",

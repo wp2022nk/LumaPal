@@ -23,6 +23,10 @@ export class EmbeddedDeepAgentsRuntime implements AgentRuntime {
     return this.unsupported();
   }
 
+  appEventsUrl(): string {
+    return this.unsupported();
+  }
+
   hardwareEventsUrl(): string {
     return this.unsupported();
   }

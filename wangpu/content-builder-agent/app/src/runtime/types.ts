@@ -45,6 +45,7 @@ export interface AgentRuntime {
   saveHistorySnapshot(threadId: string, messages: unknown[], metadata?: Record<string, unknown>): Promise<void>;
   absoluteUrl(path: string): string;
   ttsSocketUrl(threadId: string): string;
+  appEventsUrl(): string;
   hardwareEventsUrl(threadId: string): string;
   getHardwareStatus(): Promise<{ sessions: Array<{ session_id: string; thread_id: string; device_id: string; tools: string[] }> }>;
 }

@@ -18,6 +18,7 @@ from fastapi import HTTPException, WebSocket
 
 from content_builder.config import DEFAULT_THREAD_ID
 from content_builder.history import save_thread_history_snapshot
+from content_builder.server.events import app_events
 from content_builder.server.security import pairing_token
 
 from .constants import (
@@ -515,6 +516,28 @@ class XiaozhiSessionManager:
             queues = list(self.listeners.get(key, set()))
             for queue in queues:
                 await queue.put((event, payload))
+        await app_events.publish(f"xiaozhi_{event}", payload, thread_id=thread_id)
+        if event == "connected":
+            await app_events.publish("thread_created", payload, thread_id=thread_id)
+        elif event == "message":
+            role = "ai" if payload.get("role") == "assistant" else "human" if payload.get("role") == "human" else str(payload.get("role") or "")
+            content = str(payload.get("content") or "")
+            if role and content:
+                await app_events.publish(
+                    "message_appended",
+                    {
+                        "source": "xiaozhi",
+                        "message": {
+                            "id": f"xiaozhi-{thread_id}-{role}-{int(time.time() * 1000)}",
+                            "type": role,
+                            "content": content,
+                        },
+                    },
+                    thread_id=thread_id,
+                )
+                await app_events.publish("thread_updated", {"source": "xiaozhi"}, thread_id=thread_id)
+        elif event in {"photo", "photo_uploaded"}:
+            await app_events.publish("artifact_updated", payload, thread_id=thread_id)
 
     @contextlib.asynccontextmanager
     async def subscribe(self, thread_id: str):
@@ -530,22 +553,8 @@ session_manager = XiaozhiSessionManager()
 
 
 def _format_tool_event_text(event: dict[str, Any]) -> str:
-    state = str(event.get("state") or "info")
     name = str(event.get("name") or "tool")
-    source = str(event.get("source") or "main")
-    title_by_state = {
-        "started": "Tool started",
-        "finished": "Tool finished",
-        "error": "Tool error",
-    }
-    lines = [f"{title_by_state.get(state, 'Tool event')}: {name}", f"Source: {source}"]
-    if "arguments" in event:
-        lines.append(f"Arguments: {json.dumps(event['arguments'], ensure_ascii=False)}")
-    if "result" in event:
-        lines.append(f"Result: {event['result']}")
-    if "error" in event:
-        lines.append(f"Error: {event['error']}")
-    return "\n".join(lines)
+    return f"正在执行工具：\n{name}"
 
 
 def _summarize_tool_payload(result_payload: Any) -> list[dict[str, Any]]:

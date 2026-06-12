@@ -125,6 +125,7 @@ def save_thread_history_snapshot(
     thread_id: str,
     *,
     messages: list[Any] | None = None,
+    mode: str = "replace",
     metadata: dict[str, Any] | None = None,
     event: dict[str, Any] | None = None,
     growth_events: list[Any] | None = None,
@@ -155,7 +156,15 @@ def save_thread_history_snapshot(
         previous_conversation = {}
 
     previous_count = _previous_message_count(safe_thread_id, day)
-    if messages is not None:
+    if messages is not None and mode == "append":
+        previous_messages = previous_conversation.get("messages", [])
+        daily_messages = list(previous_messages) if isinstance(previous_messages, list) else []
+        message_window_start = _message_count(previous_conversation.get("message_window_start"))
+        if message_window_start is None:
+            message_window_start = previous_count
+        daily_messages.extend(messages)
+        total_message_count = message_window_start + len(daily_messages)
+    elif messages is not None:
         total_message_count = len(messages)
         message_window_start = previous_count if len(messages) >= previous_count else 0
         daily_messages = messages[message_window_start:]

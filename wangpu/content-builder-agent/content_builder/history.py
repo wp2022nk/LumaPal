@@ -1,142 +1,26 @@
-"""Daily sidecar history snapshots for LAN app conversations."""
+"""Compatibility wrappers for the unified archive.
+
+New code should import :mod:`content_builder.archive` directly.  These
+functions keep older server call sites stable while writing only to the new
+``history/YYYY-MM-DD/conversations/<thread_id>`` layout.
+"""
 
 from __future__ import annotations
 
-import json
-import os
-import shutil
-import tempfile
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .config import WORKSPACE_DIR
+from . import archive
 from .growth_memory import update_memory_from_snapshot
-from .thread_storage import thread_paths, validate_thread_id
+from .thread_storage import validate_thread_id
 
 
 def history_root() -> Path:
-    configured = os.environ.get("CONTENT_BUILDER_HISTORY_DIR")
-    return (Path(configured) if configured else WORKSPACE_DIR / "history").resolve()
+    return archive.history_root()
 
 
 def _today() -> str:
-    return datetime.now().astimezone().date().isoformat()
-
-
-def _snapshot_path(*, day: str | None = None) -> Path:
-    return history_root() / (day or _today()) / "history.json"
-
-
-def _copy_tree(source: Path, destination: Path) -> None:
-    if not source.exists():
-        return
-    destination.mkdir(parents=True, exist_ok=True)
-    for item in source.rglob("*"):
-        target = destination / item.relative_to(source)
-        if item.is_dir():
-            target.mkdir(parents=True, exist_ok=True)
-            continue
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(item, target)
-
-
-def _file_entries(root: Path, namespace: str, *, thread_id: str | None = None) -> list[dict[str, Any]]:
-    if not root.exists():
-        return []
-    entries: list[dict[str, Any]] = []
-    for item in root.rglob("*"):
-        if item.is_file():
-            entry = {
-                "path": f"{namespace}/{item.relative_to(root).as_posix()}",
-                "size": item.stat().st_size,
-                "modified_at": item.stat().st_mtime,
-            }
-            if thread_id is not None:
-                entry["thread_id"] = thread_id
-            entries.append(entry)
-    return sorted(entries, key=lambda value: str(value["path"]))
-
-
-def _read_previous(path: Path) -> dict[str, Any]:
-    if not path.is_file():
-        return {}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-    return data if isinstance(data, dict) else {}
-
-
-def _message_count(value: Any) -> int | None:
-    if isinstance(value, bool) or not isinstance(value, int):
-        return None
-    return value if value >= 0 else None
-
-
-def _prior_day_snapshot_paths(day: str) -> list[Path]:
-    root = history_root()
-    if not root.exists():
-        return []
-    paths: list[Path] = []
-    for child in root.iterdir():
-        if not child.is_dir() or child.name >= day:
-            continue
-        snapshot_path = child / "history.json"
-        if snapshot_path.is_file():
-            paths.append(snapshot_path)
-    return sorted(paths, key=lambda value: value.parent.name)
-
-
-def _previous_message_count(thread_id: str, day: str) -> int:
-    """Return how many messages earlier daily snapshots already recorded."""
-
-    count = 0
-    for path in _prior_day_snapshot_paths(day):
-        payload = _read_previous(path)
-        conversations = payload.get("conversations")
-        if not isinstance(conversations, dict):
-            continue
-        conversation = conversations.get(thread_id)
-        if not isinstance(conversation, dict):
-            continue
-
-        explicit_count = _message_count(conversation.get("total_message_count"))
-        if explicit_count is not None:
-            count = explicit_count
-            continue
-
-        previous_messages = conversation.get("messages")
-        if isinstance(previous_messages, list):
-            count = max(count, len(previous_messages))
-    return count
-
-
-def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile("w", delete=False, dir=path.parent, encoding="utf-8") as handle:
-        json.dump(payload, handle, ensure_ascii=False, indent=2)
-        handle.write("\n")
-        temporary_path = Path(handle.name)
-    temporary_path.replace(path)
-
-
-def _mirror_thread_files(thread_id: str, day_dir: Path) -> None:
-    paths = thread_paths(thread_id)
-    for name, source in (
-        ("uploads", paths.uploads),
-        ("artifacts", paths.artifacts),
-        ("games", paths.games),
-    ):
-        _copy_tree(source, day_dir / name)
-
-
-def _daily_files(day_dir: Path) -> list[dict[str, Any]]:
-    return (
-        _file_entries(day_dir / "uploads", "uploads")
-        + _file_entries(day_dir / "artifacts", "artifacts")
-        + _file_entries(day_dir / "games", "games")
-    )
+    return archive.today()
 
 
 def save_thread_daily_messages(
@@ -146,58 +30,16 @@ def save_thread_daily_messages(
     metadata: dict[str, Any] | None = None,
     event: dict[str, Any] | None = None,
 ) -> Path:
-    """Append only newly observed chat messages to today's sidecar history."""
+    """Append displayable user/agent messages to the current conversation."""
 
     safe_thread_id = validate_thread_id(thread_id)
+    source = str((metadata or {}).get("source") or "")
     day = _today()
-    path = _snapshot_path(day=day)
-    previous = _read_previous(path)
-    day_dir = path.parent
-    _mirror_thread_files(safe_thread_id, day_dir)
-
-    conversations = previous.get("conversations")
-    if not isinstance(conversations, dict):
-        conversations = {}
-    previous_conversation = conversations.get(safe_thread_id)
-    if not isinstance(previous_conversation, dict):
-        previous_conversation = {}
-
-    previous_messages = previous_conversation.get("messages", [])
-    daily_messages = list(previous_messages) if isinstance(previous_messages, list) else []
-    message_window_start = _message_count(previous_conversation.get("message_window_start"))
-    if message_window_start is None:
-        message_window_start = _previous_message_count(safe_thread_id, day)
-    daily_messages.extend(messages)
-    total_message_count = message_window_start + len(daily_messages)
-
-    conversations[safe_thread_id] = {
-        "thread_id": safe_thread_id,
-        "updated_at": datetime.now().astimezone().isoformat(),
-        "messages": daily_messages,
-        "message_window_start": message_window_start,
-        "total_message_count": total_message_count,
-        "metadata": metadata if metadata is not None else previous_conversation.get("metadata", {}),
-        "growth_events": previous_conversation.get("growth_events", []),
-        "artifact_refs": previous_conversation.get("artifact_refs", []),
-        "profile_updates": previous_conversation.get("profile_updates", {}),
-    }
-
-    events = list(previous.get("events") if isinstance(previous.get("events"), list) else [])
+    path = archive.append_chat_messages(safe_thread_id, messages, source=source, day=day)
     if event is not None:
-        events.append({"recorded_at": datetime.now().astimezone().isoformat(), "thread_id": safe_thread_id, **event})
-
-    payload = {
-        "date": day,
-        "updated_at": datetime.now().astimezone().isoformat(),
-        "conversations": conversations,
-        "events": events,
-        "growth_events": list(previous.get("growth_events") if isinstance(previous.get("growth_events"), list) else []),
-        "artifact_refs": list(previous.get("artifact_refs") if isinstance(previous.get("artifact_refs"), list) else []),
-        "profile_updates": list(previous.get("profile_updates") if isinstance(previous.get("profile_updates"), list) else []),
-        "files": _daily_files(day_dir),
-        "mirrored_dir": str(day_dir),
-    }
-    _atomic_write_json(path, payload)
+        archive.append_event(safe_thread_id, event, day=day)
+    archive.update_manifest(safe_thread_id, day=day)
+    archive.rebuild_day_index(day)
     return path
 
 
@@ -212,97 +54,46 @@ def save_thread_history_snapshot(
     artifact_refs: list[Any] | None = None,
     profile_updates: dict[str, Any] | None = None,
 ) -> Path:
-    """Save a JSON chat snapshot and mirror the day's generated files."""
+    """Persist chat, progress events, and artifact indexes in the archive."""
 
     safe_thread_id = validate_thread_id(thread_id)
+    source = str((metadata or {}).get("source") or "")
     day = _today()
-    path = _snapshot_path(day=day)
-    previous = _read_previous(path)
-    day_dir = path.parent
+    path = archive.conversation_paths(safe_thread_id, day=day).chat
+    if messages is not None:
+        if mode == "append":
+            path = archive.append_chat_messages(safe_thread_id, messages, source=source, day=day)
+        else:
+            path = archive.replace_chat_messages(safe_thread_id, messages, source=source, day=day)
 
-    _mirror_thread_files(safe_thread_id, day_dir)
-
-    conversations = previous.get("conversations")
-    if not isinstance(conversations, dict):
-        conversations = {}
-    previous_conversation = conversations.get(safe_thread_id)
-    if not isinstance(previous_conversation, dict):
-        previous_conversation = {}
-
-    previous_count = _previous_message_count(safe_thread_id, day)
-    if messages is not None and mode == "append":
-        previous_messages = previous_conversation.get("messages", [])
-        daily_messages = list(previous_messages) if isinstance(previous_messages, list) else []
-        message_window_start = _message_count(previous_conversation.get("message_window_start"))
-        if message_window_start is None:
-            message_window_start = previous_count
-        daily_messages.extend(messages)
-        total_message_count = message_window_start + len(daily_messages)
-    elif messages is not None:
-        total_message_count = len(messages)
-        message_window_start = previous_count if len(messages) >= previous_count else 0
-        daily_messages = messages[message_window_start:]
-    else:
-        previous_messages = previous_conversation.get("messages", [])
-        daily_messages = previous_messages if isinstance(previous_messages, list) else []
-        message_window_start = _message_count(previous_conversation.get("message_window_start")) or 0
-        total_message_count = _message_count(previous_conversation.get("total_message_count"))
-        if total_message_count is None:
-            total_message_count = message_window_start + len(daily_messages)
-
-    conversations[safe_thread_id] = {
-        "thread_id": safe_thread_id,
-        "updated_at": datetime.now().astimezone().isoformat(),
-        "messages": daily_messages,
-        "message_window_start": message_window_start,
-        "total_message_count": total_message_count,
-        "metadata": metadata if metadata is not None else previous_conversation.get("metadata", {}),
-        "growth_events": growth_events if growth_events is not None else previous_conversation.get("growth_events", []),
-        "artifact_refs": artifact_refs if artifact_refs is not None else previous_conversation.get("artifact_refs", []),
-        "profile_updates": profile_updates
-        if profile_updates is not None
-        else previous_conversation.get("profile_updates", {}),
-    }
-
-    events = list(previous.get("events") if isinstance(previous.get("events"), list) else [])
     if event is not None:
-        events.append({"recorded_at": datetime.now().astimezone().isoformat(), "thread_id": safe_thread_id, **event})
-
-    previous_growth_events = list(previous.get("growth_events") if isinstance(previous.get("growth_events"), list) else [])
-    if growth_events:
-        now = datetime.now().astimezone().isoformat()
-        previous_growth_events.extend(
-            [
-                {
-                    "recorded_at": now,
-                    "thread_id": safe_thread_id,
-                    **(item if isinstance(item, dict) else {"type": "note", "text": str(item)}),
-                }
-                for item in growth_events
-            ]
-        )
-
-    previous_artifact_refs = list(previous.get("artifact_refs") if isinstance(previous.get("artifact_refs"), list) else [])
-    if artifact_refs:
-        previous_artifact_refs.extend(
-            [
-                {"thread_id": safe_thread_id, **item} if isinstance(item, dict) else {"thread_id": safe_thread_id, "path": str(item)}
-                for item in artifact_refs
-            ]
-        )
-
-    previous_profile_updates = list(
-        previous.get("profile_updates") if isinstance(previous.get("profile_updates"), list) else []
-    )
-    if profile_updates:
-        previous_profile_updates.append(
+        archive.append_event(safe_thread_id, event, day=day)
+    for item in growth_events or []:
+        payload = item if isinstance(item, dict) else {"text": str(item)}
+        growth_type = payload.get("type")
+        archive.append_event(
+            safe_thread_id,
             {
-                "recorded_at": datetime.now().astimezone().isoformat(),
-                "thread_id": safe_thread_id,
-                "updates": profile_updates,
-            }
+                **payload,
+                "type": "growth_event",
+                "growth_type": growth_type,
+            },
+            day=day,
         )
-
+    for item in artifact_refs or []:
+        payload = item if isinstance(item, dict) else {"path": str(item)}
+        artifact_type = payload.get("type")
+        archive.append_event(
+            safe_thread_id,
+            {
+                **payload,
+                "type": "artifact_ref",
+                "artifact_type": artifact_type,
+            },
+            day=day,
+        )
+    if profile_updates:
+        archive.append_event(safe_thread_id, {"type": "profile_update", "updates": profile_updates}, day=day)
     if growth_events or profile_updates:
         update_memory_from_snapshot(
             thread_id=safe_thread_id,
@@ -311,16 +102,6 @@ def save_thread_history_snapshot(
             profile_updates=profile_updates,
         )
 
-    payload = {
-        "date": day,
-        "updated_at": datetime.now().astimezone().isoformat(),
-        "conversations": conversations,
-        "events": events,
-        "growth_events": previous_growth_events,
-        "artifact_refs": previous_artifact_refs,
-        "profile_updates": previous_profile_updates,
-        "files": _daily_files(day_dir),
-        "mirrored_dir": str(day_dir),
-    }
-    _atomic_write_json(path, payload)
+    archive.update_manifest(safe_thread_id, day=day)
+    archive.rebuild_day_index(day)
     return path

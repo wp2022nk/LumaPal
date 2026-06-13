@@ -12,6 +12,7 @@ from pathlib import Path
 from langchain.tools import ToolRuntime
 from langchain_core.tools import tool
 
+from content_builder import archive
 from content_builder.config import load_main_config
 from content_builder.thread_storage import runtime_thread_id, thread_paths
 from qwen_image_tool import DEFAULT_QWEN_IMAGE_MODEL, generate_qwen_image
@@ -39,29 +40,95 @@ def output_root(runtime: ToolRuntime | None = None) -> Path:
     return root
 
 
-def resolve_image_output_path(output_path: str, *, root: Path | None = None) -> Path:
-    """Resolve an image target while restricting it to the output workspace."""
+def artifact_roots(runtime: ToolRuntime | None = None) -> dict[str, Path]:
+    config = load_main_config()
+    if runtime is not None:
+        paths = thread_paths(runtime_thread_id(runtime), output_root=config.output_root)
+        roots = {
+            "/output/storybooks": paths.storybooks,
+            "/output/games": paths.games,
+            "/output/reports": paths.reports,
+            "/output/growth-report": paths.reports / "growth-report",
+            "/output": paths.artifacts,
+            "/storybooks": paths.storybooks,
+            "/games": paths.games,
+            "/reports": paths.reports,
+            "/uploads": paths.uploads,
+            "/workspace": paths.workspace,
+        }
+    else:
+        root = output_root().resolve()
+        roots = {
+            "/output/storybooks": root / "storybooks",
+            "/output/games": root / "games",
+            "/output/reports": root / "reports",
+            "/output/growth-report": root / "reports" / "growth-report",
+            "/output": root,
+            "/storybooks": root / "storybooks",
+            "/games": root / "games",
+            "/reports": root / "reports",
+            "/uploads": root / "uploads",
+            "/workspace": root / "workspace",
+        }
+    for directory in roots.values():
+        directory.mkdir(parents=True, exist_ok=True)
+    return roots
+
+
+def resolve_artifact_output_path(
+    output_path: str,
+    *,
+    runtime: ToolRuntime | None = None,
+    root: Path | None = None,
+    allowed_suffixes: set[str],
+    error_prefix: str = "output_path",
+) -> Path:
+    """Resolve a tool output target under one of the archive virtual roots."""
 
     raw_path = str(output_path).strip().strip("\"'")
     if not raw_path:
-        raise ValueError("output_path must not be empty")
+        raise ValueError(f"{error_prefix} must not be empty")
 
-    root = (root or output_root()).resolve()
+    roots = {"/output": (root or output_root()).resolve()} if root is not None else artifact_roots(runtime)
     normalized = raw_path.replace("\\", "/")
-    if normalized == "/output" or normalized.startswith("/output/"):
-        relative = normalized.removeprefix("/output").lstrip("/")
-        target = (root / relative).resolve()
-    else:
-        path = Path(raw_path)
-        target = path.resolve() if path.is_absolute() else (root / path).resolve()
+    selected_virtual = "/output"
+    selected_root = roots["/output"].resolve()
+    relative = normalized
+    for virtual_root, physical_root in sorted(roots.items(), key=lambda item: len(item[0]), reverse=True):
+        if normalized == virtual_root or normalized.startswith(f"{virtual_root}/"):
+            selected_virtual = virtual_root
+            selected_root = physical_root.resolve()
+            relative = normalized.removeprefix(virtual_root).lstrip("/")
+            break
+    path = Path(relative if selected_virtual != "/output" or normalized.startswith("/") else raw_path)
+    target = (selected_root / relative).resolve() if normalized.startswith("/") else (
+        path.resolve() if path.is_absolute() else (selected_root / path).resolve()
+    )
 
-    if target != root and root not in target.parents:
-        raise ValueError("output_path must be located under /output/")
-    if target.suffix.lower() != ".png":
-        raise ValueError("output_path must end with .png")
-    if target == root:
-        raise ValueError("output_path must identify a PNG file under /output/")
+    if target != selected_root and selected_root not in target.parents:
+        raise ValueError(f"{error_prefix} must be located under /output/ or another archive output directory")
+    if target.suffix.lower() not in allowed_suffixes:
+        allowed = ", ".join(sorted(allowed_suffixes))
+        raise ValueError(f"{error_prefix} must end with one of: {allowed}")
+    if target == selected_root:
+        raise ValueError(f"{error_prefix} must identify a file")
     return target
+
+
+def resolve_image_output_path(
+    output_path: str,
+    *,
+    runtime: ToolRuntime | None = None,
+    root: Path | None = None,
+) -> Path:
+    """Resolve an image target while restricting it to archive output roots."""
+
+    return resolve_artifact_output_path(
+        output_path,
+        runtime=runtime,
+        root=root,
+        allowed_suffixes={".png"},
+    )
 
 
 def _error_path_for(output_path: Path) -> Path:
@@ -79,8 +146,9 @@ def generate_image(
 
     Parameters:
         prompt: Detailed visual-generation prompt assembled by the active skill.
-        output_path: Target PNG path below ``/output/``, for example
-            ``/output/storybooks/moon-trip/images/page-01.png``.
+        output_path: Target PNG path below an archive virtual root. For
+            storybooks prefer ``/storybooks/moon-trip/images/page-01.png``;
+            loose images may use ``/output/...``.
         size: Supported Qwen output dimensions. Square ``1024*1024`` is the
             default for illustrated pages.
     """
@@ -90,7 +158,12 @@ def generate_image(
         return f"Image generation failed; unsupported size {size!r}. Allowed sizes: {allowed}"
 
     try:
-        resolved_output_path = resolve_image_output_path(output_path, root=output_root(runtime))
+        try:
+            thread_id = runtime_thread_id(runtime)
+            resolved_output_path = resolve_image_output_path(output_path, runtime=runtime)
+        except ValueError:
+            thread_id = ""
+            resolved_output_path = resolve_image_output_path(output_path)
     except ValueError as exc:
         return f"Image generation failed; local image was not saved. Reason: {exc}"
 
@@ -113,6 +186,8 @@ def generate_image(
             f"({result.get('bytes', 0)} bytes)",
             flush=True,
         )
+        if thread_id:
+            archive.update_manifest(thread_id)
         return f"Image saved to {resolved_output_path}"
     except Exception as exc:
         error_path.parent.mkdir(parents=True, exist_ok=True)
@@ -121,5 +196,7 @@ def generate_image(
             f"Reason: {exc}"
         )
         error_path.write_text(error, encoding="utf-8")
+        if thread_id:
+            archive.update_manifest(thread_id)
         print(f"[tool:generate_image] {error}", flush=True)
         return error

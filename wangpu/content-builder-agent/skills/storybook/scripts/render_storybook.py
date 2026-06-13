@@ -11,8 +11,8 @@ V2 features:
 - TTS failures are isolated per page (``*-error.txt``) and never block PDF.
 
 Image paths in ``book.json`` must remain under ``images/``. The renderer
-resolves the manifest via the ``/output/...`` virtual path that the
-deepagent workspace exposes.
+resolves ``/output/...`` and common relative output forms to the active
+thread artifact root exposed by the deepagent workspace.
 """
 
 from __future__ import annotations
@@ -32,6 +32,7 @@ from typing import Any
 PROJECT_DIR = Path(__file__).resolve().parents[3]
 WORKSPACE_ROOT = PROJECT_DIR.parents[1]
 OUTPUT_ROOT = Path(os.environ.get("CONTENT_BUILDER_OUTPUT_DIR", WORKSPACE_ROOT / "output")).resolve()
+STORYBOOKS_ROOT = Path(os.environ.get("CONTENT_BUILDER_STORYBOOKS_DIR", OUTPUT_ROOT / "storybooks")).resolve()
 ALLOWED_LAYOUTS = {
     "full-bleed-title",
     "image-top-text-bottom",
@@ -45,20 +46,41 @@ CHROME_CANDIDATES = [
 ]
 
 
+def storybooks_root() -> Path:
+    configured = os.environ.get("CONTENT_BUILDER_STORYBOOKS_DIR")
+    return (Path(configured).resolve() if configured else (OUTPUT_ROOT / "storybooks").resolve())
+
+
 def resolve_artifact_path(raw_path: str) -> Path:
-    """Resolve a virtual or workspace-relative artifact path inside /output."""
+    """Resolve a virtual or workspace-relative artifact path inside archive roots."""
 
     raw = str(raw_path).strip().strip("\"'")
     normalized = raw.replace("\\", "/")
-    if normalized == "/output" or normalized.startswith("/output/"):
+    if normalized == "/output/storybooks" or normalized.startswith("/output/storybooks/"):
+        allowed_root = storybooks_root()
+        resolved = (allowed_root / normalized.removeprefix("/output/storybooks").lstrip("/")).resolve()
+    elif normalized == "/output" or normalized.startswith("/output/"):
         resolved = (OUTPUT_ROOT / normalized.removeprefix("/output").lstrip("/")).resolve()
+        allowed_root = OUTPUT_ROOT.resolve()
+    elif normalized == "/storybooks" or normalized.startswith("/storybooks/"):
+        allowed_root = storybooks_root()
+        resolved = (allowed_root / normalized.removeprefix("/storybooks").lstrip("/")).resolve()
+    elif normalized == "output/storybooks" or normalized.startswith("output/storybooks/"):
+        allowed_root = storybooks_root()
+        resolved = (allowed_root / normalized.removeprefix("output/storybooks").lstrip("/")).resolve()
+    elif normalized == "output" or normalized.startswith("output/"):
+        resolved = (OUTPUT_ROOT / normalized.removeprefix("output").lstrip("/")).resolve()
+        allowed_root = OUTPUT_ROOT.resolve()
+    elif normalized == "storybooks" or normalized.startswith("storybooks/"):
+        allowed_root = storybooks_root()
+        resolved = (allowed_root / normalized.removeprefix("storybooks").lstrip("/")).resolve()
     else:
         path = Path(raw)
         resolved = path.resolve() if path.is_absolute() else (WORKSPACE_ROOT / path).resolve()
+        allowed_root = OUTPUT_ROOT.resolve()
 
-    output_root = OUTPUT_ROOT.resolve()
-    if resolved != output_root and output_root not in resolved.parents:
-        raise ValueError(f"Artifact path must be under /output/: {raw_path}")
+    if resolved != allowed_root and allowed_root not in resolved.parents:
+        raise ValueError(f"Artifact path must be under /output/ or /storybooks/: {raw_path}")
     return resolved
 
 
@@ -571,8 +593,8 @@ def print_pdf(book: dict[str, Any], pdf_path: Path) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Render storybook JSON to HTML, audio, and PDF.")
-    parser.add_argument("--book", required=True, help="book.json path under /output/")
-    parser.add_argument("--output-dir", required=True, help="Storybook directory under /output/")
+    parser.add_argument("--book", required=True, help="book.json path under /output/ or /storybooks/")
+    parser.add_argument("--output-dir", required=True, help="Storybook directory under /storybooks/ or /output/")
     parser.add_argument(
         "--audio",
         dest="audio",

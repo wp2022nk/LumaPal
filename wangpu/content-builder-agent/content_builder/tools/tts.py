@@ -11,8 +11,10 @@ import dashscope
 from langchain.tools import ToolRuntime
 from langchain_core.tools import tool
 
+from content_builder import archive
 from content_builder.config import load_main_config
-from content_builder.tools.image import output_root
+from content_builder.thread_storage import runtime_thread_id
+from content_builder.tools.image import resolve_artifact_output_path
 
 
 ALLOWED_AUDIO_SUFFIXES = {".wav"}
@@ -23,27 +25,7 @@ DASHSCOPE_API_URL = "https://dashscope.aliyuncs.com/api/v1"
 def resolve_audio_output_path(output_path: str, *, root: Path | None = None) -> Path:
     """Resolve an audio target while restricting it to the output workspace."""
 
-    raw_path = str(output_path).strip().strip("\"'")
-    if not raw_path:
-        raise ValueError("output_path must not be empty")
-
-    root = (root or output_root()).resolve()
-    normalized = raw_path.replace("\\", "/")
-    if normalized == "/output" or normalized.startswith("/output/"):
-        relative = normalized.removeprefix("/output").lstrip("/")
-        target = (root / relative).resolve()
-    else:
-        path = Path(raw_path)
-        target = path.resolve() if path.is_absolute() else (root / path).resolve()
-
-    if target != root and root not in target.parents:
-        raise ValueError("output_path must be located under /output/")
-    if target.suffix.lower() not in ALLOWED_AUDIO_SUFFIXES:
-        allowed = ", ".join(sorted(ALLOWED_AUDIO_SUFFIXES))
-        raise ValueError(f"output_path must end with one of: {allowed}")
-    if target == root:
-        raise ValueError("output_path must identify an audio file under /output/")
-    return target
+    return resolve_artifact_output_path(output_path, root=root, allowed_suffixes=ALLOWED_AUDIO_SUFFIXES)
 
 
 def _error_path_for(output_path: Path) -> Path:
@@ -147,8 +129,8 @@ def generate_tts_audio(
 
     Parameters:
         text: The exact read-aloud text to synthesize.
-        output_path: Target WAV path below ``/output/``, for example
-            ``/output/storybooks/moon-trip/audio/page-01.wav``.
+        output_path: Target WAV path below an archive virtual root. For
+            storybooks prefer ``/storybooks/moon-trip/audio/page-01.wav``.
     """
 
     narration = str(text or "").strip()
@@ -158,7 +140,12 @@ def generate_tts_audio(
         return f"TTS generation failed; text is too long ({len(narration)} chars, max {MAX_TTS_CHARS})."
 
     try:
-        resolved_output_path = resolve_audio_output_path(output_path, root=output_root(runtime))
+        thread_id = runtime_thread_id(runtime)
+        resolved_output_path = resolve_artifact_output_path(
+            output_path,
+            runtime=runtime,
+            allowed_suffixes=ALLOWED_AUDIO_SUFFIXES,
+        )
     except ValueError as exc:
         return f"TTS generation failed; local audio was not saved. Reason: {exc}"
 
@@ -168,10 +155,12 @@ def generate_tts_audio(
         byte_count = _synthesize_wav(narration, resolved_output_path)
         error_path.unlink(missing_ok=True)
         print(f"[tool:generate_tts_audio] Audio saved: {resolved_output_path} ({byte_count} bytes)", flush=True)
+        archive.update_manifest(thread_id)
         return f"Audio saved to {resolved_output_path}"
     except Exception as exc:
         error_path.parent.mkdir(parents=True, exist_ok=True)
         error = f"TTS generation failed; local audio was not saved. Reason: {exc}"
         error_path.write_text(error, encoding="utf-8")
+        archive.update_manifest(thread_id)
         print(f"[tool:generate_tts_audio] {error}", flush=True)
         return error

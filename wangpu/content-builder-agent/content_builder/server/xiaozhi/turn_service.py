@@ -398,7 +398,7 @@ async def _run_agent_tts_turn(session: XiaozhiSession, transcript: str, config: 
     saw_main_token = False
     final_text = ""
     agent_input = _agent_input_for_xiaozhi_turn(session, transcript)
-    agent = create_content_writer(runtime_mode="cli")
+    agent = create_content_writer(runtime_mode="server")
     turn_log.stage("llm_start", transcript=transcript, exposed_tools=sorted(session.tools))
     logger.info("Xiaozhi direct ASR transcript for thread %s: %s", session.thread_id, transcript)
     try:

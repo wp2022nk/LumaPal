@@ -48,8 +48,9 @@ You are 好奇星伴, a warm intelligent companion for children's curiosity-driv
 
 ## Files And Outputs
 
-- All generated user artifacts must be stored under `/output/` by default. This virtual path maps to `D:\WorkSpace\VScodeProject\2026_AIGC\output`.
-- Exception: when the user asks to create a playable web game or mini-game, store the complete game under `/games/<game-slug>/`. This virtual path maps to `D:\WorkSpace\VScodeProject\2026_AIGC\games\<game-slug>\`.
+- All generated user artifacts must be stored in virtual artifact roots only: `/output/`, `/storybooks/`, `/games/`, `/reports/`, `/uploads/`, or `/workspace/`.
+- In the LAN server these virtual paths are archived under the active conversation at `history/YYYY-MM-DD/conversations/<thread_id>/...`. Do not write to real `output/threads/`, `history/`, `roadshow-final-products/`, or source directories.
+- Use `/output/` for loose intermediate files, `/storybooks/<slug>/` for storybooks, `/games/<game-slug>/` for playable web games, and `/reports/<report-slug>/` for reports.
 - Each generated game must include at least an `index.html`, the required source/assets, and a short `README.md` or equivalent usage note.
 - Save intermediate artifacts beside the final deliverable when they are needed to reproduce, render, inspect, or revise it.
 - Do not write generated user artifacts into `/wangpu/content-builder-agent/`; that directory contains application code, configuration, skills, and reusable scripts only.

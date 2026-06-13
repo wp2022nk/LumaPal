@@ -41,10 +41,24 @@ class RenderStorybookTests(unittest.TestCase):
                 },
             ],
         }
-        output = render_storybook.render_html(book)
+        output = render_storybook.render_print_html(book)
         self.assertIn("@page { size: 210mm 210mm; margin: 0; }", output)
         self.assertIn("月亮邮差", output)
         self.assertIn("小星星轻轻敲门。", output)
+
+    def test_resolves_output_relative_paths_under_active_output_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_dir:
+            output_root = Path(temporary_dir).resolve()
+            original_root = render_storybook.OUTPUT_ROOT
+            try:
+                render_storybook.OUTPUT_ROOT = output_root
+                target = render_storybook.resolve_artifact_path("output/storybooks/moon/book.json")
+                bare_target = render_storybook.resolve_artifact_path("storybooks/moon/book.json")
+            finally:
+                render_storybook.OUTPUT_ROOT = original_root
+
+        self.assertEqual(target, output_root / "storybooks" / "moon" / "book.json")
+        self.assertEqual(bare_target, output_root / "storybooks" / "moon" / "book.json")
 
     def test_manifest_rejects_missing_page_image(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_dir:

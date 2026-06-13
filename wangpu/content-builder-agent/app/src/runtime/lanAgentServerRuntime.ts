@@ -6,6 +6,7 @@ import type {
   KeyName,
   KeySettings,
   SandboxEntry,
+  ThreadArchiveState,
 } from "./types";
 
 export function normalizeBaseUrl(url: string): string {
@@ -98,6 +99,10 @@ export class LanAgentServerRuntime implements AgentRuntime {
       `/api/content-builder/threads/${encodeURIComponent(threadId)}/artifacts`,
     );
     return response.entries;
+  }
+
+  async getThreadState(threadId: string): Promise<ThreadArchiveState> {
+    return this.request(`/api/content-builder/threads/${encodeURIComponent(threadId)}/state`);
   }
 
   async listHistoryArtifacts(filters: { startDate?: string; endDate?: string } = {}): Promise<HistoryArtifactEntry[]> {

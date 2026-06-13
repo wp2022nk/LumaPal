@@ -58,6 +58,8 @@ import type {
   HistoryArtifactEntry,
   KeyName,
   KeySettings,
+  ArchivedSubagent,
+  RuntimeEventEntry,
   SandboxEntry,
 } from "./runtime/types";
 import { mergeSandboxEvent, type SandboxLog } from "./sandbox/events";
@@ -100,6 +102,12 @@ interface AppRealtimeEvent {
   session_id?: string;
   device_id?: string;
   client_id?: string;
+  todos?: Todo[];
+  subagent_id?: string;
+  status?: string;
+  text?: string;
+  tool_name?: string;
+  event_type?: string;
 }
 
 const DEFAULT_KEYS: KeySettings = {
@@ -114,7 +122,12 @@ function isAgentThreadId(threadId: string | null): threadId is string {
 
 function hardwareEventToMessage(payload: HardwareEventMessage | AppRealtimeEvent): AppMessage | null {
   if ("message" in payload && payload.message) {
-    return payload.message;
+    const message = payload.message as AppMessage & { role?: string };
+    if (message.type) {
+      return message;
+    }
+    const role = message.role === "agent" || message.role === "assistant" ? "ai" : message.role === "user" ? "human" : "";
+    return role && message.content ? { ...message, type: role } : null;
   }
   const hardwarePayload = payload as HardwareEventMessage;
   const content = String(hardwarePayload.content || "").trim();
@@ -127,6 +140,12 @@ function hardwareEventToMessage(payload: HardwareEventMessage | AppRealtimeEvent
     type: role,
     content,
   };
+}
+
+function archivedMessageToAppMessage(message: { id?: string; role?: string; content?: string }): AppMessage | null {
+  const content = String(message.content || "").trim();
+  const type = message.role === "agent" ? "ai" : message.role === "user" ? "human" : "";
+  return content && type ? { id: message.id || `archive-${type}-${Date.now()}`, type, content } : null;
 }
 
 export default function App() {
@@ -240,6 +259,9 @@ function AuthenticatedAgentWorkspace({
   const [voiceEmotion, setVoiceEmotion] = useState<VoiceEmotion | null>(null);
   const [voicePlayback, setVoicePlayback] = useState<VoicePlaybackState>("idle");
   const [realtimeMessages, setRealtimeMessages] = useState<AppMessage[]>([]);
+  const [realtimeTodos, setRealtimeTodos] = useState<Todo[]>([]);
+  const [realtimeSubagents, setRealtimeSubagents] = useState<ArchivedSubagent[]>([]);
+  const [realtimeEvents, setRealtimeEvents] = useState<RuntimeEventEntry[]>([]);
   const recorderRef = useRef<WavRecorder | undefined>(undefined);
   const ttsRef = useRef<StreamingPcmPlayer | undefined>(undefined);
   const ttsSeenText = useRef("");
@@ -279,12 +301,23 @@ function AuthenticatedAgentWorkspace({
     });
     return [...messages, ...extra];
   }, [messages, realtimeMessages]);
-  const todos = streamThreadId ? stream.values.todos || [] : [];
+  const todos = streamThreadId ? stream.values.todos || [] : realtimeTodos;
   const allSubagents = streamThreadId ? [...stream.subagents.values()] as SubagentStreamInterface[] : [];
+  const runtimeSubagents = streamThreadId ? [] : realtimeSubagents;
+  const runtimeEvents = streamThreadId ? sandboxLogs.map((log) => ({
+    id: log.id,
+    type: "sandbox_output",
+    source: log.command,
+    text: [log.stdout, log.stderr].filter(Boolean).join("\n"),
+    recorded_at: new Date(log.finishedAt || log.startedAt).toISOString(),
+  })) : realtimeEvents;
 
   useEffect(() => {
     if (!connection.pairingToken) {
       setRealtimeMessages([]);
+      setRealtimeTodos([]);
+      setRealtimeSubagents([]);
+      setRealtimeEvents([]);
       return;
     }
     if (typeof EventSource === "undefined") {
@@ -337,7 +370,66 @@ function AuthenticatedAgentWorkspace({
         console.warn("Failed to parse realtime thread event", error);
       }
     };
-    const handleRefresh = () => setRefreshNonce((current) => current + 1);
+    const handleTodo = (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data) as AppRealtimeEvent;
+        if (payload.thread_id === threadId && Array.isArray(payload.todos)) {
+          setRealtimeTodos(payload.todos);
+          setActiveTab((current) => current === "chat" ? "tasks" : current);
+        }
+      } catch (error) {
+        console.warn("Failed to parse todo event", error);
+      }
+    };
+    const handleSubagent = (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data) as AppRealtimeEvent;
+        if (payload.thread_id !== threadId) {
+          return;
+        }
+        const id = payload.subagent_id || payload.source || `subagent-${Date.now()}`;
+        setRealtimeSubagents((current) => [
+          {
+            ...current.find((item) => (item.subagent_id || item.id || item.source) === id),
+            id,
+            subagent_id: id,
+            source: payload.source,
+            status: payload.status,
+            text: payload.text,
+            tool_name: payload.tool_name,
+          },
+          ...current.filter((item) => (item.subagent_id || item.id || item.source) !== id),
+        ]);
+      } catch (error) {
+        console.warn("Failed to parse subagent event", error);
+      }
+    };
+    const handleRuntimeEvent = (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data) as RuntimeEventEntry & { thread_id?: string };
+        if (payload.thread_id === threadId) {
+          setRealtimeEvents((current) => [payload, ...current].slice(0, 80));
+        }
+      } catch (error) {
+        console.warn("Failed to parse runtime event", error);
+      }
+    };
+    const handleRefresh = (event?: MessageEvent<string>) => {
+      if (event?.data) {
+        try {
+          const payload = JSON.parse(event.data) as { thread_id?: string; entry?: ArtifactEntry };
+          if (payload.thread_id && payload.thread_id !== threadId) {
+            return;
+          }
+          if (payload.entry) {
+            setArtifacts((current) => [payload.entry!, ...current.filter((item) => item.path !== payload.entry!.path)]);
+          }
+        } catch {
+          // A malformed refresh event should still cause a fresh fetch.
+        }
+      }
+      setRefreshNonce((current) => current + 1);
+    };
     const handleError = (event: MessageEvent<string>) => {
       try {
         const payload = JSON.parse(event.data) as { message?: string };
@@ -351,12 +443,37 @@ function AuthenticatedAgentWorkspace({
     events.addEventListener("message_appended", handleMessage as EventListener);
     events.addEventListener("thread_created", handleThread as EventListener);
     events.addEventListener("thread_updated", handleThread as EventListener);
-    events.addEventListener("history_snapshot", handleRefresh);
-    events.addEventListener("artifact_updated", handleRefresh);
+    events.addEventListener("todo_updated", handleTodo as EventListener);
+    events.addEventListener("subagent_updated", handleSubagent as EventListener);
+    events.addEventListener("runtime_event", handleRuntimeEvent as EventListener);
+    events.addEventListener("history_snapshot", handleRefresh as EventListener);
+    events.addEventListener("artifact_updated", handleRefresh as EventListener);
     events.addEventListener("hardware_error", handleError as EventListener);
     events.addEventListener("xiaozhi_hardware_error", handleError as EventListener);
     return () => events.close();
   }, [connection.pairingToken, runtime, threadId]);
+
+  useEffect(() => {
+    if (!threadId || streamThreadId || !connection.pairingToken) {
+      return;
+    }
+    let cancelled = false;
+    void runtime.getThreadState(threadId)
+      .then((state) => {
+        if (cancelled) {
+          return;
+        }
+        setRealtimeMessages(state.chat.map(archivedMessageToAppMessage).filter((message): message is AppMessage => Boolean(message)));
+        setRealtimeTodos(state.todos || []);
+        setRealtimeSubagents(state.subagents || []);
+        setRealtimeEvents([...(state.recent_events || [])].reverse());
+        setArtifacts(state.artifacts || []);
+      })
+      .catch((error) => setNotice(readError(error)));
+    return () => {
+      cancelled = true;
+    };
+  }, [connection.pairingToken, runtime, streamThreadId, threadId]);
 
   useEffect(() => {
     if (!streamThreadId || stream.isLoading || messages.length === 0) {
@@ -465,6 +582,9 @@ function AuthenticatedAgentWorkspace({
     setAttachments([]);
     setSandboxFile(null);
     setRealtimeMessages([]);
+    setRealtimeTodos([]);
+    setRealtimeSubagents([]);
+    setRealtimeEvents([]);
     setActiveTab("chat");
     closeSidebarOnMobile();
   }
@@ -479,6 +599,9 @@ function AuthenticatedAgentWorkspace({
     setSandboxFile(null);
     setSandboxLogs([]);
     setRealtimeMessages([]);
+    setRealtimeTodos([]);
+    setRealtimeSubagents([]);
+    setRealtimeEvents([]);
     setActiveTab("chat");
     closeSidebarOnMobile();
   }
@@ -701,7 +824,14 @@ function AuthenticatedAgentWorkspace({
               onTakePhoto={() => void takePhoto()}
             />
           )}
-          {activeTab === "tasks" && <TasksTab todos={todos} subagents={allSubagents} />}
+          {activeTab === "tasks" && (
+            <TasksTab
+              events={runtimeEvents}
+              runtimeSubagents={runtimeSubagents}
+              subagents={allSubagents}
+              todos={todos}
+            />
+          )}
           {activeTab === "artifacts" && <ArtifactsTab artifacts={artifacts} onOpen={setPreview} />}
           {activeTab === "history" && (
             <HistoryArtifactsTab
@@ -861,7 +991,17 @@ function ChatTab({
   );
 }
 
-function TasksTab({ todos, subagents }: { todos: Todo[]; subagents: SubagentStreamInterface[] }) {
+function TasksTab({
+  events,
+  runtimeSubagents,
+  subagents,
+  todos,
+}: {
+  events: RuntimeEventEntry[];
+  runtimeSubagents: ArchivedSubagent[];
+  subagents: SubagentStreamInterface[];
+  todos: Todo[];
+}) {
   return (
     <div className="content-stack">
       <section className="panel">
@@ -876,10 +1016,39 @@ function TasksTab({ todos, subagents }: { todos: Todo[]; subagents: SubagentStre
       </section>
       <section className="panel">
         <h2><Bot /> 子智能体执行流</h2>
-        {subagents.length === 0 && <p className="muted">发生任务委派时，子智能体会按会话展示在这里。</p>}
+        {subagents.length === 0 && runtimeSubagents.length === 0 && <p className="muted">发生任务委派时，子智能体会按会话展示在这里。</p>}
         {subagents.map((subagent) => <SubagentCard key={subagent.id} subagent={subagent} />)}
+        {runtimeSubagents.map((subagent) => <ArchivedSubagentCard key={subagent.subagent_id || subagent.id || subagent.source} subagent={subagent} />)}
+      </section>
+      <section className="panel">
+        <h2><Terminal /> Runtime events</h2>
+        {events.length === 0 && <p className="muted">Tool calls, sandbox output, and artifact updates appear here in real time.</p>}
+        <div className="runtime-event-list">
+          {events.slice(0, 30).map((event, index) => (
+            <div className="runtime-event" key={event.id || `${event.type}-${index}`}>
+              <strong>{event.tool_name || event.event_type || event.type}</strong>
+              <span>{event.text || event.source || ""}</span>
+              {event.recorded_at && <small>{new Date(event.recorded_at).toLocaleTimeString()}</small>}
+            </div>
+          ))}
+        </div>
       </section>
     </div>
+  );
+}
+
+function ArchivedSubagentCard({ subagent }: { subagent: ArchivedSubagent }) {
+  const label = String(subagent.subagent_id || subagent.source || subagent.tool_name || "subagent");
+  const status = String(subagent.status || "running");
+  return (
+    <Collapsible
+      title={`${label} / ${status}`}
+      icon={<Bot size={15} />}
+      badge={status === "running" ? "running" : "updated"}
+    >
+      {subagent.text && <p className="muted">{subagent.text}</p>}
+      {subagent.args_preview ? <pre>{JSON.stringify(subagent.args_preview, null, 2)}</pre> : null}
+    </Collapsible>
   );
 }
 

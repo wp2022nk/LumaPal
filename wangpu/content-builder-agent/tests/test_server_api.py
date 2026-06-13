@@ -26,6 +26,7 @@ from content_builder.streaming import StreamEvent
 from content_builder.tools.xiaozhi import _call_device_tool, _tool_response_for_agent, xiaozhi_call_device_tool
 from content_builder.thread_storage import resolve_thread_file, thread_paths
 from content_builder.history import save_thread_daily_messages
+from content_builder import archive
 
 
 class XiaozhiToolEventMappingTests(unittest.TestCase):
@@ -424,7 +425,7 @@ class ServerAPITests(unittest.TestCase):
         ):
             run(_run_agent_tts_turn(session, "问题", config))
 
-        create_agent.assert_called_once_with(runtime_mode="cli")
+        create_agent.assert_called_once_with(runtime_mode="server")
         stream_events.assert_called_once()
         self.assertEqual(FakeSpeaker.instances[0].tokens, ["回答"])
         self.assertEqual(FakeSpeaker.instances[0].flushes, 1)
@@ -1397,8 +1398,8 @@ Wireless LAN adapter WLAN:
 
         listing = self.client.get("/api/content-builder/threads/session-a/artifacts", headers=self.headers)
         self.assertEqual(listing.status_code, 200)
-        [listed] = listing.json()["entries"]
-        self.assertEqual(listed["path"], "artifacts/notes/draft.md")
+        listed = next(item for item in listing.json()["entries"] if item["path"].endswith("notes/draft.md"))
+        self.assertEqual(listed["path"], "artifacts/files/notes/draft.md")
 
         preview = self.client.get(listed["preview_url"])
         self.assertEqual(preview.status_code, 200)
@@ -1407,53 +1408,56 @@ Wireless LAN adapter WLAN:
         wrong_thread_url = listed["preview_url"].replace("session-a", "session-b")
         self.assertEqual(self.client.get(wrong_thread_url).status_code, 401)
 
-    def test_history_artifacts_scan_history_and_roadshow_with_preview(self) -> None:
-        history_file = Path(os.environ["CONTENT_BUILDER_HISTORY_DIR"]) / "2026-06-08" / "artifacts" / "storybook" / "book.html"
+    def test_history_artifacts_read_new_archive_manifests_with_preview(self) -> None:
+        history_file = (
+            Path(os.environ["CONTENT_BUILDER_HISTORY_DIR"])
+            / "2026-06-08"
+            / "conversations"
+            / "session-a"
+            / "artifacts"
+            / "storybooks"
+            / "moon"
+            / "book.html"
+        )
         history_file.parent.mkdir(parents=True, exist_ok=True)
         history_file.write_text("<h1>story</h1>", encoding="utf-8")
-        old_file = Path(os.environ["CONTENT_BUILDER_HISTORY_DIR"]) / "2026-06-01" / "games" / "old-game" / "index.html"
+        old_file = (
+            Path(os.environ["CONTENT_BUILDER_HISTORY_DIR"])
+            / "2026-06-01"
+            / "conversations"
+            / "session-a"
+            / "artifacts"
+            / "games"
+            / "old-game"
+            / "index.html"
+        )
         old_file.parent.mkdir(parents=True, exist_ok=True)
         old_file.write_text("<h1>old</h1>", encoding="utf-8")
-        output_file = Path(os.environ["CONTENT_BUILDER_OUTPUT_DIR"]) / "storybooks" / "new-book" / "new-book.pdf"
-        output_file.parent.mkdir(parents=True, exist_ok=True)
-        output_file.write_bytes(b"%PDF-output")
-        workspace = Path(self.temporary_dir.name) / "workspace"
-        roadshow_file = workspace / "roadshow-final-products" / "game" / "index.html"
-        roadshow_file.parent.mkdir(parents=True, exist_ok=True)
-        roadshow_file.write_text("<h1>game</h1>", encoding="utf-8")
+        archive.update_manifest("session-a", day="2026-06-08")
+        archive.update_manifest("session-a", day="2026-06-01")
 
-        with patch("content_builder.server.api.WORKSPACE_DIR", workspace):
-            response = self.client.get(
-                "/api/content-builder/history/artifacts",
-                headers=self.headers,
-                params={"start_date": "2026-06-08", "end_date": "2099-12-31"},
-            )
-            self.assertEqual(response.status_code, 200)
-            entries = response.json()["entries"]
-            paths = {entry["path"] for entry in entries}
-            self.assertIn("history/2026-06-08/artifacts/storybook/book.html", paths)
-            self.assertIn("output/storybooks/new-book/new-book.pdf", paths)
-            self.assertIn("roadshow-final-products/game/index.html", paths)
-            self.assertNotIn("history/2026-06-01/games/old-game/index.html", paths)
+        response = self.client.get(
+            "/api/content-builder/history/artifacts",
+            headers=self.headers,
+            params={"start_date": "2026-06-08", "end_date": "2099-12-31"},
+        )
+        self.assertEqual(response.status_code, 200)
+        entries = response.json()["entries"]
+        paths = {entry["path"] for entry in entries}
+        self.assertIn("artifacts/storybooks/moon/book.html", paths)
+        self.assertNotIn("artifacts/games/old-game/index.html", paths)
 
-            story = next(entry for entry in entries if entry["path"].endswith("book.html"))
-            self.assertEqual(story["category"], "storybook")
-            preview = self.client.get(story["preview_url"])
-            self.assertEqual(preview.status_code, 200)
-            self.assertIn("story", preview.text)
+        story = next(entry for entry in entries if entry["path"].endswith("book.html"))
+        self.assertEqual(story["category"], "storybook")
+        self.assertEqual(story["source"], "history")
+        preview = self.client.get(story["preview_url"])
+        self.assertEqual(preview.status_code, 200)
+        self.assertIn("story", preview.text)
 
-            output_entry = next(entry for entry in entries if entry["path"] == "output/storybooks/new-book/new-book.pdf")
-            self.assertEqual(output_entry["source"], "output")
-            self.assertEqual(output_entry["category"], "storybook")
-            self.assertEqual(output_entry["kind"], "pdf")
-            output_preview = self.client.get(output_entry["preview_url"])
-            self.assertEqual(output_preview.status_code, 200)
-            self.assertEqual(output_preview.content, b"%PDF-output")
-
-            bad_path = "history/2026-06-08/%2E%2E/secret.txt"
-            token = make_preview_token("history", bad_path)
-            rejected = self.client.get(f"/api/content-builder/history-preview/{token}/{bad_path}")
-            self.assertEqual(rejected.status_code, 400)
+        bad_path = "history/2026-06-08/%2E%2E/secret.txt"
+        token = make_preview_token("history", bad_path)
+        rejected = self.client.get(f"/api/content-builder/history-preview/{token}/{bad_path}")
+        self.assertEqual(rejected.status_code, 400)
 
     def test_history_snapshot_saves_messages_and_mirrors_thread_files(self) -> None:
         upload = self.client.post(
@@ -1477,14 +1481,13 @@ Wireless LAN adapter WLAN:
 
         self.assertEqual(response.status_code, 200)
         history_path = Path(response.json()["path"])
-        self.assertEqual(history_path.name, "history.json")
+        self.assertEqual(history_path.name, "chat.json")
         payload = json.loads(history_path.read_text(encoding="utf-8"))
-        self.assertIn("session-a", payload["conversations"])
-        self.assertEqual(payload["conversations"]["session-a"]["metadata"], {"source": "test"})
-        self.assertEqual(payload["conversations"]["session-a"]["messages"][1]["content"], "done")
+        self.assertEqual([message["content"] for message in payload], ["hello", "done"])
+        self.assertEqual(payload[0]["source"], "test")
         self.assertTrue((history_path.parent / "uploads" / "images").is_dir())
-        self.assertFalse((history_path.parent / "session-a").exists())
-        self.assertTrue(any(item["path"].startswith("uploads/images/") for item in payload["files"]))
+        manifest = json.loads((history_path.parent / "manifest.json").read_text(encoding="utf-8"))
+        self.assertTrue(any(item["path"].startswith("uploads/images/") for item in manifest["artifacts"]))
 
     def test_history_snapshot_accepts_growth_fields_and_updates_single_profile(self) -> None:
         response = self.client.post(
@@ -1511,10 +1514,13 @@ Wireless LAN adapter WLAN:
 
         self.assertEqual(response.status_code, 200)
         history_path = Path(response.json()["path"])
-        payload = json.loads(history_path.read_text(encoding="utf-8"))
-        self.assertEqual(payload["growth_events"][0]["type"], "game_preference")
-        self.assertEqual(payload["artifact_refs"][0]["type"], "game")
-        self.assertEqual(payload["profile_updates"][0]["updates"]["interests"], ["water changes"])
+        events = [
+            json.loads(line)
+            for line in (history_path.parent / "events.jsonl").read_text(encoding="utf-8").splitlines()
+        ]
+        self.assertTrue(any(item["type"] == "growth_event" and item["summary"].startswith("child") for item in events))
+        self.assertTrue(any(item["type"] == "artifact_ref" and item["path"].endswith("index.html") for item in events))
+        self.assertTrue(any(item["type"] == "profile_update" and item["updates"]["interests"] == ["water changes"] for item in events))
 
         memory_dir = Path(os.environ["CONTENT_BUILDER_MEMORY_DIR"])
         profile = json.loads((memory_dir / "profile.json").read_text(encoding="utf-8"))
@@ -1537,10 +1543,12 @@ Wireless LAN adapter WLAN:
 
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
-        self.assertEqual(first.json()["path"], second.json()["path"])
-        payload = json.loads(Path(first.json()["path"]).read_text(encoding="utf-8"))
-        self.assertEqual(payload["conversations"]["session-a"]["messages"][0]["content"], "first")
-        self.assertEqual(payload["conversations"]["session-b"]["messages"][0]["content"], "second")
+        self.assertNotEqual(first.json()["path"], second.json()["path"])
+        index_path = Path(first.json()["path"]).parents[2] / "day_index.json"
+        payload = json.loads(index_path.read_text(encoding="utf-8"))
+        conversations = {item["thread_id"]: item for item in payload["conversations"]}
+        self.assertIn("session-a", conversations)
+        self.assertIn("session-b", conversations)
 
     def test_history_snapshot_append_mode_keeps_existing_daily_messages_once(self) -> None:
         first = self.client.post(
@@ -1557,10 +1565,7 @@ Wireless LAN adapter WLAN:
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
         payload = json.loads(Path(second.json()["path"]).read_text(encoding="utf-8"))
-        conversation = payload["conversations"]["session-a"]
-        self.assertEqual([message["content"] for message in conversation["messages"]], ["first", "second"])
-        self.assertEqual(conversation["message_window_start"], 0)
-        self.assertEqual(conversation["total_message_count"], 2)
+        self.assertEqual([message["content"] for message in payload], ["first", "second"])
 
     def test_daily_message_append_keeps_only_new_turn_messages(self) -> None:
         with patch("content_builder.history._today", return_value="2026-06-11"):
@@ -1581,10 +1586,7 @@ Wireless LAN adapter WLAN:
             )
 
         payload = json.loads(history_path.read_text(encoding="utf-8"))
-        conversation = payload["conversations"]["session-a"]
-        self.assertEqual([message["content"] for message in conversation["messages"]], ["new question"])
-        self.assertEqual(conversation["message_window_start"], 2)
-        self.assertEqual(conversation["total_message_count"], 3)
+        self.assertEqual([message["content"] for message in payload], ["new question"])
 
     def test_daily_history_snapshot_keeps_only_new_messages_after_prior_day(self) -> None:
         with patch("content_builder.history._today", return_value="2026-06-04"):
@@ -1617,14 +1619,11 @@ Wireless LAN adapter WLAN:
         first_payload = json.loads(Path(first_day.json()["path"]).read_text(encoding="utf-8"))
         second_payload = json.loads(Path(second_day.json()["path"]).read_text(encoding="utf-8"))
 
-        self.assertEqual(first_payload["conversations"]["session-a"]["message_window_start"], 0)
-        self.assertEqual(first_payload["conversations"]["session-a"]["total_message_count"], 2)
+        self.assertEqual([message["content"] for message in first_payload], ["day one question", "day one answer"])
         self.assertEqual(
-            [message["content"] for message in second_payload["conversations"]["session-a"]["messages"]],
-            ["day two question"],
+            [message["content"] for message in second_payload],
+            ["day one question", "day one answer", "day two question"],
         )
-        self.assertEqual(second_payload["conversations"]["session-a"]["message_window_start"], 2)
-        self.assertEqual(second_payload["conversations"]["session-a"]["total_message_count"], 3)
 
     def test_sandbox_file_route_rejects_path_traversal(self) -> None:
         response = self.client.get(

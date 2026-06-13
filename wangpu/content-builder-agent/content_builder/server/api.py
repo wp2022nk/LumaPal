@@ -33,8 +33,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
+from content_builder import archive
 from content_builder.config import DEFAULT_SECRETS_FILE, WORKSPACE_DIR, load_main_config
-from content_builder.history import history_root, save_thread_history_snapshot
+from content_builder.history import save_thread_history_snapshot
 from content_builder.server.security import (
     extract_request_token,
     make_preview_token,
@@ -224,13 +225,22 @@ def _save_upload(thread_id: str, virtual_path: str, content: bytes) -> Path:
 
 
 def _artifact_entries(thread_id: str) -> list[dict[str, Any]]:
-    paths = thread_paths(thread_id)
     entries: list[dict[str, Any]] = []
-    for namespace, root in (("artifacts", paths.artifacts), ("games", paths.games)):
-        for item in root.rglob("*"):
-            if item.is_file():
-                entries.append(_entry(thread_id, item, f"{namespace}/{item.relative_to(root).as_posix()}"))
-    entries.sort(key=lambda item: item["modified_at"], reverse=True)
+    for item in archive.manifest_artifacts(thread_id):
+        if not isinstance(item, dict):
+            continue
+        virtual_path = str(item.get("path") or "")
+        if not virtual_path:
+            continue
+        signed_token = make_preview_token(thread_id, virtual_path)
+        encoded_path = quote(virtual_path, safe="/")
+        entries.append(
+            {
+                **item,
+                "preview_url": f"/api/content-builder/preview/{thread_id}/{signed_token}/{encoded_path}",
+            }
+        )
+    entries.sort(key=lambda item: float(item.get("modified_at") or 0), reverse=True)
     return entries
 
 
@@ -338,35 +348,27 @@ def _iter_history_artifact_files() -> list[tuple[Path, str]]:
 
 
 def _history_artifact_entries(start_date: str | None = None, end_date: str | None = None) -> list[dict[str, Any]]:
-    entries = [_history_artifact_entry(path, virtual_path) for path, virtual_path in _iter_history_artifact_files()]
-    if start_date:
-        entries = [entry for entry in entries if str(entry["date"]) >= start_date]
-    if end_date:
-        entries = [entry for entry in entries if str(entry["date"]) <= end_date]
-    entries.sort(key=lambda item: (str(item["date"]), float(item["modified_at"])), reverse=True)
+    entries: list[dict[str, Any]] = []
+    for item in archive.list_history_artifacts(start_date, end_date):
+        if not isinstance(item, dict):
+            continue
+        date = str(item.get("date") or "")
+        thread_id = str(item.get("thread_id") or "")
+        relative = str(item.get("path") or "")
+        if not date or not thread_id or not relative:
+            continue
+        archive_path = f"history/{date}/conversations/{thread_id}/{relative}"
+        entries.append({**item, "archive_path": archive_path, "preview_url": _history_preview_url(archive_path)})
     return entries
 
 
 def _history_preview_target(virtual_path: str) -> Path:
-    normalized = virtual_path.replace("\\", "/").strip("/")
-    if normalized.startswith("/") or "/../" in f"/{normalized}/" or normalized.startswith("../"):
-        raise HTTPException(status_code=400, detail="Invalid history artifact path")
-    if normalized.startswith("history/"):
-        root = history_root()
-        target = (root / normalized.removeprefix("history/")).resolve()
-    elif normalized.startswith("output/"):
-        root = load_main_config().output_root.resolve()
-        target = (root / normalized.removeprefix("output/")).resolve()
-    elif normalized.startswith("roadshow-final-products/"):
-        root = (WORKSPACE_DIR / "roadshow-final-products").resolve()
-        target = (WORKSPACE_DIR / normalized).resolve()
-    else:
-        raise HTTPException(status_code=400, detail="History artifact path must be under history/, output/, or roadshow-final-products/")
-    if target != root and root not in target.parents:
-        raise HTTPException(status_code=400, detail="Invalid history artifact path")
-    if not target.is_file():
-        raise HTTPException(status_code=404, detail="File not found")
-    return target
+    try:
+        return archive.resolve_archive_file(virtual_path)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="File not found") from exc
 
 
 def _sandbox_entries(thread_id: str) -> list[dict[str, Any]]:
@@ -374,8 +376,10 @@ def _sandbox_entries(thread_id: str) -> list[dict[str, Any]]:
     entries: list[dict[str, Any]] = []
     for namespace, root in (
         ("workspace", paths.workspace),
-        ("artifacts", paths.artifacts),
-        ("games", paths.games),
+        ("artifacts/files", paths.artifacts),
+        ("artifacts/storybooks", paths.storybooks),
+        ("artifacts/games", paths.games),
+        ("artifacts/reports", paths.reports),
         ("uploads", paths.uploads),
     ):
         entries.append({"name": namespace, "path": namespace, "type": "directory", "size": 0})
@@ -536,6 +540,37 @@ async def stream_app_events(
 @app.get("/api/content-builder/threads/{thread_id}/artifacts", dependencies=[Depends(_require_pairing_token)])
 async def list_artifacts(thread_id: str) -> dict[str, Any]:
     return {"thread_id": thread_id, "entries": await asyncio.to_thread(_artifact_entries, thread_id)}
+
+
+@app.get("/api/content-builder/threads/{thread_id}/state", dependencies=[Depends(_require_pairing_token)])
+async def get_thread_state(thread_id: str) -> dict[str, Any]:
+    state = await asyncio.to_thread(archive.read_state, thread_id)
+    state["artifacts"] = await asyncio.to_thread(_artifact_entries, thread_id)
+    return state
+
+
+@app.get("/api/content-builder/history/days", dependencies=[Depends(_require_pairing_token)])
+async def list_history_days() -> dict[str, Any]:
+    return {"days": await asyncio.to_thread(archive.list_days)}
+
+
+@app.get("/api/content-builder/history/{date}/conversations", dependencies=[Depends(_require_pairing_token)])
+async def list_history_conversations(date: str) -> dict[str, Any]:
+    return {"date": date, "conversations": await asyncio.to_thread(archive.list_day_conversations, date)}
+
+
+@app.get("/api/content-builder/history/{date}/conversations/{thread_id}", dependencies=[Depends(_require_pairing_token)])
+async def get_history_conversation(date: str, thread_id: str) -> dict[str, Any]:
+    conversation = await asyncio.to_thread(archive.read_day_conversation, date, thread_id)
+    entries: list[dict[str, Any]] = []
+    for item in conversation.get("artifacts", []):
+        if not isinstance(item, dict):
+            continue
+        relative = str(item.get("path") or "")
+        archive_path = f"history/{date}/conversations/{thread_id}/{relative}"
+        entries.append({**item, "archive_path": archive_path, "preview_url": _history_preview_url(archive_path)})
+    conversation["artifacts"] = entries
+    return conversation
 
 
 @app.get("/api/content-builder/history/artifacts", dependencies=[Depends(_require_pairing_token)])

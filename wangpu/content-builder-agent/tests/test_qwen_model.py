@@ -1,82 +1,40 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
-from langchain_core.messages import AIMessage, AIMessageChunk
-from langchain_core.outputs import ChatGeneration, ChatResult
-
-from content_builder.qwen_model import _ensure_tool_call_ids_on_message, _ensure_tool_call_ids_on_result
+from content_builder.config import ModelConfig, create_qwen_model
 
 
-class QwenModelAdapterTests(unittest.TestCase):
-    def test_missing_tool_call_ids_are_filled(self) -> None:
-        result = ChatResult(
-            generations=[
-                ChatGeneration(
-                    message=AIMessage(
-                        content="",
-                        tool_calls=[
-                            {
-                                "id": "",
-                                "name": "task",
-                                "args": {
-                                    "subagent_type": "researcher",
-                                    "description": "Research current headlines.",
-                                },
-                                "type": "tool_call",
-                            }
-                        ],
-                    )
-                )
-            ]
+class QwenModelFactoryTests(unittest.TestCase):
+    def test_create_qwen_model_uses_official_init_chat_model(self) -> None:
+        sentinel = object()
+        config = ModelConfig(
+            model="qwen-test",
+            api_key="test-key",
+            base_url="https://example.test/v1",
+            enable_thinking=True,
+            thinking_budget=1024,
         )
 
-        _ensure_tool_call_ids_on_result(result)
+        with patch("langchain.chat_models.init_chat_model", return_value=sentinel) as init_chat_model:
+            model = create_qwen_model(config)
 
-        tool_call = result.generations[0].message.tool_calls[0]
-        self.assertTrue(tool_call["id"].startswith("call_qwen_"))
-
-    def test_existing_tool_call_ids_are_preserved(self) -> None:
-        result = ChatResult(
-            generations=[
-                ChatGeneration(
-                    message=AIMessage(
-                        content="",
-                        tool_calls=[
-                            {
-                                "id": "call_existing",
-                                "name": "generate_image",
-                                "args": {"prompt": "moon"},
-                                "type": "tool_call",
-                            }
-                        ],
-                    )
-                )
-            ]
+        self.assertIs(model, sentinel)
+        init_chat_model.assert_called_once_with(
+            model="qwen-test",
+            model_provider="openai",
+            base_url="https://example.test/v1",
+            api_key="test-key",
+            streaming=True,
+            use_responses_api=False,
         )
 
-        _ensure_tool_call_ids_on_result(result)
+    def test_create_qwen_model_requires_api_key(self) -> None:
+        config = ModelConfig(model="qwen-test", api_key=None, base_url="https://example.test/v1")
 
-        tool_call = result.generations[0].message.tool_calls[0]
-        self.assertEqual(tool_call["id"], "call_existing")
-
-    def test_streaming_tool_call_chunks_get_stable_ids(self) -> None:
-        chunk = AIMessageChunk(
-            content="",
-            tool_call_chunks=[
-                {
-                    "id": "",
-                    "name": "task",
-                    "args": '{"subagent_type":"researcher"}',
-                    "index": 0,
-                    "type": "tool_call_chunk",
-                }
-            ],
-        )
-
-        _ensure_tool_call_ids_on_message(chunk, "call_qwen_stream")
-
-        self.assertEqual(chunk.tool_call_chunks[0]["id"], "call_qwen_stream_0")
+        with self.assertRaises(RuntimeError):
+            create_qwen_model(config)
 
 
 if __name__ == "__main__":

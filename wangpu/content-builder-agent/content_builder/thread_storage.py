@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import datetime
+import os
 from pathlib import Path
 from typing import Any
 
-from .config import load_main_config
+from .config import WORKSPACE_DIR
 
 
 THREAD_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:@+-]{0,127}$")
@@ -20,12 +22,22 @@ class ThreadPaths:
     thread_id: str
     root: Path
     artifacts: Path
+    storybooks: Path
     games: Path
+    reports: Path
     uploads: Path
     workspace: Path
 
     def ensure(self) -> "ThreadPaths":
-        for directory in (self.artifacts, self.games, self.uploads, self.workspace):
+        for directory in (
+            self.artifacts,
+            self.storybooks,
+            self.games,
+            self.reports,
+            self.uploads,
+            self.uploads / "images",
+            self.workspace,
+        ):
             directory.mkdir(parents=True, exist_ok=True)
         return self
 
@@ -39,16 +51,30 @@ def validate_thread_id(thread_id: str) -> str:
     return normalized
 
 
+def _history_root() -> Path:
+    configured = os.environ.get("CONTENT_BUILDER_HISTORY_DIR")
+    return (Path(configured) if configured else WORKSPACE_DIR / "history").resolve()
+
+
+def _today() -> str:
+    return datetime.now().astimezone().date().isoformat()
+
+
 def thread_paths(thread_id: str, *, output_root: Path | None = None) -> ThreadPaths:
     """Return the isolated storage layout for a LangGraph thread."""
 
     safe_thread_id = validate_thread_id(thread_id)
-    root = (output_root or load_main_config().output_root).resolve() / "threads" / safe_thread_id
+    # ``output_root`` is kept for API compatibility with older callers, but new
+    # writes always land in the durable daily archive.
+    del output_root
+    root = _history_root() / _today() / "conversations" / safe_thread_id
     return ThreadPaths(
         thread_id=safe_thread_id,
         root=root,
-        artifacts=root / "artifacts",
-        games=root / "games",
+        artifacts=root / "artifacts" / "files",
+        storybooks=root / "artifacts" / "storybooks",
+        games=root / "artifacts" / "games",
+        reports=root / "artifacts" / "reports",
         uploads=root / "uploads",
         workspace=root / "workspace",
     ).ensure()

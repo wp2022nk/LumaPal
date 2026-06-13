@@ -22,7 +22,6 @@ warnings.filterwarnings(
 
 import yaml
 from langchain_core._api.deprecation import LangChainPendingDeprecationWarning
-from .qwen_model import StableToolCallChatQwen
 
 
 # 这是依赖升级提醒，不影响当前运行；屏蔽它可以避免控制台流式输出被无关警告打断。
@@ -461,7 +460,7 @@ def load_subagents_yaml(config_path: str | Path) -> dict[str, Any]:
     return _read_yaml(resolve_project_path(config_path))
 
 
-def create_qwen_model(config: ModelConfig) -> StableToolCallChatQwen:
+def create_qwen_model(config: ModelConfig) -> Any:
     """根据配置创建 ChatQwen 实例。
 
     主智能体和配置中声明同名模型的子智能体会复用这个对象，避免每个模块各自
@@ -474,11 +473,16 @@ def create_qwen_model(config: ModelConfig) -> StableToolCallChatQwen:
             "secrets.local.yaml，并填写 qwen.api_key。"
         )
 
-    return StableToolCallChatQwen(
+    from langchain.chat_models import init_chat_model
+
+    # Qwen/DashScope is used through its OpenAI-compatible Chat Completions
+    # endpoint.  In LangChain, ``model_provider="openai"`` selects that wire
+    # protocol; ``base_url`` keeps the actual provider pointed at Qwen.
+    return init_chat_model(
         model=config.model,
-        api_key=config.api_key,
+        model_provider="openai",
         base_url=config.base_url,
+        api_key=config.api_key,
         streaming=True,
-        enable_thinking=config.enable_thinking,
-        thinking_budget=config.thinking_budget,
+        use_responses_api=False,
     )

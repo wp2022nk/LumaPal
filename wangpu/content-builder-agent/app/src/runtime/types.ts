@@ -14,7 +14,9 @@ export interface KeySettings {
 export type ArtifactKind = "image" | "pdf" | "html" | "text" | "download";
 
 export interface ArtifactEntry {
+  artifact_id?: string;
   name: string;
+  title?: string;
   path: string;
   size: number;
   modified_at: number;
@@ -28,8 +30,54 @@ export type HistoryArtifactCategory = "storybook" | "audiobook" | "game" | "grow
 export interface HistoryArtifactEntry extends ArtifactEntry {
   title: string;
   date: string;
-  source: "history" | "output" | "roadshow";
+  source: "history" | "output" | "roadshow" | "legacy";
   category: HistoryArtifactCategory;
+  archive_path?: string;
+}
+
+export interface ArchivedChatMessage {
+  id: string;
+  role: "user" | "agent";
+  content: string;
+  created_at?: string;
+  source?: string;
+}
+
+export interface TodoEntry {
+  content: string;
+  status: "pending" | "in_progress" | "completed";
+}
+
+export interface RuntimeEventEntry {
+  id?: string;
+  type: string;
+  event_type?: string;
+  source?: string;
+  text?: string;
+  recorded_at?: string;
+  todos?: TodoEntry[];
+  subagent_id?: string;
+  status?: string;
+  tool_name?: string;
+}
+
+export interface ArchivedSubagent {
+  id?: string;
+  subagent_id?: string;
+  source?: string;
+  status?: string;
+  text?: string;
+  tool_name?: string;
+  args_preview?: unknown;
+}
+
+export interface ThreadArchiveState {
+  thread_id: string;
+  chat: ArchivedChatMessage[];
+  artifacts: ArtifactEntry[];
+  recent_events: RuntimeEventEntry[];
+  todos: TodoEntry[];
+  subagents: ArchivedSubagent[];
 }
 
 export interface SandboxEntry {
@@ -49,6 +97,7 @@ export interface AgentRuntime {
   uploadImage(threadId: string, image: File): Promise<ArtifactEntry>;
   transcribeAudio(threadId: string, audio: Blob): Promise<string>;
   listArtifacts(threadId: string): Promise<ArtifactEntry[]>;
+  getThreadState(threadId: string): Promise<ThreadArchiveState>;
   listHistoryArtifacts(filters?: { startDate?: string; endDate?: string }): Promise<HistoryArtifactEntry[]>;
   listSandboxTree(threadId: string): Promise<SandboxEntry[]>;
   readSandboxFile(threadId: string, path: string): Promise<string>;

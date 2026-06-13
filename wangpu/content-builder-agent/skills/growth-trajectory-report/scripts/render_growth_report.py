@@ -35,6 +35,7 @@ from typing import Any
 PROJECT_DIR = Path(__file__).resolve().parents[3]
 WORKSPACE_ROOT = PROJECT_DIR.parents[1]
 OUTPUT_ROOT = Path(os.environ.get("CONTENT_BUILDER_OUTPUT_DIR", WORKSPACE_ROOT / "output")).resolve()
+REPORTS_ROOT = Path(os.environ.get("CONTENT_BUILDER_REPORTS_DIR", OUTPUT_ROOT / "reports")).resolve()
 CHROME_CANDIDATES = [
     Path(r"C:\Program Files\Google\Chrome\Application\chrome.exe"),
     Path(r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"),
@@ -46,19 +47,45 @@ CHROME_CANDIDATES = [
 def resolve_artifact_path(raw_path: str) -> Path:
     raw = str(raw_path).strip().strip("\"'")
     normalized = raw.replace("\\", "/")
-    if normalized == "/output" or normalized.startswith("/output/"):
+    if normalized == "/output/growth-report" or normalized.startswith("/output/growth-report/"):
+        resolved = (REPORTS_ROOT / "growth-report" / normalized.removeprefix("/output/growth-report").lstrip("/")).resolve()
+        allowed_root = (REPORTS_ROOT / "growth-report").resolve()
+    elif normalized == "/output/reports" or normalized.startswith("/output/reports/"):
+        resolved = (REPORTS_ROOT / normalized.removeprefix("/output/reports").lstrip("/")).resolve()
+        allowed_root = REPORTS_ROOT.resolve()
+    elif normalized == "/output" or normalized.startswith("/output/"):
         resolved = (OUTPUT_ROOT / normalized.removeprefix("/output").lstrip("/")).resolve()
+        allowed_root = OUTPUT_ROOT.resolve()
+    elif normalized == "/reports" or normalized.startswith("/reports/"):
+        resolved = (REPORTS_ROOT / normalized.removeprefix("/reports").lstrip("/")).resolve()
+        allowed_root = REPORTS_ROOT.resolve()
+    elif normalized == "output/growth-report" or normalized.startswith("output/growth-report/"):
+        resolved = (REPORTS_ROOT / "growth-report" / normalized.removeprefix("output/growth-report").lstrip("/")).resolve()
+        allowed_root = (REPORTS_ROOT / "growth-report").resolve()
+    elif normalized == "output/reports" or normalized.startswith("output/reports/"):
+        resolved = (REPORTS_ROOT / normalized.removeprefix("output/reports").lstrip("/")).resolve()
+        allowed_root = REPORTS_ROOT.resolve()
+    elif normalized == "output" or normalized.startswith("output/"):
+        resolved = (OUTPUT_ROOT / normalized.removeprefix("output").lstrip("/")).resolve()
+        allowed_root = OUTPUT_ROOT.resolve()
+    elif normalized == "reports" or normalized.startswith("reports/"):
+        resolved = (REPORTS_ROOT / normalized.removeprefix("reports").lstrip("/")).resolve()
+        allowed_root = REPORTS_ROOT.resolve()
+    elif normalized == "growth-report" or normalized.startswith("growth-report/"):
+        resolved = (REPORTS_ROOT / normalized).resolve()
+        allowed_root = REPORTS_ROOT.resolve()
     else:
         path = Path(raw)
         resolved = path.resolve() if path.is_absolute() else (WORKSPACE_ROOT / path).resolve()
+        allowed_root = OUTPUT_ROOT.resolve()
     roadshow_root = (WORKSPACE_ROOT / "roadshow-final-products").resolve()
     if not (
-        resolved == OUTPUT_ROOT
-        or OUTPUT_ROOT in resolved.parents
+        resolved == allowed_root
+        or allowed_root in resolved.parents
         or resolved == roadshow_root
         or roadshow_root in resolved.parents
     ):
-        raise ValueError(f"Report artifact path must be under /output/ or roadshow-final-products/: {raw_path}")
+        raise ValueError(f"Report artifact path must be under /output/, /reports/, or legacy roadshow-final-products/: {raw_path}")
     return resolved
 
 
@@ -625,8 +652,8 @@ def print_pdf(html_path: Path, pdf_path: Path) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Render child growth trajectory report JSON to HTML/PDF.")
-    parser.add_argument("--data", required=True, help="report-data.json path under /output/")
-    parser.add_argument("--output-dir", required=True, help="Report output directory under /output/")
+    parser.add_argument("--data", required=True, help="report-data.json path under /output/ or /reports/")
+    parser.add_argument("--output-dir", required=True, help="Report output directory under /reports/ or /output/")
     parser.add_argument("--pdf", action="store_true", help="Also render PDF with local Chrome/Edge.")
     parser.add_argument(
         "--embed-images",

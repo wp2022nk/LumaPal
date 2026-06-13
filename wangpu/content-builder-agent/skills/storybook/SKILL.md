@@ -34,7 +34,7 @@ For a conversation source, preserve the child's notable choices, invented names,
 Create one stable directory using a lowercase ASCII hyphenated slug:
 
 ```text
-/output/storybooks/<slug>/
+/storybooks/<slug>/
   source.md
   story.md
   visual-bible.md
@@ -107,7 +107,7 @@ For every page, call:
 ```text
 generate_image(
   prompt="<visual_bible repeated verbatim enough to lock recurring appearance>\n<page scene>\nNo text, no watermark, no logo, no character redesign.",
-  output_path="/output/storybooks/<slug>/images/<page-id>.png",
+  output_path="/storybooks/<slug>/images/<page-id>.png",
   size="1024*1024"
 )
 ```
@@ -121,10 +121,12 @@ generate_image(
 
 The renderer converts the structured manifest to a vertical, up/down scrolling storybook HTML like `roadshow-final-products/storybook/book.html`, then invokes local Chrome Headless to print the final PDF. When `--audio` is on (default), it also synthesises one optional WAV per page using the bundled TTS tool (`content_builder.tools.tts._synthesize_wav`).
 
-The agent filesystem uses virtual `/output/...` paths. The local execute tool starts commands from the workspace root and does not translate an executable script path, so invoke the script by workspace-relative path while passing virtual artifact paths:
+The agent filesystem uses virtual artifact paths. In the LAN server, `/storybooks` is archived under the active conversation's `history/YYYY-MM-DD/conversations/<thread_id>/artifacts/storybooks/`, so every storybook file must stay together under `/storybooks/<slug>/`. The local execute tool starts commands from the workspace root and does not translate an executable script path, so invoke the script by workspace-relative path while passing virtual artifact paths:
+
+Do not create ad-hoc `gen_pdf.py` scripts for storybooks, and never hard-code host paths such as `D:/WorkSpace/.../output/...`. Use the renderer command below; it resolves virtual archive paths and keeps HTML, audio, PDF, JSON, and images in the same conversation archive.
 
 ```powershell
-python wangpu/content-builder-agent/skills/storybook/scripts/render_storybook.py --book /output/storybooks/<slug>/book.json --output-dir /output/storybooks/<slug>
+python wangpu/content-builder-agent/skills/storybook/scripts/render_storybook.py --book /storybooks/<slug>/book.json --output-dir /storybooks/<slug>
 ```
 
 Flags:
@@ -132,12 +134,12 @@ Flags:
 - `--audio` (default on) / `--no-audio`: synthesise per-page WAV using Qwen DashScope. Failures are isolated to a `*-error.txt` per page; the HTML and PDF still render.
 - `--no-pdf`: skip the PDF print step only for rapid local iteration. Do not use it for the final artifact.
 
-The script resolves `/output/...` to the workspace output directory and writes:
+The script resolves `/storybooks/...`, `/output/...`, `storybooks/...`, and `output/...` to the active conversation archive and writes:
 
 ```text
-/output/storybooks/<slug>/book.html       # vertical up/down storybook
-/output/storybooks/<slug>/audio/page-*.wav  # optional narration files
-/output/storybooks/<slug>/<slug>.pdf
+/storybooks/<slug>/book.html       # vertical up/down storybook
+/storybooks/<slug>/audio/page-*.wav  # optional narration files
+/storybooks/<slug>/<slug>.pdf
 ```
 
 ## Vertical Storybook Style

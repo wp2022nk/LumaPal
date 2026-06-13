@@ -6,6 +6,7 @@ import type {
   KeyName,
   KeySettings,
   SandboxEntry,
+  ThreadArchiveState,
 } from "./types";
 
 /**
@@ -61,6 +62,10 @@ export class EmbeddedDeepAgentsRuntime implements AgentRuntime {
   }
 
   listArtifacts(_threadId: string): Promise<ArtifactEntry[]> {
+    return this.unsupported();
+  }
+
+  getThreadState(_threadId: string): Promise<ThreadArchiveState> {
     return this.unsupported();
   }
 

@@ -94,7 +94,7 @@ def _resolve_virtual_path(
         raise ValueError("empty path")
 
     normalized = cleaned.replace("\\", "/")
-    for virtual_path, physical_path in sorted((path_aliases or {}).items(), reverse=True):
+    for virtual_path, physical_path in sorted((path_aliases or {}).items(), key=lambda item: len(item[0]), reverse=True):
         virtual_root = virtual_path.rstrip("/")
         if normalized == virtual_root or normalized.startswith(f"{virtual_root}/"):
             relative = normalized.removeprefix(virtual_root).lstrip("/")
@@ -176,7 +176,7 @@ def _rewrite_path_aliases(command: str, path_aliases: dict[str, Path] | None) ->
     """Translate virtual artifact paths before delegating to the host shell."""
 
     rewritten = command
-    for virtual_path, physical_path in sorted((path_aliases or {}).items(), reverse=True):
+    for virtual_path, physical_path in sorted((path_aliases or {}).items(), key=lambda item: len(item[0]), reverse=True):
         virtual_root = virtual_path.rstrip("/")
         physical_root = physical_path.resolve().as_posix()
         rewritten = rewritten.replace(f"{virtual_root}/", f"{physical_root}/")

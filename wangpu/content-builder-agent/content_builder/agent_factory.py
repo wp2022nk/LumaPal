@@ -140,12 +140,21 @@ def _build_server_backend(config: MainAgentConfig) -> Any:
         local_shell = replace(local_shell, python=None)
 
     def backend_factory(runtime: Any) -> Any:
-        paths = thread_paths(runtime_thread_id(runtime), output_root=config.output_root)
+        thread_id = runtime_thread_id(runtime)
+        paths = thread_paths(thread_id, output_root=config.output_root)
         memory_dir = memory_root()
         memory_dir.mkdir(parents=True, exist_ok=True)
         path_aliases = {
+            "/output/storybooks": paths.storybooks,
+            "/output/games": paths.games,
+            "/output/reports": paths.reports,
+            "/output/growth-report": paths.reports / "growth-report",
             "/output": paths.artifacts,
+            "/storybooks": paths.storybooks,
             "/games": paths.games,
+            "/reports": paths.reports,
+            "/uploads": paths.uploads,
+            "/workspace": paths.workspace,
             "/memory": memory_dir,
             "/project": PROJECT_DIR,
         }
@@ -155,16 +164,30 @@ def _build_server_backend(config: MainAgentConfig) -> Any:
             path_aliases=path_aliases,
             extra_env={
                 "CONTENT_BUILDER_OUTPUT_DIR": str(paths.artifacts),
+                "CONTENT_BUILDER_STORYBOOKS_DIR": str(paths.storybooks),
                 "CONTENT_BUILDER_GAMES_DIR": str(paths.games),
+                "CONTENT_BUILDER_REPORTS_DIR": str(paths.reports),
+                "CONTENT_BUILDER_UPLOADS_DIR": str(paths.uploads),
+                "CONTENT_BUILDER_WORKSPACE_DIR": str(paths.workspace),
+                "CONTENT_BUILDER_ARCHIVE_DIR": str(paths.root),
                 "CONTENT_BUILDER_MEMORY_DIR": str(memory_dir),
                 "CONTENT_BUILDER_PROJECT_DIR": str(PROJECT_DIR),
+                "CONTENT_BUILDER_THREAD_ID": thread_id,
             },
         )
         return CompositeBackend(
             default=shell_backend,
             routes={
+                "/output/storybooks/": FilesystemBackend(root_dir=paths.storybooks, virtual_mode=True),
+                "/output/games/": FilesystemBackend(root_dir=paths.games, virtual_mode=True),
+                "/output/reports/": FilesystemBackend(root_dir=paths.reports, virtual_mode=True),
+                "/output/growth-report/": FilesystemBackend(root_dir=paths.reports / "growth-report", virtual_mode=True),
                 "/output/": FilesystemBackend(root_dir=paths.artifacts, virtual_mode=True),
+                "/storybooks/": FilesystemBackend(root_dir=paths.storybooks, virtual_mode=True),
                 "/games/": FilesystemBackend(root_dir=paths.games, virtual_mode=True),
+                "/reports/": FilesystemBackend(root_dir=paths.reports, virtual_mode=True),
+                "/uploads/": FilesystemBackend(root_dir=paths.uploads, virtual_mode=True),
+                "/workspace/": FilesystemBackend(root_dir=paths.workspace, virtual_mode=True),
                 "/memory/": FilesystemBackend(root_dir=memory_dir, virtual_mode=True),
                 "/project/": FilesystemBackend(root_dir=PROJECT_DIR, virtual_mode=True),
             },

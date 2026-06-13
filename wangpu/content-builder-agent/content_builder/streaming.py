@@ -13,11 +13,13 @@ import re
 import sys
 import warnings
 import inspect
+import asyncio
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, AsyncIterator, Iterator, Literal
 
+from . import archive
 from .multimodal import build_user_content
 
 try:
@@ -76,6 +78,132 @@ class StreamEvent:
     source: str
     text: str
     raw: Any = None
+
+
+def _raw_dict(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return value
+    payload = getattr(value, "__dict__", None)
+    return payload if isinstance(payload, dict) else {}
+
+
+def _tool_name_and_args(event: StreamEvent) -> tuple[str, Any]:
+    raw = _raw_dict(event.raw)
+    name = str(raw.get("tool_name") or raw.get("name") or "")
+    args = raw.get("args", raw.get("input", {}))
+    return name, args
+
+
+def _publish_app_event(event_name: str, payload: dict[str, Any], *, thread_id: str) -> None:
+    try:
+        from .server.events import app_events
+    except Exception:
+        return
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return
+    loop.create_task(app_events.publish(event_name, payload, thread_id=thread_id))
+
+
+def archive_stream_event(thread_id: str, event: StreamEvent) -> None:
+    """Project runtime stream events into the durable archive and App SSE bus."""
+
+    try:
+        record: dict[str, Any] = {
+            "type": "runtime_event",
+            "event_type": event.type,
+            "source": event.source,
+            "text": event.text,
+        }
+        name, args = _tool_name_and_args(event)
+        if name:
+            record["tool_name"] = name
+        if isinstance(args, dict):
+            record["args_preview"] = compact_for_log(args, limit=180)
+
+        if event.type == "tool_call" and name == "write_todos" and isinstance(args, dict):
+            todos = args.get("todos")
+            if isinstance(todos, list):
+                todo_record = {
+                    "type": "todo_updated",
+                    "event_type": event.type,
+                    "source": event.source,
+                    "todos": todos,
+                    "text": event.text,
+                }
+                archive.append_event(thread_id, todo_record)
+                _publish_app_event("todo_updated", {"thread_id": thread_id, **todo_record}, thread_id=thread_id)
+                return
+
+        if event.type == "tool_call" and name == "task" and isinstance(args, dict):
+            subagent_id = str(args.get("subagent_type") or args.get("name") or event.source)
+            subagent_record = {
+                "type": "subagent_updated",
+                "event_type": event.type,
+                "source": event.source,
+                "subagent_id": subagent_id,
+                "status": "running",
+                "tool_name": name,
+                "args_preview": compact_for_log(args, limit=240),
+                "text": event.text,
+            }
+            archive.append_event(thread_id, subagent_record)
+            _publish_app_event("subagent_updated", {"thread_id": thread_id, **subagent_record}, thread_id=thread_id)
+            return
+
+        if event.type == "task" and event.source != "main":
+            status = "running"
+            lowered = event.text.lower()
+            if "done" in lowered or "completed" in lowered:
+                status = "completed"
+            if "error" in lowered or event.type == "error":
+                status = "error"
+            subagent_record = {
+                "type": "subagent_updated",
+                "event_type": event.type,
+                "source": event.source,
+                "subagent_id": event.source,
+                "status": status,
+                "text": event.text,
+            }
+            archive.append_event(thread_id, subagent_record)
+            _publish_app_event("subagent_updated", {"thread_id": thread_id, **subagent_record}, thread_id=thread_id)
+            return
+
+        if event.type == "final" and event.source == "main" and event.text.strip():
+            archive.append_chat_messages(
+                thread_id,
+                [{"id": f"final-{abs(hash(event.text))}", "role": "assistant", "content": event.text}],
+                source="agent_stream",
+            )
+            record["type"] = "final_answer"
+            _publish_app_event(
+                "message_appended",
+                {
+                    "thread_id": thread_id,
+                    "message": {
+                        "id": f"final-{abs(hash(event.text))}",
+                        "role": "agent",
+                        "content": event.text,
+                        "source": "agent_stream",
+                    },
+                },
+                thread_id=thread_id,
+            )
+
+        archive.append_event(thread_id, record)
+        if event.type in {"tool_result", "sandbox_output", "final", "error"}:
+            archive.update_manifest(thread_id)
+            _publish_app_event("artifact_updated", {"thread_id": thread_id}, thread_id=thread_id)
+        _publish_app_event("runtime_event", {"thread_id": thread_id, **record}, thread_id=thread_id)
+    except Exception:
+        return
+
+
+def _project(thread_id: str, event: StreamEvent) -> StreamEvent:
+    archive_stream_event(thread_id, event)
+    return event
 
 
 def text_from_content(content: Any) -> str:
@@ -672,18 +800,19 @@ def _stream_agent_events_v3(
             for event in _events_from_v3_message(source, data):
                 if event.type == "token" and source == "main":
                     main_tokens.append(event.text)
-                yield event
+                yield _project(thread_id, event)
 
         elif method == "tools":
-            yield from _events_from_v3_tool(source, data)
+            for event in _events_from_v3_tool(source, data):
+                yield _project(thread_id, event)
 
         elif method == "custom":
             event = _event_from_custom(source, data)
             if event:
-                yield event
+                yield _project(thread_id, event)
 
         elif method.startswith("custom:"):
-            yield StreamEvent("sandbox_output", source, text_from_content(data), data)
+            yield _project(thread_id, StreamEvent("sandbox_output", source, text_from_content(data), data))
 
         elif method == "values":
             text = final_text_from_state(data)
@@ -694,19 +823,20 @@ def _stream_agent_events_v3(
             text = final_text_from_update(data)
             if source == "main" and text:
                 final_answer = text
-            yield from _events_from_update(source, data)
+            for event in _events_from_update(source, data):
+                yield _project(thread_id, event)
 
         elif method == "lifecycle":
             event = _event_from_v3_lifecycle(source, data)
             if event:
-                yield event
+                yield _project(thread_id, event)
 
         elif method == "tasks":
-            yield _event_from_task(source, _first_payload(data))
+            yield _project(thread_id, _event_from_task(source, _first_payload(data)))
 
     final_text = final_answer or "".join(main_tokens).strip()
     if final_text:
-        yield StreamEvent("final", "main", final_text)
+        yield _project(thread_id, StreamEvent("final", "main", final_text))
 
 
 async def _astream_agent_events_v3(
@@ -764,19 +894,19 @@ async def _astream_agent_events_v3(
             for event in _events_from_v3_message(source, data):
                 if event.type == "token" and source == "main":
                     main_tokens.append(event.text)
-                yield event
+                yield _project(thread_id, event)
 
         elif method == "tools":
             for event in _events_from_v3_tool(source, data):
-                yield event
+                yield _project(thread_id, event)
 
         elif method == "custom":
             event = _event_from_custom(source, data)
             if event:
-                yield event
+                yield _project(thread_id, event)
 
         elif method.startswith("custom:"):
-            yield StreamEvent("sandbox_output", source, text_from_content(data), data)
+            yield _project(thread_id, StreamEvent("sandbox_output", source, text_from_content(data), data))
 
         elif method == "values":
             text = final_text_from_state(data)
@@ -788,19 +918,19 @@ async def _astream_agent_events_v3(
             if source == "main" and text:
                 final_answer = text
             for event in _events_from_update(source, data):
-                yield event
+                yield _project(thread_id, event)
 
         elif method == "lifecycle":
             event = _event_from_v3_lifecycle(source, data)
             if event:
-                yield event
+                yield _project(thread_id, event)
 
         elif method == "tasks":
-            yield _event_from_task(source, _first_payload(data))
+            yield _project(thread_id, _event_from_task(source, _first_payload(data)))
 
     final_text = final_answer or "".join(main_tokens).strip()
     if final_text:
-        yield StreamEvent("final", "main", final_text)
+        yield _project(thread_id, StreamEvent("final", "main", final_text))
 
 def _env_flag(name: str, default: bool = False) -> bool:
     raw = os.environ.get(name)

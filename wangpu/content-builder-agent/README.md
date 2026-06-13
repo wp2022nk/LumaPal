@@ -8,6 +8,7 @@ This repository contains a trusted-LAN development version of the Content Builde
 - React + TypeScript + Vite frontend: `app/src/`
 - Capacitor Android shell: `app/android/`
 - Per-conversation output: `output/threads/<thread_id>/{artifacts,games,uploads,workspace}/`
+- Daily history snapshots: `history/<YYYY-MM-DD>/threads/<thread_id>/{artifacts,games,uploads}/`
 
 Every conversation has its own artifacts, uploads, games, and writable workspace. Opening a historical conversation switches both the LangGraph thread and the file browser to that conversation.
 

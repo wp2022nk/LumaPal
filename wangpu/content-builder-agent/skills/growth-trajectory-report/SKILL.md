@@ -21,11 +21,13 @@ Use the newest relevant files:
 
 - `/memory/profile.md` and `/memory/profile.json`
 - `/memory/events.jsonl`
-- `/project/../history/YYYY-MM-DD/history.json`
-- `/output/` and `/games/` artifacts for the active thread
+- `/project/../history/YYYY-MM-DD/conversations/<thread_id>/chat.json`
+- `/project/../history/YYYY-MM-DD/conversations/<thread_id>/events.jsonl`
+- `/project/../history/YYYY-MM-DD/conversations/<thread_id>/manifest.json`
+- `/output/`, `/storybooks/`, `/games/`, and `/reports/` artifacts for the active thread
 - User-provided notes, scripts, storybooks, games, drawings, voice transcripts, or reports
 
-If the report is for a roadshow/demo and the user provided a script, use the script as the canonical data source.
+If the report is for a roadshow/demo and the user provided a script, use the script as the canonical data source. Legacy flat `history/YYYY-MM-DD/history.json` and `roadshow-final-products/` are manual reference material only; do not write new report files there.
 
 ## Report Workflow
 
@@ -52,12 +54,14 @@ If the report is for a roadshow/demo and the user provided a script, use the scr
 
 ## Image-aware Report
 
+Current LAN-server snapshots are conversation-scoped. Prefer `history/<YYYY-MM-DD>/conversations/<thread_id>/uploads/...` and `history/<YYYY-MM-DD>/conversations/<thread_id>/artifacts/...`; only inspect `_legacy_archive`, legacy flat `history/<YYYY-MM-DD>/uploads/...`, or `roadshow-final-products/` when the user explicitly asks for legacy material.
+
 Reports should make the child's month tangible by surfacing real photos and artifact covers, not only text metrics. Collect images from these sources:
 
-- `history/<YYYY-MM-DD>/uploads/images/*.{jpg,jpeg,png}` — parent-uploaded observations and conversational screenshots. Group by date and choose the most representative 8-12 photos for `exploration_photos`.
-- `history/<YYYY-MM-DD>/artifacts/<artifact>/cover.png` — covers of artifacts generated earlier in the project's life (e.g. `singing-tree/cover.png`, `didi-cloud-book/cover.png`).
-- `roadshow-final-products/storybook/images/*.png` and `roadshow-final-products/game/index.html` — recent storybook covers and game links, suitable for `artifact_gallery`.
-- `history/<YYYY-MM-DD>/artifacts/roadshow-final-products/**` and any `storybooks/<slug>/` covers.
+- `history/<YYYY-MM-DD>/conversations/<thread_id>/uploads/images/*.{jpg,jpeg,png}` — parent-uploaded observations and conversational screenshots. Group by date and choose the most representative 8-12 photos for `exploration_photos`.
+- `history/<YYYY-MM-DD>/conversations/<thread_id>/artifacts/storybooks/<slug>/images/*.png` — storybook illustrations and covers.
+- `history/<YYYY-MM-DD>/conversations/<thread_id>/artifacts/games/<slug>/index.html` — game links suitable for `artifact_gallery`.
+- `history/<YYYY-MM-DD>/conversations/<thread_id>/artifacts/reports/**` — prior parent-facing reports.
 
 When assigning images:
 
@@ -86,7 +90,7 @@ Reports should be beautiful but immediately understandable:
 Use the bundled script:
 
 ```powershell
-python wangpu/content-builder-agent/skills/growth-trajectory-report/scripts/render_growth_report.py --data /output/growth-report/report-data.json --output-dir /output/growth-report --pdf --embed-images
+python wangpu/content-builder-agent/skills/growth-trajectory-report/scripts/render_growth_report.py --data /reports/growth-report/report-data.json --output-dir /reports/growth-report --pdf --embed-images
 ```
 
 Flags:
@@ -97,15 +101,11 @@ Flags:
 The script writes:
 
 ```text
-/output/growth-report/index.html
-/output/growth-report/<slug>.pdf
+/reports/growth-report/index.html
+/reports/growth-report/<slug>.pdf
 ```
 
-For roadshow/demo artifacts, the renderer may also write under `roadshow-final-products/growth-report/`:
-
-```powershell
-python wangpu/content-builder-agent/skills/growth-trajectory-report/scripts/render_growth_report.py --data roadshow-final-products/growth-report/report-data.json --output-dir roadshow-final-products/growth-report --pdf --embed-images
-```
+Do not write new roadshow/demo report artifacts under `roadshow-final-products/`; that directory is legacy reference material.
 
 If PDF rendering fails, keep the HTML and data file and state that the PDF is missing.
 

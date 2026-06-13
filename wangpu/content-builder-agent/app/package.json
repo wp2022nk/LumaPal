@@ -20,7 +20,7 @@
     "@capacitor/camera": "7.0.2",
     "@capacitor/core": "7.4.3",
     "@langchain/core": "1.1.48",
-    "@langchain/langgraph-sdk": "1.9.10",
+    "@langchain/langgraph-sdk": "1.9.22",
     "@langchain/react": "1.0.10",
     "lucide-react": "0.468.0",
     "pdfjs-dist": "4.10.38",

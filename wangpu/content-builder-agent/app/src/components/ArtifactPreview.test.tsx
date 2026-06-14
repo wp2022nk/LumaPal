@@ -37,4 +37,18 @@ describe("ArtifactPreview", () => {
       "http://server/api/content-builder/history-preview/token/roadshow-final-products/storybook/images/cover.png",
     );
   });
+
+  it("keeps non-roadshow output paths resolvable through the history preview route", () => {
+    const runtime = { absoluteUrl: (path: string) => `http://server${path}` } as AgentRuntime;
+    const html = rewriteHtmlPreviewAssets(
+      '<html><head></head><body><img src="file:///D:/WorkSpace/VScodeProject/2026_AIGC/output/storybooks/little-star/images/page.png"></body></html>',
+      "/api/content-builder/history-preview/token/history/2026-06-13/conversations/thread/artifacts/storybooks/little-star/book.html",
+      "http://server/api/content-builder/history-preview/token/history/2026-06-13/conversations/thread/artifacts/storybooks/little-star/book.html",
+      runtime,
+    );
+
+    expect(html).toContain(
+      "http://server/api/content-builder/history-preview/token/output/storybooks/little-star/images/page.png",
+    );
+  });
 });

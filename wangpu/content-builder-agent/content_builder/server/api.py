@@ -325,10 +325,22 @@ def _history_artifact_entry(path: Path, virtual_path: str) -> dict[str, Any]:
     }
 
 
+def _is_displayable_history_artifact(entry: dict[str, Any]) -> bool:
+    category = str(entry.get("category") or "")
+    kind = str(entry.get("kind") or "")
+    return (
+        (category == "audiobook" and kind == "html")
+        or (category == "storybook" and kind == "pdf")
+        or (category == "game" and kind == "html")
+        or (category == "growth_report" and kind == "html")
+        or (category == "image" and kind == "image")
+    )
+
+
 def _iter_history_artifact_files() -> list[tuple[Path, str]]:
     entries: list[tuple[Path, str]] = []
     roots = [
-        (history_root(), "history"),
+        (archive.history_root(), "history"),
         (load_main_config().output_root.resolve(), "output"),
         ((WORKSPACE_DIR / "roadshow-final-products").resolve(), "roadshow-final-products"),
     ]
@@ -347,8 +359,18 @@ def _iter_history_artifact_files() -> list[tuple[Path, str]]:
     return entries
 
 
+def _date_matches_filters(entry: dict[str, Any], start_date: str | None, end_date: str | None) -> bool:
+    date = str(entry.get("date") or "")
+    if start_date and date < start_date:
+        return False
+    if end_date and date > end_date:
+        return False
+    return True
+
+
 def _history_artifact_entries(start_date: str | None = None, end_date: str | None = None) -> list[dict[str, Any]]:
     entries: list[dict[str, Any]] = []
+    seen_paths: set[str] = set()
     for item in archive.list_history_artifacts(start_date, end_date):
         if not isinstance(item, dict):
             continue
@@ -358,13 +380,48 @@ def _history_artifact_entries(start_date: str | None = None, end_date: str | Non
         if not date or not thread_id or not relative:
             continue
         archive_path = f"history/{date}/conversations/{thread_id}/{relative}"
-        entries.append({**item, "archive_path": archive_path, "preview_url": _history_preview_url(archive_path)})
+        try:
+            physical_path = archive.resolve_archive_file(archive_path)
+        except (ValueError, FileNotFoundError):
+            continue
+        entry = {
+            **item,
+            **_history_artifact_entry(physical_path, archive_path),
+            "archive_path": archive_path,
+            "thread_id": thread_id,
+        }
+        if _is_displayable_history_artifact(entry):
+            entries.append(entry)
+            seen_paths.add(archive_path)
+    for physical_path, virtual_path in _iter_history_artifact_files():
+        if virtual_path in seen_paths:
+            continue
+        entry = _history_artifact_entry(physical_path, virtual_path)
+        if _is_displayable_history_artifact(entry) and _date_matches_filters(entry, start_date, end_date):
+            entries.append(entry)
+            seen_paths.add(virtual_path)
+    entries.sort(key=lambda item: (str(item.get("date") or ""), float(item.get("modified_at") or 0)), reverse=True)
     return entries
 
 
 def _history_preview_target(virtual_path: str) -> Path:
+    normalized = str(virtual_path or "").replace("\\", "/").strip("/")
+    if not normalized or normalized.startswith("../") or "/../" in f"/{normalized}/":
+        raise HTTPException(status_code=400, detail="Invalid archive path")
+    if normalized.startswith("roadshow-final-products/"):
+        root = (WORKSPACE_DIR / "roadshow-final-products").resolve()
+        target = (root / normalized.removeprefix("roadshow-final-products/")).resolve()
+        if target != root and root in target.parents and target.is_file():
+            return target
+        raise HTTPException(status_code=404, detail="File not found")
+    if normalized.startswith("output/"):
+        root = load_main_config().output_root.resolve()
+        target = (root / normalized.removeprefix("output/")).resolve()
+        if target != root and root in target.parents and target.is_file():
+            return target
+        raise HTTPException(status_code=404, detail="File not found")
     try:
-        return archive.resolve_archive_file(virtual_path)
+        return archive.resolve_archive_file(normalized)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except FileNotFoundError as exc:

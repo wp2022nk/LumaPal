@@ -108,7 +108,8 @@ export function rewriteHtmlPreviewAssets(
     const decoded = value.replace(/^file:\/\/\/?/i, "").replace(/\\/g, "/");
     const outputIndex = decoded.indexOf("/output/");
     if (outputIndex >= 0 && tokenPrefix) {
-      return runtime.absoluteUrl(`${tokenPrefix}${decoded.slice(outputIndex + "/output/".length)}`);
+      const outputPath = decoded.slice(outputIndex + "/output/".length);
+      return runtime.absoluteUrl(`${tokenPrefix}${outputPath.startsWith("roadshow-final-products/") ? outputPath : `output/${outputPath}`}`);
     }
     const historyIndex = decoded.indexOf("/history/");
     if (historyIndex >= 0 && tokenPrefix) {

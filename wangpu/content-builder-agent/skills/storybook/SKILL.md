@@ -31,7 +31,7 @@ For a conversation source, preserve the child's notable choices, invented names,
 
 ## Required Output
 
-Create one stable directory using a lowercase ASCII hyphenated slug:
+Create one stable directory using a lowercase ASCII hyphenated slug. The slug is only for stable paths and internal references; the user-facing title and final PDF filename must be Chinese when the book is in Chinese.
 
 ```text
 /storybooks/<slug>/
@@ -44,7 +44,7 @@ Create one stable directory using a lowercase ASCII hyphenated slug:
     page-01.png
     ...
   book.html
-  <slug>.pdf
+  <中文绘本标题>.pdf
 ```
 
 - `source.md`: input seed or a concise extraction from the source conversation.
@@ -53,7 +53,7 @@ Create one stable directory using a lowercase ASCII hyphenated slug:
 - `book.json`: rendering manifest and illustration source of truth.
 - `audio/page-*.wav`: optional per-page TTS narration (Qwen DashScope); file name matches `book.json` `pages[].id`. Missing files fall back to the browser's `speechSynthesis` automatically.
 - `book.html`: a vertical, up/down scrolling storybook matching the style of `roadshow-final-products/storybook/book.html`; no extra buttons or visible controls.
-- `<slug>.pdf`: final printable PDF created from the same manifest. This is required.
+- `<中文绘本标题>.pdf`: final printable PDF created from the same manifest. This is required. Use the Chinese `book.json.title` as the filename, with unsafe filesystem characters replaced by hyphens.
 
 ## Workflow
 
@@ -72,7 +72,7 @@ Write valid UTF-8 JSON:
 
 ```json
 {
-  "title": "绘本标题",
+  "title": "中文绘本标题",
   "slug": "story-slug",
   "audience": "3-7岁",
   "theme": "核心主题",
@@ -139,7 +139,7 @@ The script resolves `/storybooks/...`, `/output/...`, `storybooks/...`, and `out
 ```text
 /storybooks/<slug>/book.html       # vertical up/down storybook
 /storybooks/<slug>/audio/page-*.wav  # optional narration files
-/storybooks/<slug>/<slug>.pdf
+/storybooks/<slug>/<中文绘本标题>.pdf
 ```
 
 ## Vertical Storybook Style
@@ -152,7 +152,7 @@ The script resolves `/storybooks/...`, `/output/...`, `storybooks/...`, and `out
 - Clicking a page may play narration if audio is available; missing WAV files may fall back to `window.speechSynthesis` using the page's `data-text`.
 - Keyboard navigation may support ordinary scrolling or page focus, but it must not introduce visible controls.
 
-Always render the `<slug>.pdf` after `book.html`; the final delivery is not complete without the PDF.
+Always render the Chinese-title PDF after `book.html`; the final delivery is not complete without the PDF.
 
 ## Completion Checklist
 
@@ -161,6 +161,6 @@ Always render the `<slug>.pdf` after `book.html`; the final delivery is not comp
 - Page text is short, speakable, and age-appropriate.
 - All repeated characters and setting elements follow `visual-bible.md`.
 - `book.html` uses the vertical up/down storybook style and contains no extra visible buttons or controls.
-- `<slug>.pdf` exists, is non-empty, and was produced by the bundled renderer.
+- The Chinese-title PDF exists, is non-empty, and was produced by the bundled renderer.
 - If `audio/page-*.wav` files were requested, any failure is documented in `audio/<page-id>-error.txt` and the HTML still works through the `speechSynthesis` fallback.
 - Final response lists every core artifact path and any failed/revised page.

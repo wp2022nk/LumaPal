@@ -25,6 +25,7 @@ import json
 import math
 import mimetypes
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -93,6 +94,19 @@ def text(value: Any) -> str:
     return html.escape(str(value or ""))
 
 
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+
+
+def fallback_cover_path(path: Path) -> Path | None:
+    """Find a renamed cover image when old data still points at cover.png."""
+    if path.name.lower() != "cover.png" or not path.parent.is_dir():
+        return None
+    for candidate in sorted(path.parent.iterdir(), key=lambda item: item.name):
+        if candidate.is_file() and candidate.suffix.lower() in IMAGE_EXTENSIONS:
+            return candidate.resolve()
+    return None
+
+
 def resolve_image_path(raw_path: str) -> Path | None:
     """Resolve an image path that may be workspace-relative."""
     if not raw_path:
@@ -105,18 +119,18 @@ def resolve_image_path(raw_path: str) -> Path | None:
     candidate = (WORKSPACE_ROOT / raw).resolve()
     if candidate.exists():
         return candidate
+    fallback = fallback_cover_path(candidate)
+    if fallback:
+        return fallback
     return None
 
 
 def image_to_data_uri(path: Path) -> str:
-    """Embed a small image as data: URI. Used for PDF where file:// is blocked."""
+    """Embed an image as data: URI. Used when local file:// links may be blocked."""
     try:
         mime, _ = mimetypes.guess_type(str(path))
         mime = mime or "image/png"
         data = path.read_bytes()
-        # Avoid huge payloads
-        if len(data) > 2_000_000:
-            return path.as_uri()
         return f"data:{mime};base64,{base64.b64encode(data).decode('ascii')}"
     except OSError:
         return ""
@@ -642,12 +656,21 @@ def print_pdf(html_path: Path, pdf_path: Path) -> None:
             f"--print-to-pdf={pdf_path}",
             html_path.as_uri(),
         ]
-        completed = subprocess.run(command, capture_output=True, text=True, timeout=120)
+        completed = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
     if completed.returncode != 0:
         details = (completed.stderr or completed.stdout or "").strip()
         raise RuntimeError(f"Chrome PDF rendering failed ({completed.returncode}): {details}")
     if not pdf_path.is_file() or pdf_path.stat().st_size == 0:
         raise RuntimeError(f"Chrome did not produce a non-empty PDF: {pdf_path}")
+
+
+def display_pdf_filename(data: dict[str, Any]) -> str:
+    title = str(data.get("title") or data.get("headline") or data.get("slug") or "growth-report").strip()
+    title = re.sub(r"（([^）]+)）", r"-\1", title)
+    title = re.sub(r"\(([^)]+)\)", r"-\1", title)
+    filename = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "-", title)
+    filename = re.sub(r"\s+", "", filename).strip(". ")
+    return f"{filename or 'growth-report'}.pdf"
 
 
 def main() -> int:
@@ -666,13 +689,12 @@ def main() -> int:
         output_dir = resolve_artifact_path(args.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         data = json.loads(data_path.read_text(encoding="utf-8-sig"))
-        slug = str(data.get("slug") or "growth-report")
         html_path = output_dir / "index.html"
         # For PDF: embed images as data: URIs since Chrome blocks file:// loads in headless
         prefer_data = bool(args.embed_images)
         html_path.write_text(render_html(data, prefer_data=prefer_data), encoding="utf-8")
         if args.pdf:
-            pdf_path = output_dir / f"{slug}.pdf"
+            pdf_path = output_dir / display_pdf_filename(data)
             print_pdf(html_path, pdf_path)
     except (OSError, ValueError, RuntimeError, json.JSONDecodeError) as exc:
         print(f"Growth report render failed: {exc}", file=sys.stderr)

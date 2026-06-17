@@ -534,6 +534,13 @@ body {{ display: block; }}
 # PDF rendering
 # ---------------------------------------------------------------------------
 
+def display_pdf_filename(manifest: dict[str, Any]) -> str:
+    title = str(manifest.get("title") or manifest.get("_slug") or "storybook").strip()
+    filename = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "-", title)
+    filename = re.sub(r"\s+", "", filename).strip(". ")
+    return f"{filename or manifest['_slug']}.pdf"
+
+
 def find_chrome() -> Path:
     configured = os.environ.get("CHROME_PATH")
     if configured:
@@ -633,7 +640,7 @@ def main() -> int:
         print(f"HTML saved to: {html_path}")
 
         if not args.no_pdf:
-            pdf_path = output_dir / f"{manifest['_slug']}.pdf"
+            pdf_path = output_dir / display_pdf_filename(manifest)
             print_pdf(manifest, pdf_path)
             print(f"PDF saved to: {pdf_path}")
     except (OSError, ValueError, RuntimeError, json.JSONDecodeError) as exc:

@@ -24,6 +24,7 @@ import {
   RefreshCw,
   Send,
   Settings,
+  Sparkles,
   Square,
   Terminal,
   Volume2,
@@ -762,7 +763,10 @@ function AuthenticatedAgentWorkspace({
     <div className="app-shell">
       <aside className={`session-sidebar ${sidebarOpen ? "open" : "closed"}`}>
         <div className="sidebar-header">
-          <div className="brand"><Bot size={21} /><strong>Content Builder</strong></div>
+          <div className="brand">
+            <span className="brand-mark"><Sparkles size={18} /></span>
+            <span className="brand-copy"><strong>童芯智造</strong><small>亲子内容工坊</small></span>
+          </div>
           <button className="sidebar-close" aria-label="收起会话栏" onClick={() => setSidebarOpen(false)} title="收起会话栏"><PanelLeftClose /></button>
         </div>
         <button className="primary-button wide" onClick={newConversation}><Plus size={17} /> 新建对话</button>
@@ -785,7 +789,7 @@ function AuthenticatedAgentWorkspace({
         <header className="topbar">
           <div>
             <strong>{activeTabTitle(activeTab)}</strong>
-            <small>{threadId ? `会话 ${threadId.slice(0, 8)}` : "新对话将在发送时创建"}</small>
+            <small>{threadId ? `创作会话 ${threadId.slice(0, 8)}` : "新创作将在发送时创建"}</small>
           </div>
           <div className="row">
             <button className="icon-button" aria-label="切换会话栏" onClick={() => setSidebarOpen((open) => !open)} title={sidebarOpen ? "收起会话栏" : "展开会话栏"}>
@@ -860,7 +864,7 @@ function AuthenticatedAgentWorkspace({
           )}
         </div>
         <nav className="bottom-nav">
-          <NavButton active={activeTab === "chat"} icon={<MessageCircle />} label="对话" onClick={() => setActiveTab("chat")} />
+          <NavButton active={activeTab === "chat"} icon={<MessageCircle />} label="创作台" onClick={() => setActiveTab("chat")} />
           <NavButton active={activeTab === "tasks"} icon={<ListChecks />} label="任务" onClick={() => setActiveTab("tasks")} />
           <NavButton active={activeTab === "artifacts"} icon={<FileText />} label="产物" onClick={() => setActiveTab("artifacts")} />
           <NavButton active={activeTab === "history"} icon={<Archive />} label="历史" onClick={() => setActiveTab("history")} />
@@ -927,10 +931,20 @@ function ChatTab({
     <div className="chat-layout">
       <div className="message-feed">
         {messages.length === 0 && (
-          <div className="empty-state">
-            <Bot size={38} />
-            <h2>开始一次内容创作</h2>
-            <p>发送文字、照片或语音。任务规划、子智能体执行、文件和沙盒过程会同步展开。</p>
+          <div className="starter-board">
+            <section className="starter-copy">
+              <span className="eyebrow"><Sparkles size={15} /> 童芯智造创作台</span>
+              <h2>把孩子的灵感，做成能保存的作品</h2>
+              <p>发送文字、照片或语音，智能体会把任务规划、绘本、报告、小游戏和图片产物同步整理在当前会话里。</p>
+            </section>
+            <section className="starter-shelf" aria-label="可创作的产物类型">
+              <div className="starter-card storybook"><BookOpen /><strong>绘本</strong><span>图文成册</span></div>
+              <div className="starter-card audiobook"><Volume2 /><strong>有声绘本</strong><span>边看边听</span></div>
+              <div className="starter-card growth"><BarChart3 /><strong>成长报告</strong><span>记录变化</span></div>
+              <div className="starter-card game"><Gamepad2 /><strong>小游戏</strong><span>互动练习</span></div>
+              <div className="starter-card image"><ImagePlus /><strong>图片</strong><span>角色场景</span></div>
+              <div className="starter-card inspiration"><Sparkles /><strong>创作灵感</strong><span>一起想象</span></div>
+            </section>
           </div>
         )}
         {messages.map((message, index) => (
@@ -1059,7 +1073,7 @@ function ArtifactsTab({ artifacts, onOpen }: { artifacts: ArtifactEntry[]; onOpe
       {artifacts.map((artifact) => (
         <button className="artifact-card" key={artifact.path} onClick={() => onOpen(artifact)}>
           <div className="artifact-icon">{artifact.kind === "image" ? <ImagePlus /> : artifact.kind === "html" ? <Code2 /> : <FileText />}</div>
-          <strong>{artifact.name}</strong>
+          <strong>{artifactDisplayTitle(artifact)}</strong>
           <small>{formatBytes(artifact.size)} · {new Date(artifact.modified_at * 1000).toLocaleString()}</small>
         </button>
       ))}
@@ -1144,21 +1158,35 @@ function HistoryArtifactsTab({
         <div className="empty-state"><Archive size={34} /><h2>没有匹配的历史产物</h2><p>调整日期或类型筛选，查看其他共创记录。</p></div>
       )}
       {filtered.length > 0 && (
-        <div className="history-grid">
-          {filtered.map((artifact) => (
-            <button className={`history-card ${artifact.category}`} key={artifact.path} onClick={() => onOpen(artifact)}>
-              {artifact.kind === "image"
-                ? (
-                    <div className="history-card-media">
-                      <img src={runtime.absoluteUrl(artifact.preview_url)} alt={artifact.title} loading="lazy" />
-                    </div>
-                  )
-                : <div className="history-card-icon">{historyIcon(artifact.category)}</div>}
-              <span className="history-card-meta">{historyCategoryLabel(artifact.category)} · {artifact.source === "roadshow" ? "最终答辩" : artifact.date}</span>
-              <strong>{artifact.title}</strong>
-              <small>{artifact.path}</small>
-            </button>
-          ))}
+        <div className="history-shelf">
+          {filtered.map((artifact) => {
+            const coverUrl = historyCoverUrl(artifact, runtime);
+            const isImageOnly = artifact.category === "image";
+            return (
+              <button
+                aria-label={isImageOnly ? "打开图片预览" : `打开${artifact.title}`}
+                className={`history-book ${artifact.category} ${isImageOnly ? "history-book--image-only" : ""}`}
+                key={artifact.path}
+                onClick={() => onOpen(artifact)}
+              >
+                {!isImageOnly && <span className="history-book-spine" aria-hidden="true">{historyBookGlyph(artifact.category)}</span>}
+                {coverUrl
+                  ? (
+                      <div className="history-book-cover">
+                        <img src={coverUrl} alt={isImageOnly ? "历史图片" : `${artifact.title} 封面`} loading="lazy" />
+                      </div>
+                    )
+                  : <div className="history-book-icon">{historyIcon(artifact.category)}</div>}
+                {!isImageOnly && (
+                  <span className="history-book-copy">
+                    <span className="history-card-meta">{historyCategoryLabel(artifact.category)} · {artifact.source === "roadshow" ? "最终答辩" : artifact.date}</span>
+                    <strong>{artifact.title}</strong>
+                    <small>{formatBytes(artifact.size)}</small>
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -1187,6 +1215,54 @@ function historyIcon(category: HistoryArtifactCategory): React.ReactNode {
   return <FileText />;
 }
 
+function historyCoverUrl(artifact: HistoryArtifactEntry, runtime: AgentRuntime): string {
+  if (artifact.cover_url) {
+    return runtime.absoluteUrl(artifact.cover_url);
+  }
+  if (artifact.kind === "image") {
+    return runtime.absoluteUrl(artifact.preview_url);
+  }
+  if (artifact.category === "storybook" || artifact.category === "audiobook") {
+    const derivedCoverUrl = deriveStorybookCoverUrl(artifact.preview_url);
+    if (derivedCoverUrl) {
+      return runtime.absoluteUrl(derivedCoverUrl);
+    }
+  }
+  return "";
+}
+
+function deriveStorybookCoverUrl(previewUrl: string): string {
+  const match = previewUrl.match(/^(\/api\/content-builder\/(?:history-preview\/[^/]+|preview\/[^/]+\/[^/]+)\/)(.+)$/);
+  if (!match) {
+    return "";
+  }
+  const routePrefix = match[1];
+  let previewPath = "";
+  try {
+    previewPath = decodeURIComponent(match[2]);
+  } catch {
+    previewPath = match[2];
+  }
+  const normalizedPath = previewPath.replace(/\\/g, "/");
+  const parentPath = normalizedPath.slice(0, normalizedPath.lastIndexOf("/"));
+  if (!parentPath) {
+    return "";
+  }
+  const coverPath = `${parentPath}/images/page-00-cover.png`;
+  return `${routePrefix}${coverPath.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+function historyBookGlyph(category: HistoryArtifactCategory): string {
+  return {
+    audiobook: "声",
+    storybook: "绘",
+    game: "玩",
+    growth_report: "长",
+    image: "图",
+    document: "文",
+  }[category];
+}
+
 function historyCategoryLabel(category: HistoryArtifactCategory): string {
   return {
     audiobook: "有声绘本",
@@ -1196,6 +1272,10 @@ function historyCategoryLabel(category: HistoryArtifactCategory): string {
     image: "图片",
     document: "文档",
   }[category];
+}
+
+function artifactDisplayTitle(artifact: ArtifactEntry): string {
+  return artifact.title || artifact.name;
 }
 
 function SandboxTab({
@@ -1256,9 +1336,12 @@ function PairingSetup({
   return (
     <main className="pairing-shell">
       <section className="panel pairing-card settings-page">
-        <div className="brand pairing-brand"><Bot size={22} /><strong>Content Builder</strong></div>
-        <h1>连接电脑端 Agent Server</h1>
-        <p className="muted">首次使用或 Token 变化后，请输入电脑端启动脚本显示的局域网配对 Token。验证成功后才会加载历史会话与流式事件。</p>
+        <div className="brand pairing-brand">
+          <span className="brand-mark"><Sparkles size={18} /></span>
+          <span className="brand-copy"><strong>童芯智造</strong><small>亲子内容工坊</small></span>
+        </div>
+        <h1>连接童芯智造工作台</h1>
+        <p className="muted">首次使用或 Token 变化后，请输入电脑端启动脚本显示的局域网配对 Token。验证成功后才会加载历史会话、创作产物与流式事件。</p>
         <label>
           电脑 Agent Server 地址
           <input
@@ -1370,7 +1453,7 @@ function NavButton({ active, icon, label, onClick }: { active: boolean; icon: Re
 }
 
 function activeTabTitle(tab: Tab): string {
-  return { chat: "对话", tasks: "任务与子智能体", artifacts: "中间产物", history: "历史产物", sandbox: "代码沙盒", settings: "设置" }[tab];
+  return { chat: "创作台", tasks: "任务与子智能体", artifacts: "当前产物", history: "历史回看", sandbox: "代码沙盒", settings: "设置" }[tab];
 }
 
 function formatBytes(bytes: number): string {

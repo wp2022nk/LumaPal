@@ -67,7 +67,7 @@ describe("App pairing gate", () => {
   it("does not mount the protected stream client before a token is provided", () => {
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: "连接电脑端 Agent Server" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "连接童芯智造工作台" })).toBeInTheDocument();
     expect(useStream).not.toHaveBeenCalled();
   });
 
@@ -224,6 +224,32 @@ describe("App pairing gate", () => {
               kind: "html",
               preview_url: "/api/content-builder/history-preview/token/roadshow-final-products/storybook/book.html",
             },
+            {
+              name: "小伙伴.pdf",
+              title: "小伙伴",
+              path: "history/2026-06-13/conversations/thread/artifacts/storybooks/little-companions/小伙伴.pdf",
+              date: "2026-06-13",
+              source: "history",
+              category: "storybook",
+              size: 12000,
+              modified_at: 1,
+              mime_type: "application/pdf",
+              kind: "pdf",
+              preview_url: "/api/content-builder/history-preview/token/history/2026-06-13/conversations/thread/artifacts/storybooks/little-companions/%E5%B0%8F%E4%BC%99%E4%BC%B4.pdf",
+            },
+            {
+              name: "36a38f54b2514b919.png",
+              title: "36a38f54b2514b919",
+              path: "history/2026-06-15/uploads/images/36a38f54b2514b919.png",
+              date: "2026-06-15",
+              source: "history",
+              category: "image",
+              size: 23000,
+              modified_at: 2,
+              mime_type: "image/png",
+              kind: "image",
+              preview_url: "/api/content-builder/history-preview/token/history/2026-06-15/uploads/images/36a38f54b2514b919.png",
+            },
           ],
         }), { status: 200, headers: { "content-type": "application/json" } }));
       }
@@ -246,6 +272,20 @@ describe("App pairing gate", () => {
     fireEvent.click(await screen.findByRole("button", { name: /历史/ }));
     expect(await screen.findByText("历史产物档案馆")).toBeInTheDocument();
     expect(await screen.findByText("小水滴滴滴的云朵大冒险")).toBeInTheDocument();
+    expect(screen.getByAltText("小水滴滴滴的云朵大冒险 封面")).toHaveAttribute(
+      "src",
+      "http://127.0.0.1:2024/api/content-builder/history-preview/token/roadshow-final-products/storybook/images/page-00-cover.png",
+    );
+    expect(screen.getByAltText("小伙伴 封面")).toHaveAttribute(
+      "src",
+      "http://127.0.0.1:2024/api/content-builder/history-preview/token/history/2026-06-13/conversations/thread/artifacts/storybooks/little-companions/images/page-00-cover.png",
+    );
+    expect(screen.getByRole("img", { name: "历史图片" })).toHaveAttribute(
+      "src",
+      "http://127.0.0.1:2024/api/content-builder/history-preview/token/history/2026-06-15/uploads/images/36a38f54b2514b919.png",
+    );
+    expect(screen.queryByText("36a38f54b2514b919")).not.toBeInTheDocument();
+    expect(screen.queryByText("roadshow-final-products/storybook/book.html")).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("开始日期"), { target: { value: "2026-06-01" } });
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
@@ -253,7 +293,11 @@ describe("App pairing gate", () => {
       expect.anything(),
     ));
 
+    fireEvent.click(screen.getByRole("button", { name: "打开图片预览" }));
+    expect(screen.getByRole("dialog", { name: "预览 图片预览" })).toBeInTheDocument();
+    fireEvent.click(screen.getByTitle("关闭"));
+
     fireEvent.click(screen.getByText("小水滴滴滴的云朵大冒险"));
-    expect(screen.getByRole("dialog", { name: "预览 book.html" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "预览 小水滴滴滴的云朵大冒险" })).toBeInTheDocument();
   });
 });

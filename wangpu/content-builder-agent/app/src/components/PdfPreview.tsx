@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { GlobalWorkerOptions, getDocument } from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import type { PDFDocumentProxy } from "pdfjs-dist";
 
 GlobalWorkerOptions.workerSrc = workerUrl;
 
 export function PdfPreview({ url }: { url: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [page, setPage] = useState(1);
   const [pageCount, setPageCount] = useState(1);
   const [error, setError] = useState("");
@@ -13,7 +15,11 @@ export function PdfPreview({ url }: { url: string }) {
   useEffect(() => {
     let cancelled = false;
     let task: ReturnType<typeof getDocument> | undefined;
+    let loadedPdf: PDFDocumentProxy | undefined;
     setError("");
+    setPdf(null);
+    setPage(1);
+    setPageCount(1);
     void fetch(url)
       .then(async (response) => {
         if (!response.ok) {
@@ -28,27 +34,69 @@ export function PdfPreview({ url }: { url: string }) {
         task = getDocument({ data: new Uint8Array(buffer) });
         return task.promise;
       })
-      .then(async (document) => {
-        if (cancelled || !document) {
+      .then((document) => {
+        if (!document) {
+          return;
+        }
+        loadedPdf = document;
+        if (cancelled) {
+          void document.destroy();
           return;
         }
         setPageCount(document.numPages);
-        const pdfPage = await document.getPage(page);
+        setPdf(document);
+      })
+      .catch((reason: unknown) => {
+        if (!cancelled) {
+          setError(String(reason));
+        }
+      });
+    return () => {
+      cancelled = true;
+      void task?.destroy();
+      void loadedPdf?.destroy();
+    };
+  }, [url]);
+
+  useEffect(() => {
+    if (!pdf) {
+      return;
+    }
+    if (page > pdf.numPages) {
+      setPage(pdf.numPages);
+      return;
+    }
+
+    let cancelled = false;
+    let renderTask: { cancel: () => void; promise: Promise<unknown> } | undefined;
+    void pdf.getPage(page)
+      .then(async (pdfPage) => {
+        if (cancelled) {
+          return;
+        }
         const canvas = canvasRef.current;
-        if (!canvas) {
+        const context = canvas?.getContext("2d");
+        if (!canvas || !context) {
           return;
         }
         const viewport = pdfPage.getViewport({ scale: 1.5 });
         canvas.width = viewport.width;
         canvas.height = viewport.height;
-        await pdfPage.render({ canvasContext: canvas.getContext("2d")!, viewport }).promise;
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        renderTask = pdfPage.render({ canvasContext: context, viewport });
+        await renderTask.promise;
       })
-      .catch((reason: unknown) => setError(String(reason)));
+      .catch((reason: unknown) => {
+        if (!cancelled) {
+          setError(String(reason));
+        }
+      });
+
     return () => {
       cancelled = true;
-      void task?.destroy();
+      renderTask?.cancel();
     };
-  }, [page, url]);
+  }, [page, pdf]);
 
   if (error) {
     return <p className="muted">PDF 加载失败：{error}</p>;

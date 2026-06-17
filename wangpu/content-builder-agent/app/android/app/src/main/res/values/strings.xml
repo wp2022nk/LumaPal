@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Content Builder</string>
-    <string name="title_activity_main">Content Builder</string>
+    <string name="app_name">童芯智造</string>
+    <string name="title_activity_main">童芯智造</string>
     <string name="package_name">com.wangpu.contentbuilder</string>
     <string name="custom_url_scheme">com.wangpu.contentbuilder</string>
 </resources>

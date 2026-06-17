@@ -235,10 +235,12 @@ def _create_content_writer_cached(config_path_key: str, runtime_mode: str):
     if server_mode:
         agent_kwargs["permissions"] = SERVER_PERMISSIONS
 
-    # LangGraph Agent Server owns persistence/checkpointing. The CLI keeps a
-    # process-local MemorySaver so stream_chat sessions still share context.
-    if not server_mode:
-        agent_kwargs["checkpointer"] = MemorySaver()
+    # 始终附加一个进程内 MemorySaver。
+    # 设计上 LangGraph Agent Server 可以自带持久化，但 Xiaozhi 硬件链路 (turn_service)
+    # 和本地 CLI 都直接在当前进程里调用 agent，并没有外部 server 帮忙保存 checkpoint。
+    # 不挂 checkpointer 会导致 thread_id 形同虚设，每轮对话都从空 messages state 开始。
+    # 进程内 MemorySaver 已经足够支撑"同一会话内多轮上下文"的需求。
+    agent_kwargs["checkpointer"] = MemorySaver()
 
     return create_deep_agent(**agent_kwargs)
 

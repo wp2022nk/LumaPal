@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import logging
 import mimetypes
 import os
+import re
 import tempfile
 import threading
 import uuid
@@ -234,14 +236,33 @@ def _artifact_entries(thread_id: str) -> list[dict[str, Any]]:
             continue
         signed_token = make_preview_token(thread_id, virtual_path)
         encoded_path = quote(virtual_path, safe="/")
+        title = str(item.get("title") or item.get("name") or Path(virtual_path).name)
+        cover_path = str(item.get("cover_path") or "")
+        try:
+            physical_path = _virtual_file(thread_id, virtual_path)
+            inferred_title = _history_artifact_title(physical_path, virtual_path)
+            if inferred_title:
+                title = inferred_title
+            if not cover_path:
+                cover_path = _history_artifact_cover_path(physical_path, virtual_path)
+        except (ValueError, FileNotFoundError, OSError):
+            cover_path = ""
         entries.append(
             {
                 **item,
+                "title": title,
                 "preview_url": f"/api/content-builder/preview/{thread_id}/{signed_token}/{encoded_path}",
+                **({"cover_url": _thread_preview_url(thread_id, cover_path)} if cover_path else {}),
             }
         )
     entries.sort(key=lambda item: float(item.get("modified_at") or 0), reverse=True)
     return entries
+
+
+def _thread_preview_url(thread_id: str, virtual_path: str) -> str:
+    signed_token = make_preview_token(thread_id, virtual_path)
+    encoded_path = quote(virtual_path, safe="/")
+    return f"/api/content-builder/preview/{thread_id}/{signed_token}/{encoded_path}"
 
 
 def _history_artifact_kind(path: Path) -> str:
@@ -276,14 +297,79 @@ def _history_artifact_category(path: Path, virtual_path: str) -> str:
 def _history_artifact_title(path: Path, virtual_path: str) -> str:
     category = _history_artifact_category(path, virtual_path)
     if category == "growth_report":
-        return "成长轨迹报告"
+        return _report_title(path) or "成长轨迹报告"
     if category == "game":
-        return path.parent.name if path.name == "index.html" else path.stem
+        return _html_document_title(path) or (path.parent.name if path.name == "index.html" else path.stem)
     if category == "audiobook":
-        return path.parent.name if path.name == "book.html" else path.stem
+        return _storybook_title(path) or (path.parent.name if path.name == "book.html" else path.stem)
     if category == "storybook":
-        return path.parent.name if path.name in {"book.html", "book.json"} else path.stem
+        return _storybook_title(path) or (path.parent.name if path.name in {"book.html", "book.json"} else path.stem)
     return path.stem or path.name
+
+
+def _storybook_title(path: Path) -> str:
+    return _json_title(path.parent / "book.json", "title") or _html_document_title(path)
+
+
+def _report_title(path: Path) -> str:
+    return _json_title(path.parent / "report-data.json", "title", "headline", "period") or _html_document_title(path)
+
+
+def _json_title(path: Path, *keys: str) -> str:
+    if not path.is_file():
+        return ""
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        return ""
+    if not isinstance(payload, dict):
+        return ""
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def _html_document_title(path: Path) -> str:
+    if path.suffix.lower() not in {".html", ".htm"} or not path.is_file():
+        return ""
+    try:
+        html_text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+    for pattern in (r"<title[^>]*>(.*?)</title>", r"<h1[^>]*>(.*?)</h1>"):
+        match = re.search(pattern, html_text, flags=re.IGNORECASE | re.DOTALL)
+        if match:
+            title = _clean_display_title(re.sub(r"<[^>]+>", "", match.group(1)).strip())
+            if title:
+                return title
+    return ""
+
+
+def _clean_display_title(title: str) -> str:
+    if " - " in title and re.search(r"[\u4e00-\u9fff]", title.split(" - ", 1)[0]):
+        return title.split(" - ", 1)[0].strip()
+    return title
+
+
+def _history_artifact_cover_path(path: Path, virtual_path: str) -> str:
+    category = _history_artifact_category(path, virtual_path)
+    if category not in {"storybook", "audiobook", "growth_report"}:
+        return ""
+    candidates = [
+        path.parent / "images" / "page-00-cover.png",
+        path.parent / "cover.png",
+        path.parent / "images" / "cover.png",
+    ]
+    images_dir = path.parent / "images"
+    if images_dir.is_dir():
+        candidates.extend(sorted(item for item in images_dir.iterdir() if item.suffix.lower() in IMAGE_SUFFIXES))
+    parent_virtual = virtual_path.replace("\\", "/").rsplit("/", 1)[0]
+    for candidate in candidates:
+        if candidate.is_file():
+            return f"{parent_virtual}/{candidate.relative_to(path.parent).as_posix()}"
+    return ""
 
 
 def _history_artifact_date(path: Path, virtual_path: str) -> str:
@@ -304,6 +390,7 @@ def _history_preview_url(virtual_path: str) -> str:
 
 
 def _history_artifact_entry(path: Path, virtual_path: str) -> dict[str, Any]:
+    cover_path = _history_artifact_cover_path(path, virtual_path)
     return {
         "name": path.name,
         "title": _history_artifact_title(path, virtual_path),
@@ -322,6 +409,7 @@ def _history_artifact_entry(path: Path, virtual_path: str) -> dict[str, Any]:
         "mime_type": mimetypes.guess_type(path.name)[0] or "application/octet-stream",
         "kind": _history_artifact_kind(path),
         "preview_url": _history_preview_url(virtual_path),
+        **({"cover_url": _history_preview_url(cover_path)} if cover_path else {}),
     }
 
 

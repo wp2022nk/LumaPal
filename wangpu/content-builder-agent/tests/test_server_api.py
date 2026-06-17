@@ -1408,6 +1408,27 @@ Wireless LAN adapter WLAN:
         wrong_thread_url = listed["preview_url"].replace("session-a", "session-b")
         self.assertEqual(self.client.get(wrong_thread_url).status_code, 401)
 
+    def test_thread_preview_serves_nested_storybook_and_report_assets(self) -> None:
+        paths = thread_paths("session-a")
+        story_image = paths.storybooks / "moon" / "images" / "page.png"
+        story_image.parent.mkdir(parents=True, exist_ok=True)
+        story_image.write_bytes(b"\x89PNG\r\n\x1a\nstory")
+        report_image = paths.reports / "growth-report" / "chart.png"
+        report_image.parent.mkdir(parents=True, exist_ok=True)
+        report_image.write_bytes(b"\x89PNG\r\n\x1a\nreport")
+
+        story_path = "artifacts/storybooks/moon/images/page.png"
+        story_token = make_preview_token("session-a", story_path)
+        story_response = self.client.get(f"/api/content-builder/preview/session-a/{story_token}/{story_path}")
+        self.assertEqual(story_response.status_code, 200)
+        self.assertEqual(story_response.content, b"\x89PNG\r\n\x1a\nstory")
+
+        report_path = "artifacts/reports/growth-report/chart.png"
+        report_token = make_preview_token("session-a", report_path)
+        report_response = self.client.get(f"/api/content-builder/preview/session-a/{report_token}/{report_path}")
+        self.assertEqual(report_response.status_code, 200)
+        self.assertEqual(report_response.content, b"\x89PNG\r\n\x1a\nreport")
+
     def test_history_artifacts_read_new_archive_manifests_with_preview(self) -> None:
         history_file = (
             Path(os.environ["CONTENT_BUILDER_HISTORY_DIR"])
@@ -1421,6 +1442,25 @@ Wireless LAN adapter WLAN:
         )
         history_file.parent.mkdir(parents=True, exist_ok=True)
         history_file.write_text("<h1>story</h1>", encoding="utf-8")
+        (history_file.parent / "book.json").write_text(json.dumps({"title": "月亮邮差"}, ensure_ascii=False), encoding="utf-8")
+        cover_file = history_file.parent / "images" / "page-00-cover.png"
+        cover_file.parent.mkdir(parents=True, exist_ok=True)
+        cover_file.write_bytes(b"\x89PNG\r\n\x1a\ncover")
+        chinese_pdf = history_file.parent / "月亮邮差.pdf"
+        chinese_pdf.write_bytes(b"%PDF-1.4 moon")
+        (history_file.parent / "audio").mkdir(parents=True, exist_ok=True)
+        game_file = (
+            Path(os.environ["CONTENT_BUILDER_HISTORY_DIR"])
+            / "2026-06-08"
+            / "conversations"
+            / "session-a"
+            / "artifacts"
+            / "games"
+            / "moon-game"
+            / "index.html"
+        )
+        game_file.parent.mkdir(parents=True, exist_ok=True)
+        game_file.write_text("<title>月亮跳跳小游戏</title><h1>fallback</h1>", encoding="utf-8")
         old_file = (
             Path(os.environ["CONTENT_BUILDER_HISTORY_DIR"])
             / "2026-06-01"
@@ -1444,20 +1484,57 @@ Wireless LAN adapter WLAN:
         self.assertEqual(response.status_code, 200)
         entries = response.json()["entries"]
         paths = {entry["path"] for entry in entries}
-        self.assertIn("artifacts/storybooks/moon/book.html", paths)
+        self.assertIn("history/2026-06-08/conversations/session-a/artifacts/storybooks/moon/book.html", paths)
         self.assertNotIn("artifacts/games/old-game/index.html", paths)
 
-        story = next(entry for entry in entries if entry["path"].endswith("book.html"))
-        self.assertEqual(story["category"], "storybook")
+        story = next(entry for entry in entries if entry["path"].endswith("artifacts/storybooks/moon/book.html"))
+        self.assertEqual(story["category"], "audiobook")
         self.assertEqual(story["source"], "history")
+        self.assertEqual(story["title"], "月亮邮差")
+        self.assertIn("cover_url", story)
         preview = self.client.get(story["preview_url"])
         self.assertEqual(preview.status_code, 200)
         self.assertIn("story", preview.text)
+        cover_preview = self.client.get(story["cover_url"])
+        self.assertEqual(cover_preview.status_code, 200)
+        self.assertEqual(cover_preview.content, b"\x89PNG\r\n\x1a\ncover")
+
+        game = next(entry for entry in entries if entry["path"].endswith("artifacts/games/moon-game/index.html"))
+        self.assertEqual(game["category"], "game")
+        self.assertEqual(game["title"], "月亮跳跳小游戏")
+
+        pdf = next(entry for entry in entries if entry["path"].endswith("artifacts/storybooks/moon/月亮邮差.pdf"))
+        self.assertEqual(pdf["title"], "月亮邮差")
+        pdf_preview = self.client.get(pdf["preview_url"])
+        self.assertEqual(pdf_preview.status_code, 200)
+        self.assertEqual(pdf_preview.content, b"%PDF-1.4 moon")
 
         bad_path = "history/2026-06-08/%2E%2E/secret.txt"
         token = make_preview_token("history", bad_path)
         rejected = self.client.get(f"/api/content-builder/history-preview/{token}/{bad_path}")
         self.assertEqual(rejected.status_code, 400)
+
+    def test_history_preview_serves_nested_html_child_assets(self) -> None:
+        image_path = (
+            Path(os.environ["CONTENT_BUILDER_HISTORY_DIR"])
+            / "2026-06-08"
+            / "conversations"
+            / "session-a"
+            / "artifacts"
+            / "storybooks"
+            / "moon"
+            / "images"
+            / "page.png"
+        )
+        image_path.parent.mkdir(parents=True, exist_ok=True)
+        image_path.write_bytes(b"\x89PNG\r\n\x1a\narchived")
+        preview_path = "history/2026-06-08/conversations/session-a/artifacts/storybooks/moon/images/page.png"
+        token = make_preview_token("history", preview_path)
+
+        response = self.client.get(f"/api/content-builder/history-preview/{token}/{preview_path}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b"\x89PNG\r\n\x1a\narchived")
 
     def test_history_snapshot_saves_messages_and_mirrors_thread_files(self) -> None:
         upload = self.client.post(

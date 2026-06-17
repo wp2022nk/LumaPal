@@ -1,4 +1,4 @@
-# Content Builder Android Frontend
+# 童芯智造 Android Frontend
 
 The app is a React + TypeScript + Vite frontend wrapped by Capacitor Android.
 

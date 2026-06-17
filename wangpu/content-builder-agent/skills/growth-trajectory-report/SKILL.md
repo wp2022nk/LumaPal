@@ -70,7 +70,7 @@ When assigning images:
 - `exploration_photos[*].image` paths are resolved by the renderer; if an image is missing the photo is silently dropped (no broken `<img>`).
 - `artifact_gallery[*]` mirrors the latest set of generated artifacts and is rendered as a 4-column cover wall; provide at least 3 entries.
 
-The renderer also accepts a `slug` field. When supplied, the PDF is written as `<slug>.pdf`; otherwise it defaults to `growth-report.pdf`.
+The renderer writes the PDF using the Chinese report `title`/`headline` as the filename. Keep any `slug` field for internal references only; do not use `growth-report` as the parent-facing file name.
 
 ## Visual Standard
 
@@ -102,7 +102,7 @@ The script writes:
 
 ```text
 /reports/growth-report/index.html
-/reports/growth-report/<slug>.pdf
+/reports/growth-report/<中文报告标题>.pdf
 ```
 
 Do not write new roadshow/demo report artifacts under `roadshow-final-products/`; that directory is legacy reference material.

@@ -2,7 +2,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "com.wangpu.contentbuilder",
-  appName: "Content Builder",
+  appName: "童芯智造",
   webDir: "dist",
   android: {
     // Debug APK connects to the trusted-LAN FastAPI server over HTTP.

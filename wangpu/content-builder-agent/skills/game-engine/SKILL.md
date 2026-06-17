@@ -27,6 +27,13 @@ Build web-based games and game engines using HTML5 Canvas, WebGL, and JavaScript
 - A text editor or IDE
 - Optional: Node.js for build tooling and local development servers
 
+## Project Output Naming
+
+- Store playable games under a stable ASCII directory such as `/games/<game-slug>/` so links and preview routes remain reliable.
+- Keep the entry file named `index.html`.
+- The browser `<title>`, visible game heading, README title, and archive display title must be Chinese and should describe the actual game, for example `月亮跳跳小游戏`.
+- Do not expose raw slugs such as `platform-adventure` as the user-facing game name.
+
 ## Core Concepts
 
 The following concepts form the foundation of every web-based game engine.

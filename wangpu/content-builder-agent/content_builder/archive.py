@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import mimetypes
 import os
+import re
 import tempfile
 import uuid
 from dataclasses import dataclass
@@ -286,9 +287,83 @@ def _artifact_category(relative: str, path: Path) -> str:
 
 def _artifact_title(relative: str, path: Path) -> str:
     parts = relative.replace("\\", "/").split("/")
+    normalized = relative.replace("\\", "/")
+    if normalized.startswith("artifacts/storybooks/"):
+        return _storybook_title(path) or (parts[2] if len(parts) >= 3 and path.name in {"index.html", "book.html"} else path.stem)
+    if normalized.startswith("artifacts/games/"):
+        return _html_document_title(path) or (parts[2] if len(parts) >= 3 and path.name == "index.html" else path.stem)
+    if normalized.startswith("artifacts/reports/"):
+        return _report_title(path) or (parts[2] if len(parts) >= 3 and path.name == "index.html" else path.stem)
     if len(parts) >= 3 and parts[0] == "artifacts":
         return parts[2] if path.name in {"index.html", "book.html"} else path.stem
     return path.stem or path.name
+
+
+def _artifact_cover_path(relative: str, path: Path) -> str:
+    normalized = relative.replace("\\", "/")
+    if not (normalized.startswith("artifacts/storybooks/") or normalized.startswith("artifacts/reports/")):
+        return ""
+    parent = path.parent
+    candidates = [
+        parent / "images" / "page-00-cover.png",
+        parent / "cover.png",
+        parent / "images" / "cover.png",
+    ]
+    images_dir = parent / "images"
+    if images_dir.is_dir():
+        candidates.extend(sorted(item for item in images_dir.iterdir() if item.suffix.lower() in IMAGE_SUFFIXES))
+    parent_virtual = relative.replace("\\", "/").rsplit("/", 1)[0]
+    for candidate in candidates:
+        if candidate.is_file():
+            return f"{parent_virtual}/{candidate.relative_to(path.parent).as_posix()}"
+    return ""
+
+
+def _storybook_title(path: Path) -> str:
+    return _json_title(path.parent / "book.json", "title") or _html_document_title(path)
+
+
+def _report_title(path: Path) -> str:
+    data_path = path.parent / "report-data.json"
+    return _json_title(data_path, "title", "headline", "period") or _html_document_title(path)
+
+
+def _json_title(path: Path, *keys: str) -> str:
+    if not path.is_file():
+        return ""
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        return ""
+    if not isinstance(payload, dict):
+        return ""
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def _html_document_title(path: Path) -> str:
+    if path.suffix.lower() not in {".html", ".htm"} or not path.is_file():
+        return ""
+    try:
+        html_text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+    for pattern in (r"<title[^>]*>(.*?)</title>", r"<h1[^>]*>(.*?)</h1>"):
+        match = re.search(pattern, html_text, flags=re.IGNORECASE | re.DOTALL)
+        if match:
+            title = _clean_display_title(re.sub(r"<[^>]+>", "", match.group(1)).strip())
+            if title:
+                return title
+    return ""
+
+
+def _clean_display_title(title: str) -> str:
+    if " - " in title and re.search(r"[\u4e00-\u9fff]", title.split(" - ", 1)[0]):
+        return title.split(" - ", 1)[0].strip()
+    return title
 
 
 def _entry_from_file(paths: ArchiveConversationPaths, file_path: Path) -> dict[str, Any] | None:
@@ -298,6 +373,7 @@ def _entry_from_file(paths: ArchiveConversationPaths, file_path: Path) -> dict[s
     if relative in {"chat.json", "manifest.json", "events.jsonl"}:
         return None
     stat = file_path.stat()
+    cover_path = _artifact_cover_path(relative, file_path)
     return {
         "artifact_id": f"{paths.thread_id}:{relative}",
         "name": file_path.name,
@@ -314,6 +390,7 @@ def _entry_from_file(paths: ArchiveConversationPaths, file_path: Path) -> dict[s
         "mime_type": mimetypes.guess_type(file_path.name)[0] or "application/octet-stream",
         "kind": _artifact_kind(file_path),
         "related_files": [],
+        **({"cover_path": cover_path} if cover_path else {}),
     }
 
 

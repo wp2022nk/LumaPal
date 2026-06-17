@@ -7,9 +7,9 @@ android {
         applicationId "com.wangpu.contentbuilder"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "2.0"
-        manifestPlaceholders = [usesCleartextTraffic: "false"]
+        versionCode 3
+        versionName "3.0"
+        manifestPlaceholders = [usesCleartextTraffic: "true"]
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -22,7 +22,10 @@ android {
             manifestPlaceholders = [usesCleartextTraffic: "true"]
         }
         release {
-            manifestPlaceholders = [usesCleartextTraffic: "false"]
+            // The packaged app connects to the paired LAN server over HTTP for
+            // previews and artifact media, including images inside historical HTML.
+            manifestPlaceholders = [usesCleartextTraffic: "true"]
+            signingConfig signingConfigs.debug
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

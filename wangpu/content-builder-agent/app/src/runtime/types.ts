@@ -23,6 +23,8 @@ export interface ArtifactEntry {
   mime_type: string;
   kind: ArtifactKind;
   preview_url: string;
+  cover_url?: string;
+  cover_path?: string;
 }
 
 export type HistoryArtifactCategory = "storybook" | "audiobook" | "game" | "growth_report" | "image" | "document";

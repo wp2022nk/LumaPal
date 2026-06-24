@@ -149,6 +149,75 @@ function archivedMessageToAppMessage(message: { id?: string; role?: string; cont
   return content && type ? { id: message.id || `archive-${type}-${Date.now()}`, type, content } : null;
 }
 
+function normalizedMessageText(message: AppMessage): string {
+  return messageText(message).replace(/\s+/g, " ").trim();
+}
+
+function normalizedMessageRole(message: AppMessage): string {
+  const role = message.type || message.role || "message";
+  if (role === "agent" || role === "assistant") {
+    return "ai";
+  }
+  if (role === "user") {
+    return "human";
+  }
+  return role;
+}
+
+function isUserMessage(message: AppMessage): boolean {
+  return normalizedMessageRole(message) === "human";
+}
+
+function messageFingerprint(message: AppMessage): string {
+  return `${normalizedMessageRole(message)}:${normalizedMessageText(message)}`;
+}
+
+function shouldMergeMessage(existing: AppMessage, next: AppMessage): boolean {
+  if (existing.id && next.id && existing.id === next.id) {
+    return true;
+  }
+  if (isUserMessage(next) || normalizedMessageRole(existing) !== normalizedMessageRole(next)) {
+    return false;
+  }
+  const existingText = normalizedMessageText(existing);
+  const nextText = normalizedMessageText(next);
+  if (!existingText || !nextText) {
+    return false;
+  }
+  return existingText === nextText || existingText.includes(nextText) || nextText.includes(existingText);
+}
+
+function preferFullerMessage(existing: AppMessage, next: AppMessage): AppMessage {
+  return normalizedMessageText(next).length >= normalizedMessageText(existing).length ? next : existing;
+}
+
+function upsertRealtimeMessage(current: AppMessage[], next: AppMessage): AppMessage[] {
+  const sameIdIndex = current.findIndex((message) => message.id && next.id && message.id === next.id);
+  if (sameIdIndex >= 0) {
+    return current.map((message, index) => index === sameIdIndex ? preferFullerMessage(message, next) : message);
+  }
+  const lastUserIndex = current.reduce((lastIndex, message, index) => isUserMessage(message) ? index : lastIndex, -1);
+  const mergeIndex = current.findIndex((message, index) => index > lastUserIndex && shouldMergeMessage(message, next));
+  if (mergeIndex >= 0) {
+    return current.map((message, index) => index === mergeIndex ? preferFullerMessage(message, next) : message);
+  }
+  return [...current, next];
+}
+
+function mergeDisplayMessages(primary: AppMessage[], extra: AppMessage[]): AppMessage[] {
+  return [...primary, ...extra].reduce<AppMessage[]>((merged, next) => {
+    const exactIndex = merged.findIndex((message) => messageFingerprint(message) === messageFingerprint(next));
+    if (exactIndex >= 0 && !isUserMessage(next)) {
+      return merged.map((message, index) => index === exactIndex ? preferFullerMessage(message, next) : message);
+    }
+    const mergeIndex = merged.findIndex((message) => shouldMergeMessage(message, next));
+    if (mergeIndex >= 0) {
+      return merged.map((message, index) => index === mergeIndex ? preferFullerMessage(message, next) : message);
+    }
+    return [...merged, next];
+  }, []);
+}
+
 export default function App() {
   const [connection, setConnection] = useState(loadConnectionSettings);
   const [connectionRevision, setConnectionRevision] = useState(0);
@@ -290,18 +359,7 @@ function AuthenticatedAgentWorkspace({
   } as UseStreamOptions<AgentState> & { filterSubagentMessages: true }) as ContentBuilderStream;
 
   const messages = streamThreadId ? stream.messages as unknown as AppMessage[] : [];
-  const displayMessages = useMemo(() => {
-    const seen = new Set(messages.map((message, index) => message.id || `${messageRoleKey(message)}:${messageText(message)}:${index}`));
-    const extra = realtimeMessages.filter((message, index) => {
-      const key = message.id || `${messageRoleKey(message)}:${messageText(message)}:${index}`;
-      if (seen.has(key)) {
-        return false;
-      }
-      seen.add(key);
-      return true;
-    });
-    return [...messages, ...extra];
-  }, [messages, realtimeMessages]);
+  const displayMessages = useMemo(() => mergeDisplayMessages(messages, realtimeMessages), [messages, realtimeMessages]);
   const todos = streamThreadId ? stream.values.todos || [] : realtimeTodos;
   const allSubagents = streamThreadId ? [...stream.subagents.values()] as SubagentStreamInterface[] : [];
   const runtimeSubagents = streamThreadId ? [] : realtimeSubagents;
@@ -333,7 +391,7 @@ function AuthenticatedAgentWorkspace({
       if (!next) {
         return;
       }
-      setRealtimeMessages((current) => current.some((message) => message.id && message.id === next.id) ? current : [...current, next]);
+      setRealtimeMessages((current) => upsertRealtimeMessage(current, next));
     };
     const upsertRealtimeThread = (payload: AppRealtimeEvent) => {
       if (!payload.thread_id || payload.source === "content-builder-app") {
@@ -769,7 +827,15 @@ function AuthenticatedAgentWorkspace({
           </div>
           <button className="sidebar-close" aria-label="收起会话栏" onClick={() => setSidebarOpen(false)} title="收起会话栏"><PanelLeftClose /></button>
         </div>
-        <button className="primary-button wide" onClick={newConversation}><Plus size={17} /> 新建对话</button>
+        <nav className="sidebar-nav" aria-label="工作台导航">
+          <NavButton active={activeTab === "chat"} icon={<MessageCircle />} label="创作台" onClick={() => setActiveTab("chat")} />
+          <NavButton active={activeTab === "tasks"} icon={<ListChecks />} label="任务" onClick={() => setActiveTab("tasks")} />
+          <NavButton active={activeTab === "artifacts"} icon={<FileText />} label="产物" onClick={() => setActiveTab("artifacts")} />
+          <NavButton active={activeTab === "history"} icon={<Archive />} label="回看" onClick={() => setActiveTab("history")} />
+          <NavButton active={activeTab === "sandbox"} icon={<Terminal />} label="沙盒" onClick={() => setActiveTab("sandbox")} />
+          <NavButton active={activeTab === "settings"} icon={<Settings />} label="设置" onClick={() => setActiveTab("settings")} />
+        </nav>
+        <button className="primary-button wide new-thread-button" onClick={newConversation}><Plus size={17} /> 新建对话</button>
         <div className="sidebar-label">历史会话</div>
         <div className="session-list">
           {threads.map((thread) => (
@@ -812,12 +878,15 @@ function AuthenticatedAgentWorkspace({
           {activeTab === "chat" && (
             <ChatTab
               attachments={attachments}
+              artifacts={artifacts}
               draft={draft}
               isLoading={Boolean(runtime.connection.pairingToken) && Boolean(streamThreadId) && stream.isLoading}
               messages={displayMessages}
               recording={recording}
               stream={stream}
+              todos={todos}
               onAttachmentRemove={(id) => setAttachments((current) => current.filter((item) => item.id !== id))}
+              onArtifactOpen={setPreview}
               onDraft={setDraft}
               onFilePick={() => fileInput.current?.click()}
               onImageOpen={setFullImage}
@@ -896,12 +965,15 @@ function AuthenticatedAgentWorkspace({
 
 function ChatTab({
   attachments,
+  artifacts,
   draft,
   isLoading,
   messages,
   recording,
   stream,
+  todos,
   onAttachmentRemove,
+  onArtifactOpen,
   onDraft,
   onFilePick,
   onImageOpen,
@@ -912,12 +984,15 @@ function ChatTab({
   onTakePhoto,
 }: {
   attachments: PendingImage[];
+  artifacts: ArtifactEntry[];
   draft: string;
   isLoading: boolean;
   messages: AppMessage[];
   recording: boolean;
   stream: ContentBuilderStream;
+  todos: Todo[];
   onAttachmentRemove: (id: string) => void;
+  onArtifactOpen: (artifact: ArtifactEntry) => void;
   onDraft: (value: string) => void;
   onFilePick: () => void;
   onImageOpen: (url: string) => void;
@@ -927,79 +1002,144 @@ function ChatTab({
   onStop: () => void;
   onTakePhoto: () => void;
 }) {
+  const recentArtifacts = (artifacts || []).slice(0, 5);
+  const recentTodos = (todos || []).slice(0, 3);
+
   return (
     <div className="chat-layout">
-      <div className="message-feed">
-        {messages.length === 0 && (
-          <div className="starter-board">
-            <section className="starter-copy">
-              <span className="eyebrow"><Sparkles size={15} /> 童芯智造创作台</span>
-              <h2>把孩子的灵感，做成能保存的作品</h2>
-              <p>发送文字、照片或语音，智能体会把任务规划、绘本、报告、小游戏和图片产物同步整理在当前会话里。</p>
-            </section>
-            <section className="starter-shelf" aria-label="可创作的产物类型">
-              <div className="starter-card storybook"><BookOpen /><strong>绘本</strong><span>图文成册</span></div>
-              <div className="starter-card audiobook"><Volume2 /><strong>有声绘本</strong><span>边看边听</span></div>
-              <div className="starter-card growth"><BarChart3 /><strong>成长报告</strong><span>记录变化</span></div>
-              <div className="starter-card game"><Gamepad2 /><strong>小游戏</strong><span>互动练习</span></div>
-              <div className="starter-card image"><ImagePlus /><strong>图片</strong><span>角色场景</span></div>
-              <div className="starter-card inspiration"><Sparkles /><strong>创作灵感</strong><span>一起想象</span></div>
-            </section>
+      <section className="creation-desk">
+        <div className="starter-board">
+          <section className="starter-copy">
+            <span className="eyebrow"><Sparkles size={15} /> 创作灵感</span>
+            <h2>开始一次内容创作</h2>
+            <p>和 AI 一起，把想象变成孩子喜欢的作品</p>
+          </section>
+          <section className="starter-shelf" aria-label="可创作的产物类型">
+            <button className="starter-card storybook" type="button" onClick={() => onDraft("我想创作一本适合孩子阅读的图文故事绘本。")}>
+              <BookOpen /><strong>绘本</strong><span>图文并茂的故事绘本</span><small>去创作</small>
+            </button>
+            <button className="starter-card audiobook" type="button" onClick={() => onDraft("我想创作一个有配音和音乐的沉浸式有声绘本。")}>
+              <Volume2 /><strong>有声绘本</strong><span>配音配乐的沉浸式绘本</span><small>去创作</small>
+            </button>
+            <button className="starter-card growth" type="button" onClick={() => onDraft("请根据孩子的内容生成一份成长报告。")}>
+              <BarChart3 /><strong>成长报告</strong><span>AI 生成孩子的成长记录</span><small>去创作</small>
+            </button>
+            <button className="starter-card game" type="button" onClick={() => onDraft("我想创作一个适合孩子玩的互动小游戏。")}>
+              <Gamepad2 /><strong>小游戏</strong><span>互动游戏与趣味挑战</span><small>去创作</small>
+            </button>
+            <button className="starter-card image" type="button" onClick={() => onDraft("请帮我创作一张儿童故事场景图片。")}>
+              <ImagePlus /><strong>图片创作</strong><span>AI 绘图与创意插画</span><small>去创作</small>
+            </button>
+          </section>
+        </div>
+      </section>
+      <div className="chat-workbench">
+        <section className="conversation-panel">
+          <header className="panel-title-row">
+            <h2><Sparkles size={18} /> 与 AI 对话</h2>
+            <div className="row">
+              <button className="secondary-button compact" type="button" onClick={() => onDraft("")}>清空对话框</button>
+              <button className="secondary-button compact" type="button">导出对话</button>
+            </div>
+          </header>
+          <div className="message-feed">
+            {messages.length === 0 && (
+              <MessageCard
+                message={{ id: "starter-assistant", type: "ai", content: "你好！我是童芯助手。告诉我你想创作什么内容，或描述你的想法吧。" }}
+                onImageOpen={onImageOpen}
+                subagents={[]}
+              />
+            )}
+            {messages.map((message, index) => (
+              <MessageCard
+                key={message.id || `message-${index}`}
+                message={message}
+                onImageOpen={onImageOpen}
+                subagents={message.id ? stream.getSubagentsByMessage(message.id) : []}
+              />
+            ))}
+            {isLoading && <div className="streaming-line"><LoaderCircle className="spin" size={16} /> 正在流式生成...</div>}
           </div>
-        )}
-        {messages.map((message, index) => (
-          <MessageCard
-            key={message.id || `message-${index}`}
-            message={message}
-            onImageOpen={onImageOpen}
-            subagents={message.id ? stream.getSubagentsByMessage(message.id) : []}
-          />
-        ))}
-        {isLoading && <div className="streaming-line"><LoaderCircle className="spin" size={16} /> 正在流式生成...</div>}
-      </div>
-      <div className="composer">
-        {attachments.length > 0 && (
-          <div className="attachment-row">
-            {attachments.map((attachment) => (
-              <div className="attachment" key={attachment.id}>
-                <img src={attachment.dataUrl} alt={attachment.name} />
-                {attachment.uploading && <LoaderCircle className="spin attachment-loader" size={16} />}
-                <button onClick={() => onAttachmentRemove(attachment.id)}><X size={14} /></button>
+          <div className="composer">
+            {attachments.length > 0 && (
+              <div className="attachment-row">
+                {attachments.map((attachment) => (
+                  <div className="attachment" key={attachment.id}>
+                    <img src={attachment.dataUrl} alt={attachment.name} />
+                    {attachment.uploading && <LoaderCircle className="spin attachment-loader" size={16} />}
+                    <button onClick={() => onAttachmentRemove(attachment.id)}><X size={14} /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <textarea
+              placeholder="描述你想创作的内容，或提出问题..."
+              rows={2}
+              value={draft}
+              onChange={(event) => onDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  onSend();
+                }
+              }}
+            />
+            <div className="composer-actions">
+              <div className="row">
+                <button className="icon-button text-icon" onClick={onFilePick} title="添加图片"><ImagePlus /> 图片</button>
+                <button className="icon-button text-icon" onClick={onTakePhoto} title="拍照"><Camera /> 拍照</button>
+                <button
+                  className={`icon-button text-icon ${recording ? "recording" : ""}`}
+                  onPointerDown={onRecordStart}
+                  onPointerCancel={onRecordStop}
+                  onPointerUp={onRecordStop}
+                  onPointerLeave={() => recording && onRecordStop()}
+                  title="按住说话"
+                >
+                  <Mic /> 语音
+                </button>
+                <button className="icon-button text-icon" onClick={onFilePick} title="添加文件"><Paperclip /> 文件</button>
+              </div>
+              {isLoading
+                ? <button className="send-button stop" onClick={onStop}><Square size={16} /> 停止</button>
+                : <button className="send-button" onClick={onSend} aria-label="发送"><Send size={18} /></button>}
+            </div>
+          </div>
+        </section>
+        <aside className="workbench-rail">
+          <section className="rail-panel product-rail">
+            <header><h2>我的产物</h2><small>查看更多</small></header>
+            <div className="product-stack">
+              {recentArtifacts.length === 0 && (
+                <div className="product-book empty-product">
+                  <span className="book-spine">新</span>
+                  <div><strong>等待第一个作品</strong><small>发送创作请求后会出现在这里</small></div>
+                </div>
+              )}
+              {recentArtifacts.map((artifact) => (
+                <button className={`product-book ${artifactTone(artifact.kind)}`} key={artifact.path} onClick={() => onArtifactOpen(artifact)}>
+                  <span className="book-spine">{artifact.kind === "image" ? "图" : artifact.kind === "html" ? "页" : "文"}</span>
+                  <div>
+                    <small>{artifact.kind === "image" ? "图片创作" : artifact.kind === "html" ? "互动作品" : "文档"}</small>
+                    <strong>{artifactDisplayTitle(artifact)}</strong>
+                    <span>更新于 {new Date(artifact.modified_at * 1000).toLocaleString()}</span>
+                  </div>
+                  <span className="book-action">{artifact.kind === "image" ? <ImagePlus /> : artifact.kind === "html" ? <Gamepad2 /> : <FileText />}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+          <section className="rail-panel task-rail">
+            <header><h2>最近任务</h2><small>查看更多</small></header>
+            {recentTodos.length === 0 && <p className="muted">新的任务规划会在这里同步。</p>}
+            {recentTodos.map((todo, index) => (
+              <div className="mini-task" key={`${todo.content}-${index}`}>
+                <span>{todo.content}</span>
+                <small>{todoStatusLabel(todo.status)}</small>
               </div>
             ))}
-          </div>
-        )}
-        <textarea
-          placeholder="描述你想创作的内容..."
-          rows={2}
-          value={draft}
-          onChange={(event) => onDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              onSend();
-            }
-          }}
-        />
-        <div className="composer-actions">
-          <div className="row">
-            <button className="icon-button" onClick={onFilePick} title="从相册选择"><Paperclip /></button>
-            <button className="icon-button" onClick={onTakePhoto} title="拍照"><Camera /></button>
-            <button
-              className={`icon-button ${recording ? "recording" : ""}`}
-              onPointerDown={onRecordStart}
-              onPointerCancel={onRecordStop}
-              onPointerUp={onRecordStop}
-              onPointerLeave={() => recording && onRecordStop()}
-              title="按住说话"
-            >
-              <Mic />
-            </button>
-          </div>
-          {isLoading
-            ? <button className="send-button stop" onClick={onStop}><Square size={16} /> 停止</button>
-            : <button className="send-button" onClick={onSend}><Send size={16} /> 发送</button>}
-        </div>
+          </section>
+        </aside>
       </div>
     </div>
   );
@@ -1456,6 +1596,24 @@ function activeTabTitle(tab: Tab): string {
   return { chat: "创作台", tasks: "任务与子智能体", artifacts: "当前产物", history: "历史回看", sandbox: "代码沙盒", settings: "设置" }[tab];
 }
 
+function artifactTone(kind: ArtifactEntry["kind"]): string {
+  return {
+    download: "document",
+    html: "game",
+    image: "image",
+    pdf: "storybook",
+    text: "document",
+  }[kind];
+}
+
+function todoStatusLabel(status: Todo["status"]): string {
+  return {
+    completed: "已完成",
+    in_progress: "进行中",
+    pending: "排队中",
+  }[status];
+}
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024) {
     return `${bytes} B`;
@@ -1468,10 +1626,6 @@ function formatBytes(bytes: number): string {
 
 function readError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function messageRoleKey(message: AppMessage): string {
-  return message.type || message.role || "message";
 }
 
 function realtimeUpdatedAt(value: string | number | undefined): string {

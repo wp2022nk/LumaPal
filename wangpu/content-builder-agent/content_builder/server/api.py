@@ -281,6 +281,8 @@ def _history_artifact_kind(path: Path) -> str:
 def _history_artifact_category(path: Path, virtual_path: str) -> str:
     normalized = virtual_path.replace("\\", "/")
     suffix = path.suffix.lower()
+    if "child-growth-achievement/" in normalized:
+        return "child_growth_achievement"
     if "growth-report/" in normalized:
         return "growth_report"
     if "/games/" in normalized or normalized.startswith("roadshow-final-products/game/"):
@@ -296,6 +298,8 @@ def _history_artifact_category(path: Path, virtual_path: str) -> str:
 
 def _history_artifact_title(path: Path, virtual_path: str) -> str:
     category = _history_artifact_category(path, virtual_path)
+    if category == "child_growth_achievement":
+        return _report_title(path) or "儿童成长成就"
     if category == "growth_report":
         return _report_title(path) or "成长轨迹报告"
     if category == "game":
@@ -312,7 +316,11 @@ def _storybook_title(path: Path) -> str:
 
 
 def _report_title(path: Path) -> str:
-    return _json_title(path.parent / "report-data.json", "title", "headline", "period") or _html_document_title(path)
+    return (
+        _json_title(path.parent / "child-achievement-data.json", "title", "headline", "period")
+        or _json_title(path.parent / "report-data.json", "title", "headline", "period")
+        or _html_document_title(path)
+    )
 
 
 def _json_title(path: Path, *keys: str) -> str:
@@ -355,7 +363,7 @@ def _clean_display_title(title: str) -> str:
 
 def _history_artifact_cover_path(path: Path, virtual_path: str) -> str:
     category = _history_artifact_category(path, virtual_path)
-    if category not in {"storybook", "audiobook", "growth_report"}:
+    if category not in {"storybook", "audiobook", "growth_report", "child_growth_achievement"}:
         return ""
     candidates = [
         path.parent / "images" / "page-00-cover.png",
@@ -421,6 +429,7 @@ def _is_displayable_history_artifact(entry: dict[str, Any]) -> bool:
         or (category == "storybook" and kind == "pdf")
         or (category == "game" and kind == "html")
         or (category == "growth_report" and kind == "html")
+        or (category == "child_growth_achievement" and kind == "html")
         or (category == "image" and kind == "image")
     )
 

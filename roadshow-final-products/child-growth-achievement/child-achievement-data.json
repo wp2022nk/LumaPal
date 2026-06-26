@@ -1,0 +1,117 @@
+{
+  "title": "小星的成长成就星图",
+  "pdf_title": "小星的成长成就-第8周",
+  "period": "第8周 · 儿童成长成就",
+  "child_name": "小星",
+  "subtitle": "你把水滴、云朵、雨、花园和太阳串成了一场大冒险，还把发现变成了故事、游戏和绘本。",
+  "hero_quote": "所以云就是天上的大茶杯冒出来的烟！",
+  "quote_source": "本周金句 · 来自自然观察对话",
+  "lab_title": "好奇心实验室开张啦",
+  "lab_message": "这一周，你从热茶杯的白雾开始观察，又想到浴室镜子起雾、太阳晒水、雨水浇花。你已经会把生活里的小变化，连成自己的科学故事。",
+  "generated_images": {
+    "hero_adventure": "images/generated/hero-adventure.png",
+    "badge_map": "images/generated/badge-map.png",
+    "curiosity_lab": "images/generated/curiosity-lab.png"
+  },
+  "achievements": [
+    {
+      "badge": "云",
+      "label": "故事力称号",
+      "title": "云朵故事魔法师",
+      "message": "你会把水滴变成会旅行的小主角，让科学知识住进故事里。",
+      "evidence": "把蒸发、云、雨、花园和太阳串成完整冒险路线。",
+      "level": 5
+    },
+    {
+      "badge": "镜",
+      "label": "观察力称号",
+      "title": "自然观察小侦探",
+      "message": "你能从茶杯白雾、镜子雾气和雨水里发现同一种变化。",
+      "evidence": "把热茶白雾迁移到浴室镜子起雾、太阳晒水等场景。",
+      "level": 4
+    },
+    {
+      "badge": "问",
+      "label": "思考力称号",
+      "title": "科学问题小队长",
+      "message": "你很会问“为什么”，还会用自己的话解释发生了什么。",
+      "evidence": "高频追问水、云、雨、太阳之间的关系。",
+      "level": 5
+    },
+    {
+      "badge": "书",
+      "label": "创作力称号",
+      "title": "绘本创作小导演",
+      "message": "你能把想法变成封面、绘本和小游戏，让作品真的跑起来。",
+      "evidence": "围绕同一主题生成游戏、绘本和成长报告三类产物。",
+      "level": 5
+    },
+    {
+      "badge": "心",
+      "label": "合作力称号",
+      "title": "温柔合作小伙伴",
+      "message": "你的故事里常常有人互相帮助，也愿意和大人一起改编结局。",
+      "evidence": "在亲子共创里选择让角色帮助花朵、照顾朋友。",
+      "level": 4
+    }
+  ],
+  "badge_map": [
+    {
+      "badge": "水滴",
+      "title": "发现起点",
+      "caption": "从热茶杯白雾开始提问。"
+    },
+    {
+      "badge": "云朵",
+      "title": "想象飞行",
+      "caption": "把云想成天上的大茶杯。"
+    },
+    {
+      "badge": "雨点",
+      "title": "知识连接",
+      "caption": "把云、雨、花园连起来。"
+    },
+    {
+      "badge": "太阳",
+      "title": "作品完成",
+      "caption": "生成绘本和小游戏。"
+    }
+  ],
+  "works": [
+    {
+      "title": "小水滴滴滴的云朵大冒险",
+      "type": "绘本",
+      "highlight": "把水循环变成角色旅行故事。",
+      "cover_image": "roadshow-final-products/storybook/images/page-00-cover.png",
+      "link": "roadshow-final-products/storybook/book.html"
+    },
+    {
+      "title": "滴滴的云朵大冒险",
+      "type": "游戏",
+      "highlight": "用闯关方式完成水滴旅行。",
+      "cover_image": "roadshow-final-products/storybook/images/page-04.png",
+      "link": "roadshow-final-products/game/index.html"
+    },
+    {
+      "title": "会唱歌的树",
+      "type": "故事封面",
+      "highlight": "把倾听和帮助朋友变成温柔情节。",
+      "cover_image": "history/2026-06-08/artifacts/singing-tree/唱歌的树封面.png"
+    },
+    {
+      "title": "我家的声音地图",
+      "type": "生活观察",
+      "highlight": "把日常感觉整理成可以讲述的地图。",
+      "cover_image": "history/2026-06-08/uploads/images/c1002fd6d7ca4b1c814319d954d83f9c.jpg"
+    }
+  ],
+  "challenge_next": {
+    "title": "下一关：光和影子的秘密",
+    "message": "你已经会观察“变化”了，下一次可以继续挑战光、影子、透明和反射。",
+    "steps": [
+      "找一找：影子什么时候变长，什么时候变短？",
+      "试一试：把手电筒照进水杯里，光会不会弯一弯？",
+      "讲一讲：给影子起一个角色名字，编一个 3 分钟小故事。"
+    ]
+  }
+}

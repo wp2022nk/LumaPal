@@ -1,0 +1,76 @@
+# Demo-only configuration for the 3-minute product video rehearsal.
+# This keeps the default main_agent.yaml untouched while injecting a temporary
+# scripted system prompt for the roadshow recording.
+
+name: content-builder-demo
+secrets_file: secrets.local.yaml
+
+model:
+  name: qwen3.6-plus
+  env_model: QWEN_TEXT_MODEL
+  env_base_url: QWEN_BASE_URL
+  base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  enable_thinking: false
+
+system_prompt_file: AGENTS.demo.md
+memory:
+  - /wangpu/content-builder-agent/AGENTS.demo.md
+
+skills:
+  - /wangpu/content-builder-agent/skills/
+
+tools:
+  - generate_image
+  - xiaozhi_call_device_tool
+
+subagents_config: subagents.yaml
+
+backend:
+  type: local_shell
+  root_dir: ../..
+  virtual_mode: true
+  local_shell:
+    python: D:\Robort_Learn\envs\deepagents\python.exe
+    allowed_commands:
+      - python
+      - pytest
+      - node
+      - npm
+      - powershell
+      - pwsh
+      - mkdir
+    require_confirmation: false
+  remote:
+    provider: null
+    sandbox_id: null
+    setup_script: null
+
+output_root: ../../output
+
+thread_id: content-builder-demo-console
+
+conversation:
+  max_turns: 50
+
+voice:
+  enabled: true
+  asr:
+    provider: funasr
+    model_dir: ../../model/SenseVoiceSmall
+    vad_model_dir: ../../model/fsmn-vad/damo/speech_fsmn_vad_zh-cn-16k-common-pytorch
+    device: cpu
+    max_single_segment_time: 30000
+    save_audio: false
+  tts:
+    provider: qwen
+    model: qwen3-tts-flash
+    voice: Cherry
+    language_type: Chinese
+    format: wav
+    stream: true
+    sample_rate: 24000
+    channels: 1
+    sample_width: 2
+    timeout: 30
+  playback:
+    enabled: true

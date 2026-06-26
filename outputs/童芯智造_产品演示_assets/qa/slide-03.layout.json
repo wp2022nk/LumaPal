@@ -1,0 +1,2479 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/bn6wes",
+    "id": "bn6wes",
+    "slide": 3,
+    "layoutId": "42218a80-6d2b-4afc-93df-5154b1a986fe",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "4029c6b5-e376-4618-b841-dc2e5f551f54",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FFF2D3",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "42218a80-6d2b-4afc-93df-5154b1a986fe",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "4029c6b5-e376-4618-b841-dc2e5f551f54",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "4029c6b5-e376-4618-b841-dc2e5f551f54",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/j6tovaho",
+      "id": "1",
+      "bbox": [
+        0,
+        0,
+        1280,
+        720
+      ],
+      "geometry": "rect",
+      "fillColor": "#FFF1CC",
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/crmhk3q5",
+      "id": "2",
+      "bbox": [
+        42,
+        28,
+        156,
+        42
+      ],
+      "geometry": "rect",
+      "text": "童芯智造",
+      "textPreview": "童芯智造",
+      "resolvedFontSize": 30,
+      "resolvedTextStyle": {
+        "fontSize": 30,
+        "typeface": "+mn-lt",
+        "color": "#F47B20",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "童芯智造"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "童芯智造",
+          "resolvedTextStyle": {
+            "fontSize": 30,
+            "color": "#F47B20",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "童芯智造",
+              "fontSize": 30,
+              "color": "#F47B20",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1cfa9w3m",
+      "id": "3",
+      "bbox": [
+        47,
+        66,
+        150,
+        22
+      ],
+      "geometry": "rect",
+      "text": "AI好奇心成长伙伴",
+      "textPreview": "AI好奇心成长伙伴",
+      "resolvedFontSize": 13,
+      "resolvedTextStyle": {
+        "fontSize": 13,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AI好奇心成长伙伴"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AI好奇心成长伙伴",
+          "resolvedTextStyle": {
+            "fontSize": 13,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "AI好奇心成长伙伴",
+              "fontSize": 13,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/uxc3ylc7",
+      "id": "4",
+      "bbox": [
+        242,
+        14,
+        100,
+        62
+      ],
+      "geometry": "rect",
+      "text": "03",
+      "textPreview": "03",
+      "resolvedFontSize": 52,
+      "resolvedTextStyle": {
+        "fontSize": 52,
+        "typeface": "+mn-lt",
+        "color": "#F47B20",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "03"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "03",
+          "resolvedTextStyle": {
+            "fontSize": 52,
+            "color": "#F47B20",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "03",
+              "fontSize": 52,
+              "color": "#F47B20",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ji5snelo",
+      "id": "5",
+      "bbox": [
+        344,
+        31,
+        668,
+        48
+      ],
+      "geometry": "rect",
+      "text": "AI绘本生成：故事投影到电视上",
+      "textPreview": "AI绘本生成：故事投影到电视上",
+      "resolvedFontSize": 33,
+      "resolvedTextStyle": {
+        "fontSize": 33,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AI绘本生成：故事投影到电视上"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AI绘本生成：故事投影到电视上",
+          "resolvedTextStyle": {
+            "fontSize": 33,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "AI绘本生成：故事投影到电视上",
+              "fontSize": 33,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/c3ylc7u5",
+      "id": "6",
+      "bbox": [
+        346,
+        80,
+        710,
+        28
+      ],
+      "geometry": "rect",
+      "text": "把对话、选择和手绘作品，实时生成孩子自己的绘本",
+      "textPreview": "把对话、选择和手绘作品，实时生成孩子自己的绘本",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "+mn-lt",
+        "color": "#7B5B3B",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "把对话、选择和手绘作品，实时生成孩子自己的绘本"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "把对话、选择和手绘作品，实时生成孩子自己的绘本",
+          "resolvedTextStyle": {
+            "fontSize": 18,
+            "color": "#7B5B3B"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "把对话、选择和手绘作品，实时生成孩子自己的绘本",
+              "fontSize": 18,
+              "color": "#7B5B3B"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1kre1w7m",
+      "id": "7",
+      "bbox": [
+        1036,
+        34,
+        198,
+        44
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFF7E8",
+      "lineColor": "#F2C170",
+      "lineWidth": 1
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/q5o7qpg3",
+      "id": "8",
+      "bbox": [
+        1060,
+        45,
+        154,
+        24
+      ],
+      "geometry": "rect",
+      "text": "绘本生成时刻",
+      "textPreview": "绘本生成时刻",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "fontSize": 17,
+        "typeface": "+mn-lt",
+        "color": "#F47B20",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "绘本生成时刻"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "绘本生成时刻",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "color": "#F47B20",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "绘本生成时刻",
+              "fontSize": 17,
+              "color": "#F47B20",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/jqh0fepk",
+      "id": "9",
+      "bbox": [
+        42,
+        128,
+        698,
+        458
+      ],
+      "geometry": "roundRect",
+      "fillColor": "rgba(255, 253, 247, 0.94)",
+      "lineColor": "#F0CA80",
+      "lineWidth": 1
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fmlkjm1c",
+      "id": "10",
+      "bbox": [
+        70,
+        144,
+        380,
+        24
+      ],
+      "geometry": "rect",
+      "text": "微信群聊 · 小星的水循环探索",
+      "textPreview": "微信群聊 · 小星的水循环探索",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#5F4124",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "微信群聊 · 小星的水循环探索"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "微信群聊 · 小星的水循环探索",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#5F4124",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "微信群聊 · 小星的水循环探索",
+              "fontSize": 16,
+              "color": "#5F4124",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 11,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/lwval87e",
+      "id": "11",
+      "bbox": [
+        678,
+        182,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "好奇星伴头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "435ab988-69b8-440b-81d2-c44c1106372d",
+        "contentType": "image/png",
+        "byteLength": 1405831
+      }
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/xs72x4na",
+      "id": "12",
+      "bbox": [
+        168,
+        180,
+        500,
+        46
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#EAF8DF",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/87ed8bat",
+      "id": "13",
+      "bbox": [
+        182,
+        188,
+        472,
+        36
+      ],
+      "geometry": "rect",
+      "text": "好奇星伴：闯关选择和刚才的故事，已经生成专属绘本啦。",
+      "textPreview": "好奇星伴：闯关选择和刚才的故事，已经生成专属绘本啦。",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#238148",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "好奇星伴：闯关选择和刚才的故事，已经生成专属绘本啦。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "好奇星伴：闯关选择和刚才的故事，已经生成专属绘本啦。",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#238148",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "好奇星伴：闯关选择和刚才的故事，已经生成专属绘本啦。",
+              "fontSize": 14.2,
+              "color": "#238148",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 14,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/w3m94fu1",
+      "id": "14",
+      "bbox": [
+        66,
+        236,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "小星头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "83fa548a-f0b3-45f5-abff-4825e612ce8b",
+        "contentType": "image/png",
+        "byteLength": 1599968
+      }
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qtcj6tov",
+      "id": "15",
+      "bbox": [
+        118,
+        234,
+        508,
+        46
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFF6E8",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1gvy90je",
+      "id": "16",
+      "bbox": [
+        132,
+        242,
+        480,
+        36
+      ],
+      "geometry": "rect",
+      "text": "小星：我真的在绘本里！我是小星向导！",
+      "textPreview": "小星：我真的在绘本里！我是小星向导！",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#C35B00",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "小星：我真的在绘本里！我是小星向导！"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "小星：我真的在绘本里！我是小星向导！",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#C35B00",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "小星：我真的在绘本里！我是小星向导！",
+              "fontSize": 14.2,
+              "color": "#C35B00",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 17,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/3itgfmlk",
+      "id": "17",
+      "bbox": [
+        66,
+        290,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "妈妈头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "254ded04-219e-4942-b27d-d4379af8194e",
+        "contentType": "image/png",
+        "byteLength": 1806563
+      }
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fa9w3m94",
+      "id": "18",
+      "bbox": [
+        118,
+        288,
+        508,
+        46
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFF1DE",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 19,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qpg3ex0n",
+      "id": "19",
+      "bbox": [
+        132,
+        296,
+        480,
+        36
+      ],
+      "geometry": "rect",
+      "text": "妈妈：最后一页还能放你画的窗户和滴滴吗？",
+      "textPreview": "妈妈：最后一页还能放你画的窗户和滴滴吗？",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#A86116",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "妈妈：最后一页还能放你画的窗户和滴滴吗？"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "妈妈：最后一页还能放你画的窗户和滴滴吗？",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#A86116",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "妈妈：最后一页还能放你画的窗户和滴滴吗？",
+              "fontSize": 14.2,
+              "color": "#A86116",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 20,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/lc7u54zi",
+      "id": "20",
+      "bbox": [
+        678,
+        344,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "好奇星伴头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "d2e0a560-569c-45e0-acb7-fbe7c9504a40",
+        "contentType": "image/png",
+        "byteLength": 1405831
+      }
+    },
+    {
+      "order": 21,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/neloj2t8",
+      "id": "21",
+      "bbox": [
+        168,
+        342,
+        500,
+        64
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#EAF8DF",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 22,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/czed8v6p",
+      "id": "22",
+      "bbox": [
+        182,
+        350,
+        472,
+        54
+      ],
+      "geometry": "rect",
+      "text": "好奇星伴：可以，拍学机已经识别手绘作品，正在融合进结尾页。",
+      "textPreview": "好奇星伴：可以，拍学机已经识别手绘作品，正在融合进结尾页。",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#238148",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "好奇星伴：可以，拍学机已经识别手绘作品，正在融合进结尾页。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "好奇星伴：可以，拍学机已经识别手绘作品，正在融合进结尾页。",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#238148",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "好奇星伴：可以，拍学机已经识别手绘作品，正在融合进结尾页。",
+              "fontSize": 14.2,
+              "color": "#238148",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 23,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/eloj2t83",
+      "id": "23",
+      "bbox": [
+        66,
+        416,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "小星头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "dcff6367-9e1d-427e-84ce-dd5cd50d7a88",
+        "contentType": "image/png",
+        "byteLength": 1599968
+      }
+    },
+    {
+      "order": 24,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/u54zidon",
+      "id": "24",
+      "bbox": [
+        118,
+        414,
+        508,
+        46
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFF6E8",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 25,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nqxs72x4",
+      "id": "25",
+      "bbox": [
+        132,
+        422,
+        480,
+        36
+      ],
+      "geometry": "rect",
+      "text": "小星：滴滴会对我说谢谢吗？",
+      "textPreview": "小星：滴滴会对我说谢谢吗？",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#C35B00",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "小星：滴滴会对我说谢谢吗？"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "小星：滴滴会对我说谢谢吗？",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#C35B00",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "小星：滴滴会对我说谢谢吗？",
+              "fontSize": 14.2,
+              "color": "#C35B00",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 26,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/7u54zido",
+      "id": "26",
+      "bbox": [
+        678,
+        470,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "好奇星伴头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "fc174a51-98f6-46fd-9ee8-4d3b65c06433",
+        "contentType": "image/png",
+        "byteLength": 1405831
+      }
+    },
+    {
+      "order": 27,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5sneloj2",
+      "id": "27",
+      "bbox": [
+        168,
+        468,
+        500,
+        64
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#EAF8DF",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 28,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/y90je9cv",
+      "id": "28",
+      "bbox": [
+        182,
+        476,
+        472,
+        54
+      ],
+      "geometry": "rect",
+      "text": "好奇星伴：会哦。旁白写好了：谢谢你带我完成水循环大冒险。",
+      "textPreview": "好奇星伴：会哦。旁白写好了：谢谢你带我完成水循环大冒险。",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#238148",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "好奇星伴：会哦。旁白写好了：谢谢你带我完成水循环大冒险。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "好奇星伴：会哦。旁白写好了：谢谢你带我完成水循环大冒险。",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#238148",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "好奇星伴：会哦。旁白写好了：谢谢你带我完成水循环大冒险。",
+              "fontSize": 14.2,
+              "color": "#238148",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 29,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/w7mp0bi9",
+      "id": "29",
+      "bbox": [
+        678,
+        542,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "好奇星伴头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "92029a8d-e42e-4f82-b629-771be077a196",
+        "contentType": "image/png",
+        "byteLength": 1405831
+      }
+    },
+    {
+      "order": 30,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d0z61032",
+      "id": "30",
+      "bbox": [
+        168,
+        540,
+        500,
+        64
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#EAF8DF",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 31,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/kf6dcbul",
+      "id": "31",
+      "bbox": [
+        182,
+        548,
+        472,
+        54
+      ],
+      "geometry": "rect",
+      "text": "好奇星伴：绘本PDF、亲子朗读版、小游戏版和家长端回顾版已同步。",
+      "textPreview": "好奇星伴：绘本PDF、亲子朗读版、小游戏版和家长端回顾版已同步。",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#238148",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "好奇星伴：绘本PDF、亲子朗读版、小游戏版和家长端回顾版已同步。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "好奇星伴：绘本PDF、亲子朗读版、小游戏版和家长端回顾版已同步。",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#238148",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "好奇星伴：绘本PDF、亲子朗读版、小游戏版和家长端回顾版已同步。",
+              "fontSize": 14.2,
+              "color": "#238148",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 32,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vu9knih4",
+      "id": "32",
+      "bbox": [
+        752,
+        118,
+        496,
+        380
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F2C170",
+      "lineWidth": 1
+    },
+    {
+      "order": 33,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/hwfyxobm",
+      "id": "33",
+      "bbox": [
+        762,
+        128,
+        476,
+        360
+      ],
+      "geometry": "roundRect",
+      "alt": "03场景图",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "roundRect",
+        "adjustmentList": [
+          {
+            "name": "adj",
+            "formula": "val 6667"
+          }
+        ]
+      },
+      "asset": {
+        "assetId": "6fd2c7e8-85ae-4251-837e-eef7160ff67e",
+        "contentType": "image/png",
+        "byteLength": 2404382
+      }
+    },
+    {
+      "order": 34,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d8bat47y",
+      "id": "34",
+      "bbox": [
+        762,
+        512,
+        476,
+        74
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFF7E8",
+      "lineColor": "#F0CA80",
+      "lineWidth": 1
+    },
+    {
+      "order": 35,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/knih4byh",
+      "id": "35",
+      "bbox": [
+        790,
+        526,
+        92,
+        24
+      ],
+      "geometry": "rect",
+      "text": "场景亮点",
+      "textPreview": "场景亮点",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#F47B20",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "场景亮点"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "场景亮点",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#F47B20",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "场景亮点",
+              "fontSize": 16,
+              "color": "#F47B20",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 36,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/v6psfil0",
+      "id": "36",
+      "bbox": [
+        884,
+        525,
+        326,
+        42
+      ],
+      "geometry": "rect",
+      "text": "对话、选择、手绘作品自动沉淀为可分享的亲子绘本。",
+      "textPreview": "对话、选择、手绘作品自动沉淀为可分享的亲子绘本。",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "对话、选择、手绘作品自动沉淀为可分享的"
+          },
+          {
+            "index": 2,
+            "text": "亲子绘本。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "对话、选择、手绘作品自动沉淀为可分享的亲子绘本。",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "对话、选择、手绘作品自动沉淀为可分享的亲子绘本。",
+              "fontSize": 16,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 37,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/2lszqtcj",
+      "id": "37",
+      "bbox": [
+        42,
+        610,
+        1196,
+        78
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFF7E8",
+      "lineColor": "#F0C36F",
+      "lineWidth": 1
+    },
+    {
+      "order": 38,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/dcbulwva",
+      "id": "38",
+      "bbox": [
+        62,
+        623,
+        184,
+        52
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F1D49B",
+      "lineWidth": 1
+    },
+    {
+      "order": 39,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/kre1w7mp",
+      "id": "39",
+      "bbox": [
+        72,
+        631,
+        36,
+        36
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#36B37E",
+      "lineWidth": 0
+    },
+    {
+      "order": 40,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/s36hcrmh",
+      "id": "40",
+      "bbox": [
+        72,
+        638,
+        36,
+        20
+      ],
+      "geometry": "rect",
+      "text": "1",
+      "textPreview": "1",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "1"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "1",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "1",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 41,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hoza1gvy",
+      "id": "41",
+      "bbox": [
+        114,
+        631,
+        124,
+        38
+      ],
+      "geometry": "rect",
+      "text": "AIGC实时绘本生成",
+      "textPreview": "AIGC实时绘本生成",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AIGC实时绘本生"
+          },
+          {
+            "index": 2,
+            "text": "成"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AIGC实时绘本生成",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "AIGC实时绘本生成",
+              "fontSize": 14.2,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 42,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/a1gvy90j",
+      "id": "42",
+      "bbox": [
+        258,
+        623,
+        184,
+        52
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F1D49B",
+      "lineWidth": 1
+    },
+    {
+      "order": 43,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zidonyd0",
+      "id": "43",
+      "bbox": [
+        268,
+        631,
+        36,
+        36
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#F26A36",
+      "lineWidth": 0
+    },
+    {
+      "order": 44,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/svu9knih",
+      "id": "44",
+      "bbox": [
+        268,
+        638,
+        36,
+        20
+      ],
+      "geometry": "rect",
+      "text": "2",
+      "textPreview": "2",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "2"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "2",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "2",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 45,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hgn29gr2",
+      "id": "45",
+      "bbox": [
+        310,
+        631,
+        124,
+        38
+      ],
+      "geometry": "rect",
+      "text": "绘本代入",
+      "textPreview": "绘本代入",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "绘本代入"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "绘本代入",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "绘本代入",
+              "fontSize": 16,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 46,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ap4r65wj",
+      "id": "46",
+      "bbox": [
+        454,
+        623,
+        184,
+        52
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F1D49B",
+      "lineWidth": 1
+    },
+    {
+      "order": 47,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/za1gvy90",
+      "id": "47",
+      "bbox": [
+        464,
+        631,
+        36,
+        36
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#397CF6",
+      "lineWidth": 0
+    },
+    {
+      "order": 48,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/sji5snel",
+      "id": "48",
+      "bbox": [
+        464,
+        638,
+        36,
+        20
+      ],
+      "geometry": "rect",
+      "text": "3",
+      "textPreview": "3",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "3"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "3",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "3",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 49,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/h4byhgn2",
+      "id": "49",
+      "bbox": [
+        506,
+        631,
+        124,
+        38
+      ],
+      "geometry": "rect",
+      "text": "手绘/语音融合",
+      "textPreview": "手绘/语音融合",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "手绘/语音融合"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "手绘/语音融合",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "手绘/语音融合",
+              "fontSize": 16,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 50,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/byhgn29g",
+      "id": "50",
+      "bbox": [
+        650,
+        623,
+        184,
+        52
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F1D49B",
+      "lineWidth": 1
+    },
+    {
+      "order": 51,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/idonyd0z",
+      "id": "51",
+      "bbox": [
+        660,
+        631,
+        36,
+        36
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#7C5BEF",
+      "lineWidth": 0
+    },
+    {
+      "order": 52,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/t47y1kre",
+      "id": "52",
+      "bbox": [
+        660,
+        638,
+        36,
+        20
+      ],
+      "geometry": "rect",
+      "text": "4",
+      "textPreview": "4",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "4"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "4",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "4",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 53,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0je9cvix",
+      "id": "53",
+      "bbox": [
+        702,
+        631,
+        124,
+        38
+      ],
+      "geometry": "rect",
+      "text": "电视端投屏",
+      "textPreview": "电视端投屏",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "电视端投屏"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "电视端投屏",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "电视端投屏",
+              "fontSize": 16,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 54,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/b6xkf6dc",
+      "id": "54",
+      "bbox": [
+        846,
+        623,
+        184,
+        52
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F1D49B",
+      "lineWidth": 1
+    },
+    {
+      "order": 55,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/il0rqd4v",
+      "id": "55",
+      "bbox": [
+        856,
+        631,
+        36,
+        36
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#28B8A7",
+      "lineWidth": 0
+    },
+    {
+      "order": 56,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tcj6tova",
+      "id": "56",
+      "bbox": [
+        856,
+        638,
+        36,
+        20
+      ],
+      "geometry": "rect",
+      "text": "5",
+      "textPreview": "5",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "5"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "5",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "5",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 57,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0rqd4vmt",
+      "id": "57",
+      "bbox": [
+        898,
+        631,
+        124,
+        38
+      ],
+      "geometry": "rect",
+      "text": "家长端同步",
+      "textPreview": "家长端同步",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "家长端同步"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "家长端同步",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "家长端同步",
+              "fontSize": 16,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 58,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/bi9s36hc",
+      "id": "58",
+      "bbox": [
+        1042,
+        623,
+        184,
+        52
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F1D49B",
+      "lineWidth": 1
+    },
+    {
+      "order": 59,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ixczed8v",
+      "id": "59",
+      "bbox": [
+        1052,
+        631,
+        36,
+        36
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#F2A51C",
+      "lineWidth": 0
+    },
+    {
+      "order": 60,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/al87ed8b",
+      "id": "60",
+      "bbox": [
+        1052,
+        638,
+        36,
+        20
+      ],
+      "geometry": "rect",
+      "text": "6",
+      "textPreview": "6",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "6"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "6",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "6",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 61,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/z61032ls",
+      "id": "61",
+      "bbox": [
+        1094,
+        631,
+        124,
+        38
+      ],
+      "geometry": "rect",
+      "text": "多版本内容",
+      "textPreview": "多版本内容",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "多版本内容"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "多版本内容",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "多版本内容",
+              "fontSize": 16,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 62,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/orytsvu9",
+      "id": "62",
+      "bbox": [
+        1195,
+        686,
+        40,
+        24
+      ],
+      "geometry": "rect",
+      "text": "03",
+      "textPreview": "03",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#8C6A3B",
+        "bold": true,
+        "alignment": "right",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "03"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "03",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#8C6A3B",
+            "bold": true,
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "03",
+              "fontSize": 16,
+              "color": "#8C6A3B",
+              "bold": true,
+              "alignment": "right"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

@@ -860,6 +860,9 @@ Wireless LAN adapter WLAN:
                 await player.enqueue_pcm(b"a", segment_start=True)
                 await player.enqueue_pcm(b"b")
                 await player.enqueue_pcm(b"c")
+                await player.enqueue_pcm(b"d")
+                await player.enqueue_pcm(b"e")
+                await player.enqueue_pcm(b"f")
                 await player.drain()
                 before_end = list(session.events)
                 await player.mark_segment_end()
@@ -875,6 +878,9 @@ Wireless LAN adapter WLAN:
                 ("bytes", b"frame:a"),
                 ("bytes", b"frame:b"),
                 ("bytes", b"frame:c"),
+                ("bytes", b"frame:d"),
+                ("bytes", b"frame:e"),
+                ("bytes", b"frame:f"),
             ],
         )
         self.assertEqual(after_end[-1], ("json", {"type": "tts", "state": "sentence_end"}))
@@ -1461,6 +1467,39 @@ Wireless LAN adapter WLAN:
         )
         game_file.parent.mkdir(parents=True, exist_ok=True)
         game_file.write_text("<title>月亮跳跳小游戏</title><h1>fallback</h1>", encoding="utf-8")
+        growth_report_file = (
+            Path(os.environ["CONTENT_BUILDER_HISTORY_DIR"])
+            / "2026-06-08"
+            / "conversations"
+            / "session-a"
+            / "artifacts"
+            / "reports"
+            / "growth-report"
+            / "index.html"
+        )
+        growth_report_file.parent.mkdir(parents=True, exist_ok=True)
+        growth_report_file.write_text("<title>家长成长报告</title><h1>growth</h1>", encoding="utf-8")
+        (growth_report_file.parent / "report-data.json").write_text(
+            json.dumps({"title": "家长成长报告"}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        child_achievement_file = (
+            Path(os.environ["CONTENT_BUILDER_HISTORY_DIR"])
+            / "2026-06-08"
+            / "conversations"
+            / "session-a"
+            / "artifacts"
+            / "reports"
+            / "child-growth-achievement"
+            / "index.html"
+        )
+        child_achievement_file.parent.mkdir(parents=True, exist_ok=True)
+        child_achievement_file.write_text("<title>小星的成长成就星图</title><h1>achievement</h1>", encoding="utf-8")
+        (child_achievement_file.parent / "child-achievement-data.json").write_text(
+            json.dumps({"title": "小星的成长成就星图"}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        (child_achievement_file.parent / "cover.png").write_bytes(b"\x89PNG\r\n\x1a\nachievement-cover")
         old_file = (
             Path(os.environ["CONTENT_BUILDER_HISTORY_DIR"])
             / "2026-06-01"
@@ -1502,6 +1541,20 @@ Wireless LAN adapter WLAN:
         game = next(entry for entry in entries if entry["path"].endswith("artifacts/games/moon-game/index.html"))
         self.assertEqual(game["category"], "game")
         self.assertEqual(game["title"], "月亮跳跳小游戏")
+
+        growth_report = next(entry for entry in entries if entry["path"].endswith("artifacts/reports/growth-report/index.html"))
+        self.assertEqual(growth_report["category"], "growth_report")
+        self.assertEqual(growth_report["title"], "家长成长报告")
+
+        child_achievement = next(
+            entry for entry in entries if entry["path"].endswith("artifacts/reports/child-growth-achievement/index.html")
+        )
+        self.assertEqual(child_achievement["category"], "child_growth_achievement")
+        self.assertEqual(child_achievement["title"], "小星的成长成就星图")
+        self.assertIn("cover_url", child_achievement)
+        child_cover_preview = self.client.get(child_achievement["cover_url"])
+        self.assertEqual(child_cover_preview.status_code, 200)
+        self.assertEqual(child_cover_preview.content, b"\x89PNG\r\n\x1a\nachievement-cover")
 
         pdf = next(entry for entry in entries if entry["path"].endswith("artifacts/storybooks/moon/月亮邮差.pdf"))
         self.assertEqual(pdf["title"], "月亮邮差")

@@ -38,6 +38,7 @@ WORKSPACE_DIR = PROJECT_DIR.parents[1]
 DEFAULT_BACKEND_DIR = WORKSPACE_DIR
 DEFAULT_OUTPUT_DIR = WORKSPACE_DIR / "output"
 DEFAULT_MAIN_CONFIG = PROJECT_DIR / "main_agent.yaml"
+MAIN_CONFIG_ENV = "CONTENT_BUILDER_CONFIG"
 
 DEFAULT_QWEN_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 DEFAULT_QWEN_TEXT_MODEL = "qwen3.6-plus"
@@ -341,13 +342,15 @@ def load_main_config(config_path: str | Path | None = None) -> MainAgentConfig:
     """加载主智能体配置。
 
     参数：
-        config_path: 可选的 main_agent.yaml 路径；为空时使用项目根目录下的默认配置。
+        config_path: 可选的 main_agent.yaml 路径；为空时优先读取 CONTENT_BUILDER_CONFIG，
+            未设置时使用项目根目录下的默认配置。
 
     返回：
         MainAgentConfig，供 agent_factory 构建 Deep Agent 使用。
     """
 
-    resolved_config_path = resolve_project_path(config_path or DEFAULT_MAIN_CONFIG)
+    configured_path = config_path or os.environ.get(MAIN_CONFIG_ENV) or DEFAULT_MAIN_CONFIG
+    resolved_config_path = resolve_project_path(configured_path)
     raw = _read_yaml(resolved_config_path)
     secrets = _load_secrets(raw, resolved_config_path)
     voice = _load_voice_config(raw)

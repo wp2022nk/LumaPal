@@ -20,6 +20,7 @@ def run_once(
     task: str,
     *,
     thread_id: str = DEFAULT_THREAD_ID,
+    config_path: str | None = None,
     images: list[str] | None = None,
 ) -> None:
     """运行一次任务并把流式过程打印到控制台。
@@ -27,18 +28,20 @@ def run_once(
     参数：
         task: 用户任务文本。
         thread_id: 会话 ID；同一进程内相同 ID 会共享 LangGraph checkpointer 状态。
+        config_path: 可选配置文件路径，例如 main_agent.demo.yaml。
         images: 可选图片引用列表。每个元素可以是 http(s) URL、data URL 或本地图片路径；
             它们会和 task 一起作为多模态 user message 交给 Deep Agents。
     """
 
     configure_console_encoding()
-    runtime_config = load_main_config()
-    agent = create_content_writer()
+    runtime_config = load_main_config(config_path)
+    agent = create_content_writer(config_path)
+    resolved_thread_id = thread_id or runtime_config.thread_id or DEFAULT_THREAD_ID
     printer = ConsoleStreamPrinter()
     for event in stream_agent_events(
         agent,
         task,
-        thread_id=thread_id,
+        thread_id=resolved_thread_id,
         max_turns=runtime_config.conversation.max_turns,
         images=images,
     ):
@@ -64,6 +67,11 @@ def main() -> None:
             description="运行内容写作 Deep Agent。可用 --image 多次传入图片。",
         )
         parser.add_argument(
+            "--config",
+            default=None,
+            help="可选的 main_agent.yaml 路径，例如 main_agent.demo.yaml。",
+        )
+        parser.add_argument(
             "--image",
             action="append",
             default=[],
@@ -71,7 +79,11 @@ def main() -> None:
         )
         parser.add_argument("task", nargs="*", help="要交给 Agent 的任务文本。")
         args = parser.parse_args()
-        run_once(" ".join(args.task), images=args.image)
+        task = " ".join(args.task).strip()
+        if not task:
+            interactive_chat(config_path=args.config)
+            return
+        run_once(task, config_path=args.config, images=args.image)
         return
 
     interactive_chat()

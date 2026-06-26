@@ -1231,6 +1231,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .history-book.storybook::before, .history-book.storybook .history-book-spine { background: var(--gold); }
 .history-book.game::before, .history-book.game .history-book-spine { background: var(--leaf); }
 .history-book.growth_report::before, .history-book.growth_report .history-book-spine { background: var(--coral); }
+.history-book.child_growth_achievement::before, .history-book.child_growth_achievement .history-book-spine { background: linear-gradient(180deg, #ffbf3f, #8b6dff); }
 .history-book.image::before, .history-book.image .history-book-spine { background: #8b6d9f; }
 .history-book.history-book--image-only {
   min-height: 168px;

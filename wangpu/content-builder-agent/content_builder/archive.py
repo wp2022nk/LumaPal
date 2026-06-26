@@ -278,6 +278,8 @@ def _artifact_category(relative: str, path: Path) -> str:
         return "storybook"
     if normalized.startswith("artifacts/games/"):
         return "game"
+    if normalized.startswith("artifacts/reports/child-growth-achievement/"):
+        return "child_growth_achievement"
     if normalized.startswith("artifacts/reports/"):
         return "growth_report"
     if suffix in IMAGE_SUFFIXES:
@@ -324,8 +326,13 @@ def _storybook_title(path: Path) -> str:
 
 
 def _report_title(path: Path) -> str:
+    child_data_path = path.parent / "child-achievement-data.json"
     data_path = path.parent / "report-data.json"
-    return _json_title(data_path, "title", "headline", "period") or _html_document_title(path)
+    return (
+        _json_title(child_data_path, "title", "headline", "period")
+        or _json_title(data_path, "title", "headline", "period")
+        or _html_document_title(path)
+    )
 
 
 def _json_title(path: Path, *keys: str) -> str:

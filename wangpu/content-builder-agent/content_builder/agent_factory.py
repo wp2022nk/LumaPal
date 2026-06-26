@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import os
 import warnings
 from dataclasses import replace
 from functools import lru_cache
@@ -23,6 +24,7 @@ from langgraph.checkpoint.memory import MemorySaver
 
 from .config import (
     DEFAULT_MAIN_CONFIG,
+    MAIN_CONFIG_ENV,
     PROJECT_DIR,
     LocalShellConfig,
     MainAgentConfig,
@@ -258,7 +260,8 @@ def create_content_writer(config_path: str | Path | None = None, *, runtime_mode
     if runtime_mode not in {"cli", "server", "web"}:
         raise ValueError("runtime_mode must be 'cli', 'server', or 'web'")
 
-    resolved_config = resolve_project_path(config_path or DEFAULT_MAIN_CONFIG).resolve()
+    configured_path = config_path or os.environ.get(MAIN_CONFIG_ENV) or DEFAULT_MAIN_CONFIG
+    resolved_config = resolve_project_path(configured_path).resolve()
     return _create_content_writer_cached(str(resolved_config), runtime_mode)
 
 

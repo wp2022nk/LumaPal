@@ -387,6 +387,20 @@ describe("App pairing gate", () => {
               preview_url: "/api/content-builder/history-preview/token/history/2026-06-13/conversations/thread/artifacts/storybooks/little-companions/%E5%B0%8F%E4%BC%99%E4%BC%B4.pdf",
             },
             {
+              name: "index.html",
+              title: "小星的成长成就星图",
+              path: "roadshow-final-products/child-growth-achievement/index.html",
+              date: "2026-06-05",
+              source: "roadshow",
+              category: "child_growth_achievement",
+              size: 30,
+              modified_at: 3,
+              mime_type: "text/html",
+              kind: "html",
+              preview_url: "/api/content-builder/history-preview/token/roadshow-final-products/child-growth-achievement/index.html",
+              cover_url: "/api/content-builder/history-preview/token/roadshow-final-products/child-growth-achievement/cover.png",
+            },
+            {
               name: "36a38f54b2514b919.png",
               title: "36a38f54b2514b919",
               path: "history/2026-06-15/uploads/images/36a38f54b2514b919.png",
@@ -429,6 +443,12 @@ describe("App pairing gate", () => {
       "src",
       "http://127.0.0.1:2024/api/content-builder/history-preview/token/history/2026-06-13/conversations/thread/artifacts/storybooks/little-companions/images/page-00-cover.png",
     );
+    expect(screen.getByAltText("小星的成长成就星图 封面")).toHaveAttribute(
+      "src",
+      "http://127.0.0.1:2024/api/content-builder/history-preview/token/roadshow-final-products/child-growth-achievement/cover.png",
+    );
+    const achievementFilter = screen.getAllByRole("button", { name: /成长成就/ })[0];
+    expect(achievementFilter).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "历史图片" })).toHaveAttribute(
       "src",
       "http://127.0.0.1:2024/api/content-builder/history-preview/token/history/2026-06-15/uploads/images/36a38f54b2514b919.png",
@@ -448,5 +468,12 @@ describe("App pairing gate", () => {
 
     fireEvent.click(screen.getByText("小水滴滴滴的云朵大冒险"));
     expect(screen.getByRole("dialog", { name: "预览 小水滴滴滴的云朵大冒险" })).toBeInTheDocument();
+    fireEvent.click(screen.getByTitle("关闭"));
+
+    fireEvent.click(achievementFilter);
+    expect(screen.getByText("小星的成长成就星图")).toBeInTheDocument();
+    expect(screen.queryByText("小水滴滴滴的云朵大冒险")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("小星的成长成就星图"));
+    expect(screen.getByRole("dialog", { name: "预览 小星的成长成就星图" })).toBeInTheDocument();
   });
 });

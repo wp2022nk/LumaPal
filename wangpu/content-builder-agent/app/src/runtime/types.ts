@@ -27,7 +27,7 @@ export interface ArtifactEntry {
   cover_path?: string;
 }
 
-export type HistoryArtifactCategory = "storybook" | "audiobook" | "game" | "growth_report" | "image" | "document";
+export type HistoryArtifactCategory = "storybook" | "audiobook" | "game" | "growth_report" | "child_growth_achievement" | "image" | "document";
 
 export interface HistoryArtifactEntry extends ArtifactEntry {
   title: string;

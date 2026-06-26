@@ -1227,6 +1227,7 @@ const HISTORY_CATEGORIES: Array<{ value: HistoryArtifactCategory | "all"; label:
   { value: "storybook", label: "绘本", icon: <BookOpen /> },
   { value: "game", label: "游戏", icon: <Gamepad2 /> },
   { value: "growth_report", label: "成长报告", icon: <BarChart3 /> },
+  { value: "child_growth_achievement", label: "成长成就", icon: <Sparkles /> },
   { value: "image", label: "图片", icon: <ImagePlus /> },
 ];
 
@@ -1340,7 +1341,12 @@ function isVisibleHistoryArtifact(artifact: HistoryArtifactEntry): boolean {
   if (artifact.category === "storybook") {
     return artifact.kind === "pdf";
   }
-  if (artifact.category === "audiobook" || artifact.category === "game" || artifact.category === "growth_report") {
+  if (
+    artifact.category === "audiobook"
+    || artifact.category === "game"
+    || artifact.category === "growth_report"
+    || artifact.category === "child_growth_achievement"
+  ) {
     return artifact.kind === "html";
   }
   return false;
@@ -1351,6 +1357,7 @@ function historyIcon(category: HistoryArtifactCategory): React.ReactNode {
   if (category === "storybook") return <BookOpen />;
   if (category === "game") return <Gamepad2 />;
   if (category === "growth_report") return <BarChart3 />;
+  if (category === "child_growth_achievement") return <Sparkles />;
   if (category === "image") return <ImagePlus />;
   return <FileText />;
 }
@@ -1398,6 +1405,7 @@ function historyBookGlyph(category: HistoryArtifactCategory): string {
     storybook: "绘",
     game: "玩",
     growth_report: "长",
+    child_growth_achievement: "星",
     image: "图",
     document: "文",
   }[category];
@@ -1409,6 +1417,7 @@ function historyCategoryLabel(category: HistoryArtifactCategory): string {
     storybook: "绘本",
     game: "游戏",
     growth_report: "成长报告",
+    child_growth_achievement: "成长成就",
     image: "图片",
     document: "文档",
   }[category];

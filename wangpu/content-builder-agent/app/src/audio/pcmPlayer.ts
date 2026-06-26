@@ -11,10 +11,12 @@ export type VoicePlaybackState = "connecting" | "ready" | "playing" | "idle" | "
 interface StreamingPcmPlayerOptions {
   onEmotion?: (emotion: VoiceEmotion) => void;
   onState?: (state: VoicePlaybackState) => void;
+  prebufferSeconds?: number;
 }
 
 export class StreamingPcmPlayer {
   private static sharedContext?: AudioContext;
+  private static readonly defaultPrebufferSeconds = 0.6;
 
   private socket?: WebSocket;
   private context?: AudioContext;
@@ -22,6 +24,9 @@ export class StreamingPcmPlayer {
   private sampleRate = 24_000;
   private nextStart = 0;
   private pendingMessages: Record<string, unknown>[] = [];
+  private pendingAudio: AudioBuffer[] = [];
+  private pendingAudioDuration = 0;
+  private playbackStarted = false;
 
   constructor(
     private readonly socketUrl: string,
@@ -86,7 +91,7 @@ export class StreamingPcmPlayer {
     this.socket?.close();
     this.socket = undefined;
     this.pendingMessages = [];
-    this.nextStart = 0;
+    this.resetPlaybackBuffer();
     this.options.onState?.("idle");
   }
 
@@ -121,13 +126,61 @@ export class StreamingPcmPlayer {
     pcm.forEach((sample, index) => {
       channel[index] = sample / 0x8000;
     });
-    const source = this.context.createBufferSource();
-    source.buffer = buffer;
-    source.connect(this.context.destination);
+    this.queueAudio(buffer);
+  }
+
+  private queueAudio(buffer: AudioBuffer): void {
+    if (!this.context) {
+      return;
+    }
+    if (this.playbackStarted && this.nextStart <= this.context.currentTime) {
+      this.playbackStarted = false;
+      this.pendingAudio = [];
+      this.pendingAudioDuration = 0;
+    }
+    this.pendingAudio.push(buffer);
+    this.pendingAudioDuration += buffer.duration;
+    if (!this.playbackStarted && this.pendingAudioDuration < this.prebufferSeconds()) {
+      return;
+    }
+    this.schedulePendingAudio();
+  }
+
+  private schedulePendingAudio(): void {
+    if (!this.context || this.pendingAudio.length === 0) {
+      return;
+    }
     this.nextStart = Math.max(this.context.currentTime, this.nextStart);
-    source.start(this.nextStart);
-    this.nextStart += buffer.duration;
+    for (const buffer of this.pendingAudio) {
+      const source = this.context.createBufferSource();
+      source.buffer = buffer;
+      source.connect(this.context.destination);
+      source.start(this.nextStart);
+      this.nextStart += buffer.duration;
+    }
+    this.pendingAudio = [];
+    this.pendingAudioDuration = 0;
+    this.playbackStarted = true;
     this.options.onState?.("playing");
+  }
+
+  private flushPendingAudio(): void {
+    this.schedulePendingAudio();
+  }
+
+  private resetPlaybackBuffer(): void {
+    this.nextStart = 0;
+    this.clearPendingAudio();
+  }
+
+  private clearPendingAudio(): void {
+    this.pendingAudio = [];
+    this.pendingAudioDuration = 0;
+    this.playbackStarted = false;
+  }
+
+  private prebufferSeconds(): number {
+    return this.options.prebufferSeconds ?? StreamingPcmPlayer.defaultPrebufferSeconds;
   }
 
   private onJsonMessage(raw: string): void {
@@ -139,6 +192,8 @@ export class StreamingPcmPlayer {
     if (payload.type === "ready" && payload.sample_rate) {
       this.sampleRate = payload.sample_rate;
       this.options.onState?.("ready");
+    } else if (payload.type === "segment_start") {
+      this.clearPendingAudio();
     } else if (payload.type === "emotion") {
       this.options.onEmotion?.({
         text: String(payload.text || ""),
@@ -147,7 +202,11 @@ export class StreamingPcmPlayer {
         emoji: String(payload.emoji || "😶"),
         confidence: Number(payload.confidence || 0),
       });
-    } else if (payload.type === "segment_end" || payload.type === "complete" || payload.type === "cancelled") {
+    } else if (payload.type === "segment_end") {
+      this.flushPendingAudio();
+      this.options.onState?.("idle");
+    } else if (payload.type === "complete" || payload.type === "cancelled") {
+      this.flushPendingAudio();
       this.options.onState?.("idle");
     } else if (payload.type === "error") {
       this.options.onState?.("error");

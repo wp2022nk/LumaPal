@@ -1,0 +1,2479 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/1eigy6",
+    "id": "1eigy6",
+    "slide": 4,
+    "layoutId": "42218a80-6d2b-4afc-93df-5154b1a986fe",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "4029c6b5-e376-4618-b841-dc2e5f551f54",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FFF2D3",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "42218a80-6d2b-4afc-93df-5154b1a986fe",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "4029c6b5-e376-4618-b841-dc2e5f551f54",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "4029c6b5-e376-4618-b841-dc2e5f551f54",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5kb6xkf6",
+      "id": "1",
+      "bbox": [
+        0,
+        0,
+        1280,
+        720
+      ],
+      "geometry": "rect",
+      "fillColor": "#FFF1CC",
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ytsvu9kn",
+      "id": "2",
+      "bbox": [
+        42,
+        28,
+        156,
+        42
+      ],
+      "geometry": "rect",
+      "text": "童芯智造",
+      "textPreview": "童芯智造",
+      "resolvedFontSize": 30,
+      "resolvedTextStyle": {
+        "fontSize": 30,
+        "typeface": "+mn-lt",
+        "color": "#F47B20",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "童芯智造"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "童芯智造",
+          "resolvedTextStyle": {
+            "fontSize": 30,
+            "color": "#F47B20",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "童芯智造",
+              "fontSize": 30,
+              "color": "#F47B20",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/neloj2t8",
+      "id": "3",
+      "bbox": [
+        47,
+        66,
+        150,
+        22
+      ],
+      "geometry": "rect",
+      "text": "AI好奇心成长伙伴",
+      "textPreview": "AI好奇心成长伙伴",
+      "resolvedFontSize": 13,
+      "resolvedTextStyle": {
+        "fontSize": 13,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AI好奇心成长伙伴"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AI好奇心成长伙伴",
+          "resolvedTextStyle": {
+            "fontSize": 13,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "AI好奇心成长伙伴",
+              "fontSize": 13,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cbulwval",
+      "id": "4",
+      "bbox": [
+        242,
+        14,
+        100,
+        62
+      ],
+      "geometry": "rect",
+      "text": "04",
+      "textPreview": "04",
+      "resolvedFontSize": 52,
+      "resolvedTextStyle": {
+        "fontSize": 52,
+        "typeface": "+mn-lt",
+        "color": "#F47B20",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "04"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "04",
+          "resolvedTextStyle": {
+            "fontSize": 52,
+            "color": "#F47B20",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "04",
+              "fontSize": 52,
+              "color": "#F47B20",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5sneloj2",
+      "id": "5",
+      "bbox": [
+        344,
+        31,
+        668,
+        48
+      ],
+      "geometry": "rect",
+      "text": "AI主动生成小游戏：让知识变成闯关记忆",
+      "textPreview": "AI主动生成小游戏：让知识变成闯关记忆",
+      "resolvedFontSize": 33,
+      "resolvedTextStyle": {
+        "fontSize": 33,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AI主动生成小游戏：让知识变成闯关记忆"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AI主动生成小游戏：让知识变成闯关记忆",
+          "resolvedTextStyle": {
+            "fontSize": 33,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "AI主动生成小游戏：让知识变成闯关记忆",
+              "fontSize": 33,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/u54zidon",
+      "id": "6",
+      "bbox": [
+        346,
+        80,
+        710,
+        28
+      ],
+      "geometry": "rect",
+      "text": "把绘本故事转化为任务关卡，在游戏中巩固理解",
+      "textPreview": "把绘本故事转化为任务关卡，在游戏中巩固理解",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "+mn-lt",
+        "color": "#7B5B3B",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "把绘本故事转化为任务关卡，在游戏中巩固理解"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "把绘本故事转化为任务关卡，在游戏中巩固理解",
+          "resolvedTextStyle": {
+            "fontSize": 18,
+            "color": "#7B5B3B"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "把绘本故事转化为任务关卡，在游戏中巩固理解",
+              "fontSize": 18,
+              "color": "#7B5B3B"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nqxs72x4",
+      "id": "7",
+      "bbox": [
+        1036,
+        34,
+        198,
+        44
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFF7E8",
+      "lineColor": "#F2C170",
+      "lineWidth": 1
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gbq1oryt",
+      "id": "8",
+      "bbox": [
+        1060,
+        45,
+        154,
+        24
+      ],
+      "geometry": "rect",
+      "text": "游戏生成时刻",
+      "textPreview": "游戏生成时刻",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "fontSize": 17,
+        "typeface": "+mn-lt",
+        "color": "#F47B20",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "游戏生成时刻"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "游戏生成时刻",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "color": "#F47B20",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "游戏生成时刻",
+              "fontSize": 17,
+              "color": "#F47B20",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5wjudg7a",
+      "id": "9",
+      "bbox": [
+        42,
+        128,
+        698,
+        458
+      ],
+      "geometry": "roundRect",
+      "fillColor": "rgba(255, 253, 247, 0.94)",
+      "lineColor": "#F0CA80",
+      "lineWidth": 1
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/54zidony",
+      "id": "10",
+      "bbox": [
+        70,
+        144,
+        380,
+        24
+      ],
+      "geometry": "rect",
+      "text": "微信群聊 · 小星的水循环探索",
+      "textPreview": "微信群聊 · 小星的水循环探索",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#5F4124",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "微信群聊 · 小星的水循环探索"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "微信群聊 · 小星的水循环探索",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#5F4124",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "微信群聊 · 小星的水循环探索",
+              "fontSize": 16,
+              "color": "#5F4124",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 11,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/7ed8bat4",
+      "id": "11",
+      "bbox": [
+        678,
+        182,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "好奇星伴头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "c1e6dbc0-7bb8-4df7-b1fe-a0e778a2ac68",
+        "contentType": "image/png",
+        "byteLength": 1405831
+      }
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nyd0z610",
+      "id": "12",
+      "bbox": [
+        168,
+        180,
+        500,
+        46
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#EAF8DF",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/udg7adsj",
+      "id": "13",
+      "bbox": [
+        182,
+        188,
+        472,
+        36
+      ],
+      "geometry": "rect",
+      "text": "好奇星伴：小星，想不想把滴滴的故事变成小游戏？",
+      "textPreview": "好奇星伴：小星，想不想把滴滴的故事变成小游戏？",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#238148",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "好奇星伴：小星，想不想把滴滴的故事变成小游戏？"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "好奇星伴：小星，想不想把滴滴的故事变成小游戏？",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#238148",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "好奇星伴：小星，想不想把滴滴的故事变成小游戏？",
+              "fontSize": 14.2,
+              "color": "#238148",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 14,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/ih4byhgn",
+      "id": "14",
+      "bbox": [
+        66,
+        236,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "小星头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "1364fb65-2c70-4269-b1f3-0572dacbcdf6",
+        "contentType": "image/png",
+        "byteLength": 1599968
+      }
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cvixczed",
+      "id": "15",
+      "bbox": [
+        118,
+        234,
+        508,
+        46
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFF6E8",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nap4r65w",
+      "id": "16",
+      "bbox": [
+        132,
+        242,
+        480,
+        36
+      ],
+      "geometry": "rect",
+      "text": "小星：要！我要帮滴滴回家！",
+      "textPreview": "小星：要！我要帮滴滴回家！",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#C35B00",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "小星：要！我要帮滴滴回家！"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "小星：要！我要帮滴滴回家！",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#C35B00",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "小星：要！我要帮滴滴回家！",
+              "fontSize": 14.2,
+              "color": "#C35B00",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 17,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/p8nqxs72",
+      "id": "17",
+      "bbox": [
+        66,
+        290,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "妈妈头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "3f5836e3-9817-41c0-940d-aab5a119d76d",
+        "contentType": "image/png",
+        "byteLength": 1806563
+      }
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1orytsvu",
+      "id": "18",
+      "bbox": [
+        118,
+        288,
+        508,
+        46
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFF1DE",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 19,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/c7u54zid",
+      "id": "19",
+      "bbox": [
+        132,
+        296,
+        480,
+        36
+      ],
+      "geometry": "rect",
+      "text": "妈妈：游戏里也能复习水循环吗？",
+      "textPreview": "妈妈：游戏里也能复习水循环吗？",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#A86116",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "妈妈：游戏里也能复习水循环吗？"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "妈妈：游戏里也能复习水循环吗？",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#A86116",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "妈妈：游戏里也能复习水循环吗？",
+              "fontSize": 14.2,
+              "color": "#A86116",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 20,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/j6tovaho",
+      "id": "20",
+      "bbox": [
+        678,
+        344,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "好奇星伴头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "7b98b718-7403-4e86-87e1-c5723e6a53af",
+        "contentType": "image/png",
+        "byteLength": 1405831
+      }
+    },
+    {
+      "order": 21,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hk3q5o7q",
+      "id": "21",
+      "bbox": [
+        168,
+        342,
+        500,
+        64
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#EAF8DF",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 22,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6xkf6dcb",
+      "id": "22",
+      "bbox": [
+        182,
+        350,
+        472,
+        54
+      ],
+      "geometry": "rect",
+      "text": "好奇星伴：可以。第一关找水滴，第二关云朵派对，第三关雨滴降落。",
+      "textPreview": "好奇星伴：可以。第一关找水滴，第二关云朵派对，第三关雨滴降落。",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#238148",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "好奇星伴：可以。第一关找水滴，第二关云朵派对，第三关雨滴降落。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "好奇星伴：可以。第一关找水滴，第二关云朵派对，第三关雨滴降落。",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#238148",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "好奇星伴：可以。第一关找水滴，第二关云朵派对，第三关雨滴降落。",
+              "fontSize": 14.2,
+              "color": "#238148",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 23,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/crmhk3q5",
+      "id": "23",
+      "bbox": [
+        66,
+        416,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "小星头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "685e1969-8f0d-49e8-85ee-84f7d610e397",
+        "contentType": "image/png",
+        "byteLength": 1599968
+      }
+    },
+    {
+      "order": 24,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/obm58z25",
+      "id": "24",
+      "bbox": [
+        118,
+        414,
+        508,
+        46
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFF6E8",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 25,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hwfyxobm",
+      "id": "25",
+      "bbox": [
+        132,
+        422,
+        480,
+        36
+      ],
+      "geometry": "rect",
+      "text": "小星：如果云朵装不下，就变成雨跳下去！",
+      "textPreview": "小星：如果云朵装不下，就变成雨跳下去！",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#C35B00",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "小星：如果云朵装不下，就变成雨跳下去！"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "小星：如果云朵装不下，就变成雨跳下去！",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#C35B00",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "小星：如果云朵装不下，就变成雨跳下去！",
+              "fontSize": 14.2,
+              "color": "#C35B00",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 26,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/1kre1w7m",
+      "id": "26",
+      "bbox": [
+        678,
+        470,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "好奇星伴头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "c1671315-ea2f-4818-a27b-8c47e7a209f1",
+        "contentType": "image/png",
+        "byteLength": 1405831
+      }
+    },
+    {
+      "order": 27,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zqtcj6to",
+      "id": "27",
+      "bbox": [
+        168,
+        468,
+        500,
+        46
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#EAF8DF",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 28,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/sfil0rqd",
+      "id": "28",
+      "bbox": [
+        182,
+        476,
+        472,
+        36
+      ],
+      "geometry": "rect",
+      "text": "好奇星伴：回答正确，获得“云朵守护者”徽章。",
+      "textPreview": "好奇星伴：回答正确，获得“云朵守护者”徽章。",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#238148",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "好奇星伴：回答正确，获得“云朵守护者”徽章。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "好奇星伴：回答正确，获得“云朵守护者”徽章。",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#238148",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "好奇星伴：回答正确，获得“云朵守护者”徽章。",
+              "fontSize": 14.2,
+              "color": "#238148",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 29,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/q5o7qpg3",
+      "id": "29",
+      "bbox": [
+        678,
+        524,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "好奇星伴头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "28698ccb-e004-4e37-adb7-cd0e87defed8",
+        "contentType": "image/png",
+        "byteLength": 1405831
+      }
+    },
+    {
+      "order": 30,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/36hcrmhk",
+      "id": "30",
+      "bbox": [
+        168,
+        522,
+        500,
+        46
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#EAF8DF",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 31,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/eloj2t83",
+      "id": "31",
+      "bbox": [
+        182,
+        530,
+        472,
+        36
+      ],
+      "geometry": "rect",
+      "text": "好奇星伴：后续会根据答题记录自动优化关卡和提示。",
+      "textPreview": "好奇星伴：后续会根据答题记录自动优化关卡和提示。",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#238148",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "好奇星伴：后续会根据答题记录自动优化关卡和提示。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "好奇星伴：后续会根据答题记录自动优化关卡和提示。",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#238148",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "好奇星伴：后续会根据答题记录自动优化关卡和提示。",
+              "fontSize": 14.2,
+              "color": "#238148",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 32,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/lc7u54zi",
+      "id": "32",
+      "bbox": [
+        752,
+        118,
+        496,
+        380
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F2C170",
+      "lineWidth": 1
+    },
+    {
+      "order": 33,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/bulwval8",
+      "id": "33",
+      "bbox": [
+        762,
+        128,
+        476,
+        360
+      ],
+      "geometry": "roundRect",
+      "alt": "04场景图",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "roundRect",
+        "adjustmentList": [
+          {
+            "name": "adj",
+            "formula": "val 6667"
+          }
+        ]
+      },
+      "asset": {
+        "assetId": "2c4f66d0-5131-4002-a8c0-857b4ef28f1a",
+        "contentType": "image/png",
+        "byteLength": 2349547
+      }
+    },
+    {
+      "order": 34,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7u54zido",
+      "id": "34",
+      "bbox": [
+        762,
+        512,
+        476,
+        74
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFF7E8",
+      "lineColor": "#F0CA80",
+      "lineWidth": 1
+    },
+    {
+      "order": 35,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ed8bat47",
+      "id": "35",
+      "bbox": [
+        790,
+        526,
+        92,
+        24
+      ],
+      "geometry": "rect",
+      "text": "场景亮点",
+      "textPreview": "场景亮点",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#F47B20",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "场景亮点"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "场景亮点",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#F47B20",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "场景亮点",
+              "fontSize": 16,
+              "color": "#F47B20",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 36,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/l0rqd4vm",
+      "id": "36",
+      "bbox": [
+        884,
+        525,
+        326,
+        42
+      ],
+      "geometry": "rect",
+      "text": "AI主动把故事变成游戏，让知识在反复闯关中被记住。",
+      "textPreview": "AI主动把故事变成游戏，让知识在反复闯关中被记住。",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AI主动把故事变成游戏，让知识在反复闯关"
+          },
+          {
+            "index": 2,
+            "text": "中被记住。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AI主动把故事变成游戏，让知识在反复闯关中被记住。",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "AI主动把故事变成游戏，让知识在反复闯关中被记住。",
+              "fontSize": 16,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 37,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/wfyxobm5",
+      "id": "37",
+      "bbox": [
+        42,
+        610,
+        1196,
+        78
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFF7E8",
+      "lineColor": "#F0C36F",
+      "lineWidth": 1
+    },
+    {
+      "order": 38,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7mp0bi9s",
+      "id": "38",
+      "bbox": [
+        62,
+        623,
+        184,
+        52
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F1D49B",
+      "lineWidth": 1
+    },
+    {
+      "order": 39,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/e1w7mp0b",
+      "id": "39",
+      "bbox": [
+        72,
+        631,
+        36,
+        36
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#36B37E",
+      "lineWidth": 0
+    },
+    {
+      "order": 40,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/u54zidon",
+      "id": "40",
+      "bbox": [
+        72,
+        638,
+        36,
+        20
+      ],
+      "geometry": "rect",
+      "text": "1",
+      "textPreview": "1",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "1"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "1",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "1",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 41,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nqxs72x4",
+      "id": "41",
+      "bbox": [
+        114,
+        631,
+        124,
+        38
+      ],
+      "geometry": "rect",
+      "text": "智能小游戏生成",
+      "textPreview": "智能小游戏生成",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "智能小游戏生"
+          },
+          {
+            "index": 2,
+            "text": "成"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "智能小游戏生成",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "智能小游戏生成",
+              "fontSize": 16,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 42,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cbulwval",
+      "id": "42",
+      "bbox": [
+        258,
+        623,
+        184,
+        52
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F1D49B",
+      "lineWidth": 1
+    },
+    {
+      "order": 43,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5sneloj2",
+      "id": "43",
+      "bbox": [
+        268,
+        631,
+        36,
+        36
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#F26A36",
+      "lineWidth": 0
+    },
+    {
+      "order": 44,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ytsvu9kn",
+      "id": "44",
+      "bbox": [
+        268,
+        638,
+        36,
+        20
+      ],
+      "geometry": "rect",
+      "text": "2",
+      "textPreview": "2",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "2"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "2",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "2",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 45,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/neloj2t8",
+      "id": "45",
+      "bbox": [
+        310,
+        631,
+        124,
+        38
+      ],
+      "geometry": "rect",
+      "text": "知识记忆强化",
+      "textPreview": "知识记忆强化",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "知识记忆强化"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "知识记忆强化",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "知识记忆强化",
+              "fontSize": 16,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 46,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/czed8v6p",
+      "id": "46",
+      "bbox": [
+        454,
+        623,
+        184,
+        52
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F1D49B",
+      "lineWidth": 1
+    },
+    {
+      "order": 47,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5kb6xkf6",
+      "id": "47",
+      "bbox": [
+        464,
+        631,
+        36,
+        36
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#397CF6",
+      "lineWidth": 0
+    },
+    {
+      "order": 48,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/yhgn29gr",
+      "id": "48",
+      "bbox": [
+        464,
+        638,
+        36,
+        20
+      ],
+      "geometry": "rect",
+      "text": "3",
+      "textPreview": "3",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "3"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "3",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "3",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 49,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/n29gr2p8",
+      "id": "49",
+      "bbox": [
+        506,
+        631,
+        124,
+        38
+      ],
+      "geometry": "rect",
+      "text": "闯关式迁移",
+      "textPreview": "闯关式迁移",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "闯关式迁移"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "闯关式迁移",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "闯关式迁移",
+              "fontSize": 16,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 50,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d8bat47y",
+      "id": "50",
+      "bbox": [
+        650,
+        623,
+        184,
+        52
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F1D49B",
+      "lineWidth": 1
+    },
+    {
+      "order": 51,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/knih4byh",
+      "id": "51",
+      "bbox": [
+        660,
+        631,
+        36,
+        36
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#7C5BEF",
+      "lineWidth": 0
+    },
+    {
+      "order": 52,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/v6psfil0",
+      "id": "52",
+      "bbox": [
+        660,
+        638,
+        36,
+        20
+      ],
+      "geometry": "rect",
+      "text": "4",
+      "textPreview": "4",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "4"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "4",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "4",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 53,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/2lszqtcj",
+      "id": "53",
+      "bbox": [
+        702,
+        631,
+        124,
+        38
+      ],
+      "geometry": "rect",
+      "text": "难度自适应",
+      "textPreview": "难度自适应",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "难度自适应"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "难度自适应",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "难度自适应",
+              "fontSize": 16,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 54,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d0z61032",
+      "id": "54",
+      "bbox": [
+        846,
+        623,
+        184,
+        52
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F1D49B",
+      "lineWidth": 1
+    },
+    {
+      "order": 55,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/kf6dcbul",
+      "id": "55",
+      "bbox": [
+        856,
+        631,
+        36,
+        36
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#28B8A7",
+      "lineWidth": 0
+    },
+    {
+      "order": 56,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vu9knih4",
+      "id": "56",
+      "bbox": [
+        856,
+        638,
+        36,
+        20
+      ],
+      "geometry": "rect",
+      "text": "5",
+      "textPreview": "5",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "5"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "5",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "5",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 57,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/29gr2p8n",
+      "id": "57",
+      "bbox": [
+        898,
+        631,
+        124,
+        38
+      ],
+      "geometry": "rect",
+      "text": "兴趣任务推荐",
+      "textPreview": "兴趣任务推荐",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "兴趣任务推荐"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "兴趣任务推荐",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "兴趣任务推荐",
+              "fontSize": 16,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 58,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/donyd0z6",
+      "id": "58",
+      "bbox": [
+        1042,
+        623,
+        184,
+        52
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F1D49B",
+      "lineWidth": 1
+    },
+    {
+      "order": 59,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/k3q5o7qp",
+      "id": "59",
+      "bbox": [
+        1052,
+        631,
+        36,
+        36
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#F2A51C",
+      "lineWidth": 0
+    },
+    {
+      "order": 60,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/kb6xkf6d",
+      "id": "60",
+      "bbox": [
+        1052,
+        638,
+        36,
+        20
+      ],
+      "geometry": "rect",
+      "text": "6",
+      "textPreview": "6",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "6"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "6",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "6",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 61,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/9w3m94fu",
+      "id": "61",
+      "bbox": [
+        1094,
+        631,
+        124,
+        38
+      ],
+      "geometry": "rect",
+      "text": "学玩创闭环",
+      "textPreview": "学玩创闭环",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "学玩创闭环"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "学玩创闭环",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "学玩创闭环",
+              "fontSize": 16,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 62,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/25kb6xkf",
+      "id": "62",
+      "bbox": [
+        1195,
+        686,
+        40,
+        24
+      ],
+      "geometry": "rect",
+      "text": "04",
+      "textPreview": "04",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#8C6A3B",
+        "bold": true,
+        "alignment": "right",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "04"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "04",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#8C6A3B",
+            "bold": true,
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "04",
+              "fontSize": 16,
+              "color": "#8C6A3B",
+              "bold": true,
+              "alignment": "right"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

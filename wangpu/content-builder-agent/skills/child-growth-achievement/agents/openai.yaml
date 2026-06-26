@@ -1,0 +1,8 @@
+interface:
+  display_name: "儿童成长成就"
+  short_description: "把成长报告转成儿童成就面板"
+  brand_color: "#FFBF3F"
+  default_prompt: "Use $child-growth-achievement to create a child-facing growth achievement panel from the latest growth report."
+
+policy:
+  allow_implicit_invocation: true

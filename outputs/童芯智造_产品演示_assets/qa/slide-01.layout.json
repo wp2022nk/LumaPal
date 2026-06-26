@@ -1,0 +1,2483 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/tb3kbr",
+    "id": "tb3kbr",
+    "slide": 1,
+    "layoutId": "42218a80-6d2b-4afc-93df-5154b1a986fe",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "4029c6b5-e376-4618-b841-dc2e5f551f54",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FFF2D3",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "42218a80-6d2b-4afc-93df-5154b1a986fe",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "4029c6b5-e376-4618-b841-dc2e5f551f54",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "4029c6b5-e376-4618-b841-dc2e5f551f54",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/adsji5sn",
+      "id": "1",
+      "bbox": [
+        0,
+        0,
+        1280,
+        720
+      ],
+      "geometry": "rect",
+      "fillColor": "#FFF1CC",
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/h4byhgn2",
+      "id": "2",
+      "bbox": [
+        42,
+        28,
+        156,
+        42
+      ],
+      "geometry": "rect",
+      "text": "童芯智造",
+      "textPreview": "童芯智造",
+      "resolvedFontSize": 30,
+      "resolvedTextStyle": {
+        "fontSize": 30,
+        "typeface": "+mn-lt",
+        "color": "#F47B20",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "童芯智造"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "童芯智造",
+          "resolvedTextStyle": {
+            "fontSize": 30,
+            "color": "#F47B20",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "童芯智造",
+              "fontSize": 30,
+              "color": "#F47B20",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/sji5snel",
+      "id": "3",
+      "bbox": [
+        47,
+        66,
+        150,
+        22
+      ],
+      "geometry": "rect",
+      "text": "AI好奇心成长伙伴",
+      "textPreview": "AI好奇心成长伙伴",
+      "resolvedFontSize": 13,
+      "resolvedTextStyle": {
+        "fontSize": 13,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AI好奇心成长伙伴"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AI好奇心成长伙伴",
+          "resolvedTextStyle": {
+            "fontSize": 13,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "AI好奇心成长伙伴",
+              "fontSize": 13,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3m94fu18",
+      "id": "4",
+      "bbox": [
+        242,
+        14,
+        100,
+        62
+      ],
+      "geometry": "rect",
+      "text": "01",
+      "textPreview": "01",
+      "resolvedFontSize": 52,
+      "resolvedTextStyle": {
+        "fontSize": 52,
+        "typeface": "+mn-lt",
+        "color": "#F47B20",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "01"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "01",
+          "resolvedTextStyle": {
+            "fontSize": 52,
+            "color": "#F47B20",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "01",
+              "fontSize": 52,
+              "color": "#F47B20",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/a5gbq1or",
+      "id": "5",
+      "bbox": [
+        344,
+        31,
+        668,
+        48
+      ],
+      "geometry": "rect",
+      "text": "万物问答：孩子和AI聊水循环",
+      "textPreview": "万物问答：孩子和AI聊水循环",
+      "resolvedFontSize": 33,
+      "resolvedTextStyle": {
+        "fontSize": 33,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "万物问答：孩子和AI聊水循环"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "万物问答：孩子和AI聊水循环",
+          "resolvedTextStyle": {
+            "fontSize": 33,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "万物问答：孩子和AI聊水循环",
+              "fontSize": 33,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/lszqtcj6",
+      "id": "6",
+      "bbox": [
+        346,
+        80,
+        710,
+        28
+      ],
+      "geometry": "rect",
+      "text": "从生活现象出发，用多模态对话激发孩子的科学好奇心",
+      "textPreview": "从生活现象出发，用多模态对话激发孩子的科学好奇心",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "+mn-lt",
+        "color": "#7B5B3B",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "从生活现象出发，用多模态对话激发孩子的科学好奇心"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "从生活现象出发，用多模态对话激发孩子的科学好奇心",
+          "resolvedTextStyle": {
+            "fontSize": 18,
+            "color": "#7B5B3B"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "从生活现象出发，用多模态对话激发孩子的科学好奇心",
+              "fontSize": 18,
+              "color": "#7B5B3B"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/s72x4nap",
+      "id": "7",
+      "bbox": [
+        1036,
+        34,
+        198,
+        44
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFF7E8",
+      "lineColor": "#F2C170",
+      "lineWidth": 1
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zidonyd0",
+      "id": "8",
+      "bbox": [
+        1060,
+        45,
+        154,
+        24
+      ],
+      "geometry": "rect",
+      "text": "白天探索时刻",
+      "textPreview": "白天探索时刻",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "fontSize": 17,
+        "typeface": "+mn-lt",
+        "color": "#F47B20",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "白天探索时刻"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "白天探索时刻",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "color": "#F47B20",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "白天探索时刻",
+              "fontSize": 17,
+              "color": "#F47B20",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/a1gvy90j",
+      "id": "9",
+      "bbox": [
+        42,
+        128,
+        698,
+        458
+      ],
+      "geometry": "roundRect",
+      "fillColor": "rgba(255, 253, 247, 0.94)",
+      "lineColor": "#F0CA80",
+      "lineWidth": 1
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8nqxs72x",
+      "id": "10",
+      "bbox": [
+        70,
+        144,
+        380,
+        24
+      ],
+      "geometry": "rect",
+      "text": "微信群聊 · 小星的水循环探索",
+      "textPreview": "微信群聊 · 小星的水循环探索",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#5F4124",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "微信群聊 · 小星的水循环探索"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "微信群聊 · 小星的水循环探索",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#5F4124",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "微信群聊 · 小星的水循环探索",
+              "fontSize": 16,
+              "color": "#5F4124",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 11,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/q1orytsv",
+      "id": "11",
+      "bbox": [
+        66,
+        182,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "小星头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "8a2ebec7-1f3b-41fc-abc6-0a940f05b4cb",
+        "contentType": "image/png",
+        "byteLength": 1599968
+      }
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qh0fepkz",
+      "id": "12",
+      "bbox": [
+        118,
+        180,
+        508,
+        46
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFF6E8",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/j2t83itg",
+      "id": "13",
+      "bbox": [
+        132,
+        188,
+        480,
+        36
+      ],
+      "geometry": "rect",
+      "text": "小星：好奇星伴，你看！妈妈的杯子在冒烟，是着火了吗？",
+      "textPreview": "小星：好奇星伴，你看！妈妈的杯子在冒烟，是着火了吗？",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#C35B00",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "小星：好奇星伴，你看！妈妈的杯子在冒烟，是着火了吗？"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "小星：好奇星伴，你看！妈妈的杯子在冒烟，是着火了吗？",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#C35B00",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "小星：好奇星伴，你看！妈妈的杯子在冒烟，是着火了吗？",
+              "fontSize": 14.2,
+              "color": "#C35B00",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 14,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/je9cvixc",
+      "id": "14",
+      "bbox": [
+        678,
+        236,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "好奇星伴头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "b4ba77f6-a2af-486e-b036-a6c30fec91a1",
+        "contentType": "image/png",
+        "byteLength": 1405831
+      }
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1w7mp0bi",
+      "id": "15",
+      "bbox": [
+        168,
+        234,
+        500,
+        46
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#EAF8DF",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/q5o7qpg3",
+      "id": "16",
+      "bbox": [
+        182,
+        242,
+        472,
+        36
+      ],
+      "geometry": "rect",
+      "text": "好奇星伴：不是着火哦，那是热水变出来的水蒸气宝宝。",
+      "textPreview": "好奇星伴：不是着火哦，那是热水变出来的水蒸气宝宝。",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#238148",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "好奇星伴：不是着火哦，那是热水变出来的水蒸气宝宝。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "好奇星伴：不是着火哦，那是热水变出来的水蒸气宝宝。",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#238148",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "好奇星伴：不是着火哦，那是热水变出来的水蒸气宝宝。",
+              "fontSize": 14.2,
+              "color": "#238148",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 17,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/8z25kb6x",
+      "id": "17",
+      "bbox": [
+        66,
+        290,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "小星头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "f36bde73-1545-4f8a-9a01-43f0f566d297",
+        "contentType": "image/png",
+        "byteLength": 1599968
+      }
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/c3ylc7u5",
+      "id": "18",
+      "bbox": [
+        118,
+        288,
+        508,
+        46
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFF6E8",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 19,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1kre1w7m",
+      "id": "19",
+      "bbox": [
+        132,
+        296,
+        480,
+        36
+      ],
+      "geometry": "rect",
+      "text": "小星：为什么我抓不住它？",
+      "textPreview": "小星：为什么我抓不住它？",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#C35B00",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "小星：为什么我抓不住它？"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "小星：为什么我抓不住它？",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#C35B00",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "小星：为什么我抓不住它？",
+              "fontSize": 14.2,
+              "color": "#C35B00",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 20,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/ytsvu9kn",
+      "id": "20",
+      "bbox": [
+        678,
+        344,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "好奇星伴头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "e296d8a9-70f8-45e7-a1fc-65b052dc97a0",
+        "contentType": "image/png",
+        "byteLength": 1405831
+      }
+    },
+    {
+      "order": 21,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gn29gr2p",
+      "id": "21",
+      "bbox": [
+        168,
+        342,
+        500,
+        46
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#EAF8DF",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 22,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/n29gr2p8",
+      "id": "22",
+      "bbox": [
+        182,
+        350,
+        472,
+        36
+      ],
+      "geometry": "rect",
+      "text": "好奇星伴：它特别小，遇到凉空气会变成小水珠。",
+      "textPreview": "好奇星伴：它特别小，遇到凉空气会变成小水珠。",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#238148",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "好奇星伴：它特别小，遇到凉空气会变成小水珠。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "好奇星伴：它特别小，遇到凉空气会变成小水珠。",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#238148",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "好奇星伴：它特别小，遇到凉空气会变成小水珠。",
+              "fontSize": 14.2,
+              "color": "#238148",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 23,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/5kb6xkf6",
+      "id": "23",
+      "bbox": [
+        66,
+        398,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "小星头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "7f19ac5e-0f00-438f-98d7-fb6326a1d2ce",
+        "contentType": "image/png",
+        "byteLength": 1599968
+      }
+    },
+    {
+      "order": 24,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5wjudg7a",
+      "id": "24",
+      "bbox": [
+        118,
+        396,
+        508,
+        46
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFF6E8",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 25,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gbq1oryt",
+      "id": "25",
+      "bbox": [
+        132,
+        404,
+        480,
+        36
+      ],
+      "geometry": "rect",
+      "text": "小星：那外面的雨，也是这样变出来的吗？",
+      "textPreview": "小星：那外面的雨，也是这样变出来的吗？",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#C35B00",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "小星：那外面的雨，也是这样变出来的吗？"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "小星：那外面的雨，也是这样变出来的吗？",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#C35B00",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "小星：那外面的雨，也是这样变出来的吗？",
+              "fontSize": 14.2,
+              "color": "#C35B00",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 26,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/cbulwval",
+      "id": "26",
+      "bbox": [
+        678,
+        452,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "好奇星伴头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "105dccf0-0fdc-4654-999e-0cbf5da48551",
+        "contentType": "image/png",
+        "byteLength": 1405831
+      }
+    },
+    {
+      "order": 27,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/y90je9cv",
+      "id": "27",
+      "bbox": [
+        168,
+        450,
+        500,
+        64
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#EAF8DF",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 28,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5sneloj2",
+      "id": "28",
+      "bbox": [
+        182,
+        458,
+        472,
+        54
+      ],
+      "geometry": "rect",
+      "text": "好奇星伴：对啦！太阳把水晒成水蒸气，飞到天上变成云，云装不下就变成雨。",
+      "textPreview": "好奇星伴：对啦！太阳把水晒成水蒸气，飞到天上变成云，云装不下就变成雨。",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#238148",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "好奇星伴：对啦！太阳把水晒成水蒸气，飞到天上变成云，云装不下就"
+          },
+          {
+            "index": 2,
+            "text": "变成雨。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "好奇星伴：对啦！太阳把水晒成水蒸气，飞到天上变成云，云装不下就变成雨。",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#238148",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "好奇星伴：对啦！太阳把水晒成水蒸气，飞到天上变成云，云装不下就变成雨。",
+              "fontSize": 14.2,
+              "color": "#238148",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 29,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/nuxc3ylc",
+      "id": "29",
+      "bbox": [
+        66,
+        524,
+        42,
+        42
+      ],
+      "geometry": "ellipse",
+      "alt": "小星头像",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "ellipse"
+      },
+      "asset": {
+        "assetId": "9ef4fd5a-3d9d-406c-9660-9f2626bc072c",
+        "contentType": "image/png",
+        "byteLength": 1599968
+      }
+    },
+    {
+      "order": 30,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/q1orytsv",
+      "id": "30",
+      "bbox": [
+        118,
+        522,
+        508,
+        46
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFF6E8",
+      "lineColor": "#F3D8A1",
+      "lineWidth": 1
+    },
+    {
+      "order": 31,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fmlkjm1c",
+      "id": "31",
+      "bbox": [
+        132,
+        530,
+        480,
+        36
+      ],
+      "geometry": "rect",
+      "text": "小星：所以云就是天上的大茶杯！",
+      "textPreview": "小星：所以云就是天上的大茶杯！",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#C35B00",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "小星：所以云就是天上的大茶杯！"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "小星：所以云就是天上的大茶杯！",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#C35B00",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "小星：所以云就是天上的大茶杯！",
+              "fontSize": 14.2,
+              "color": "#C35B00",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 32,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/87ed8bat",
+      "id": "32",
+      "bbox": [
+        752,
+        118,
+        496,
+        380
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F2C170",
+      "lineWidth": 1
+    },
+    {
+      "order": 33,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/29gr2p8n",
+      "id": "33",
+      "bbox": [
+        762,
+        128,
+        476,
+        360
+      ],
+      "geometry": "roundRect",
+      "alt": "01场景图",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "roundRect",
+        "adjustmentList": [
+          {
+            "name": "adj",
+            "formula": "val 6667"
+          }
+        ]
+      },
+      "asset": {
+        "assetId": "654a56db-11cf-42f3-a80c-6407ced1b118",
+        "contentType": "image/png",
+        "byteLength": 2145172
+      }
+    },
+    {
+      "order": 34,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qtcj6tov",
+      "id": "34",
+      "bbox": [
+        762,
+        512,
+        476,
+        74
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFF7E8",
+      "lineColor": "#F0CA80",
+      "lineWidth": 1
+    },
+    {
+      "order": 35,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/je9cvixc",
+      "id": "35",
+      "bbox": [
+        790,
+        526,
+        92,
+        24
+      ],
+      "geometry": "rect",
+      "text": "场景亮点",
+      "textPreview": "场景亮点",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#F47B20",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "场景亮点"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "场景亮点",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#F47B20",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "场景亮点",
+              "fontSize": 16,
+              "color": "#F47B20",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 36,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8z25kb6x",
+      "id": "36",
+      "bbox": [
+        884,
+        525,
+        326,
+        42
+      ],
+      "geometry": "rect",
+      "text": "白天从一杯热茶出发，AI把生活现象转成科学追问。",
+      "textPreview": "白天从一杯热茶出发，AI把生活现象转成科学追问。",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "白天从一杯热茶出发，AI把生活现象转成科"
+          },
+          {
+            "index": 2,
+            "text": "学追问。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "白天从一杯热茶出发，AI把生活现象转成科学追问。",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "白天从一杯热茶出发，AI把生活现象转成科学追问。",
+              "fontSize": 16,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 37,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1gvy90je",
+      "id": "37",
+      "bbox": [
+        42,
+        610,
+        1196,
+        78
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFF7E8",
+      "lineColor": "#F0C36F",
+      "lineWidth": 1
+    },
+    {
+      "order": 38,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qpg3ex0n",
+      "id": "38",
+      "bbox": [
+        62,
+        623,
+        184,
+        52
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F1D49B",
+      "lineWidth": 1
+    },
+    {
+      "order": 39,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fa9w3m94",
+      "id": "39",
+      "bbox": [
+        72,
+        631,
+        36,
+        36
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#36B37E",
+      "lineWidth": 0
+    },
+    {
+      "order": 40,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/z61032ls",
+      "id": "40",
+      "bbox": [
+        72,
+        638,
+        36,
+        20
+      ],
+      "geometry": "rect",
+      "text": "1",
+      "textPreview": "1",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "1"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "1",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "1",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 41,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/al87ed8b",
+      "id": "41",
+      "bbox": [
+        114,
+        631,
+        124,
+        38
+      ],
+      "geometry": "rect",
+      "text": "AI多轮语音对话",
+      "textPreview": "AI多轮语音对话",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AI多轮语音对话"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AI多轮语音对话",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "AI多轮语音对话",
+              "fontSize": 14.2,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 42,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hcrmhk3q",
+      "id": "42",
+      "bbox": [
+        258,
+        623,
+        184,
+        52
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F1D49B",
+      "lineWidth": 1
+    },
+    {
+      "order": 43,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/orytsvu9",
+      "id": "43",
+      "bbox": [
+        268,
+        631,
+        36,
+        36
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#F26A36",
+      "lineWidth": 0
+    },
+    {
+      "order": 44,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zupwb2hw",
+      "id": "44",
+      "bbox": [
+        268,
+        638,
+        36,
+        20
+      ],
+      "geometry": "rect",
+      "text": "2",
+      "textPreview": "2",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "2"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "2",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "2",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 45,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/a9w3m94f",
+      "id": "45",
+      "bbox": [
+        310,
+        631,
+        124,
+        38
+      ],
+      "geometry": "rect",
+      "text": "拍学机识别+VQA",
+      "textPreview": "拍学机识别+VQA",
+      "resolvedFontSize": 14.2,
+      "resolvedTextStyle": {
+        "fontSize": 14.2,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "拍学机识别+VQA"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "拍学机识别+VQA",
+          "resolvedTextStyle": {
+            "fontSize": 14.2,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "拍学机识别+VQA",
+              "fontSize": 14.2,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 46,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/h0fepkzu",
+      "id": "46",
+      "bbox": [
+        454,
+        623,
+        184,
+        52
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F1D49B",
+      "lineWidth": 1
+    },
+    {
+      "order": 47,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/sfil0rqd",
+      "id": "47",
+      "bbox": [
+        464,
+        631,
+        36,
+        36
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#397CF6",
+      "lineWidth": 0
+    },
+    {
+      "order": 48,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zqtcj6to",
+      "id": "48",
+      "bbox": [
+        464,
+        638,
+        36,
+        20
+      ],
+      "geometry": "rect",
+      "text": "3",
+      "textPreview": "3",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "3"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "3",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "3",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 49,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/65wjudg7",
+      "id": "49",
+      "bbox": [
+        506,
+        631,
+        124,
+        38
+      ],
+      "geometry": "rect",
+      "text": "生活场景化学习",
+      "textPreview": "生活场景化学习",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "生活场景化学"
+          },
+          {
+            "index": 2,
+            "text": "习"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "生活场景化学习",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "生活场景化学习",
+              "fontSize": 16,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 50,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0je9cvix",
+      "id": "50",
+      "bbox": [
+        650,
+        623,
+        184,
+        52
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F1D49B",
+      "lineWidth": 1
+    },
+    {
+      "order": 51,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/t47y1kre",
+      "id": "51",
+      "bbox": [
+        660,
+        631,
+        36,
+        36
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#7C5BEF",
+      "lineWidth": 0
+    },
+    {
+      "order": 52,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/idonyd0z",
+      "id": "52",
+      "bbox": [
+        660,
+        638,
+        36,
+        20
+      ],
+      "geometry": "rect",
+      "text": "4",
+      "textPreview": "4",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "4"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "4",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "4",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 53,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/byhgn29g",
+      "id": "53",
+      "bbox": [
+        702,
+        631,
+        124,
+        38
+      ],
+      "geometry": "rect",
+      "text": "引导式思维",
+      "textPreview": "引导式思维",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "引导式思维"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "引导式思维",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "引导式思维",
+              "fontSize": 16,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 54,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0rqd4vmt",
+      "id": "54",
+      "bbox": [
+        846,
+        623,
+        184,
+        52
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F1D49B",
+      "lineWidth": 1
+    },
+    {
+      "order": 55,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tcj6tova",
+      "id": "55",
+      "bbox": [
+        856,
+        631,
+        36,
+        36
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#28B8A7",
+      "lineWidth": 0
+    },
+    {
+      "order": 56,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/il0rqd4v",
+      "id": "56",
+      "bbox": [
+        856,
+        638,
+        36,
+        20
+      ],
+      "geometry": "rect",
+      "text": "5",
+      "textPreview": "5",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "5"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "5",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "5",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 57,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/b6xkf6dc",
+      "id": "57",
+      "bbox": [
+        898,
+        631,
+        124,
+        38
+      ],
+      "geometry": "rect",
+      "text": "知识迁移",
+      "textPreview": "知识迁移",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "知识迁移"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "知识迁移",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "知识迁移",
+              "fontSize": 16,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 58,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/032lszqt",
+      "id": "58",
+      "bbox": [
+        1042,
+        623,
+        184,
+        52
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#F1D49B",
+      "lineWidth": 1
+    },
+    {
+      "order": 59,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tovahoza",
+      "id": "59",
+      "bbox": [
+        1052,
+        631,
+        36,
+        36
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#F2A51C",
+      "lineWidth": 0
+    },
+    {
+      "order": 60,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tgfmlkjm",
+      "id": "60",
+      "bbox": [
+        1052,
+        638,
+        36,
+        20
+      ],
+      "geometry": "rect",
+      "text": "6",
+      "textPreview": "6",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "6"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "6",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "6",
+              "fontSize": 14,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 61,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4vmtwra5",
+      "id": "61",
+      "bbox": [
+        1094,
+        631,
+        124,
+        38
+      ],
+      "geometry": "rect",
+      "text": "即时激励",
+      "textPreview": "即时激励",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#392719",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "即时激励"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "即时激励",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#392719",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "即时激励",
+              "fontSize": 16,
+              "color": "#392719",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 62,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/bat47y1k",
+      "id": "62",
+      "bbox": [
+        1195,
+        686,
+        40,
+        24
+      ],
+      "geometry": "rect",
+      "text": "01",
+      "textPreview": "01",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#8C6A3B",
+        "bold": true,
+        "alignment": "right",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "01"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "01",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#8C6A3B",
+            "bold": true,
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "01",
+              "fontSize": 16,
+              "color": "#8C6A3B",
+              "bold": true,
+              "alignment": "right"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}
